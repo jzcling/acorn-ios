@@ -13,9 +13,10 @@ import MaterialComponents
 import UserNotifications
 import DropDown
 import InstantSearch
+import FirebaseMessaging
 
 @UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate {
+class AppDelegate: UIResponder, UIApplicationDelegate, MessagingDelegate {
     
     var window: UIWindow?
     
@@ -27,6 +28,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         authUI?.delegate = self
         let providers: [FUIAuthProvider] = [FUIGoogleAuth(), FUIFacebookAuth()]
         authUI?.providers = providers
+        
+        let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
+        UNUserNotificationCenter.current().requestAuthorization(options: authOptions) { (_, _) in }
+        application.registerForRemoteNotifications()
+        
+        Messaging.messaging().delegate = self as MessagingDelegate
         
         InstantSearch.shared.configure(appID: "O96PPLSF19", apiKey: "3b42d937aceab4818e2377325c76abf1", index: "article")
         
@@ -70,6 +77,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func applicationWillTerminate(_ application: UIApplication) {
         // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
     }
+    
+    func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable : Any]) {
+        print(userInfo)
+    }
 }
 
 extension AppDelegate: FUIAuthDelegate {
@@ -92,7 +103,11 @@ extension AppDelegate: FUIAuthDelegate {
         return AuthPicker(nibName: "AuthPicker", bundle: Bundle.main, authUI: authUI)
     }
     
-    func signed(in user: Firebase.User) {
+    func signed(in user: FirebaseUI.User) {
+        user.reload()
+        if !user.isEmailVerified {
+            user.sendEmailVerification(completion: nil)
+        }
         DataSource.instance.getThemeSubscriptions(user: user)
     }
 }

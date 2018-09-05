@@ -9,7 +9,7 @@
 import Foundation
 import Firebase
 
-class User {
+class AcornUser {
     var uid: String
     var displayName: String
     var token: String

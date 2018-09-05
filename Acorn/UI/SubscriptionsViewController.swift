@@ -72,20 +72,15 @@ class SubscriptionsViewController: MDCCollectionViewController, SubscriptionsHea
     }
     
     override func collectionView(_ collectionView: UICollectionView, viewForSupplementaryElementOfKind kind: String, at indexPath: IndexPath) -> UICollectionReusableView {
-        switch kind {
-            
-        case UICollectionElementKindSectionHeader:
+        if kind == UICollectionElementKindSectionHeader {
             let headerView = collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: "Header", for: indexPath) as! SubscriptionsHeaderView
             headerView.delegate = self
             return headerView
             
-        case UICollectionElementKindSectionFooter:
+        } else {
             let footerView = collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: "Footer", for: indexPath) as! SubscriptionsFooterView
             footerView.delegate = self
             return footerView
-            
-        default:
-            assert(false, "Unexpected element kind")
         }
     }
     

@@ -8,6 +8,7 @@
 
 import UIKit
 import WebKit
+import FirebaseUI
 import Firebase
 
 class WebViewViewController: UIViewController, WKUIDelegate, WKNavigationDelegate {
@@ -136,6 +137,8 @@ class WebViewViewController: UIViewController, WKUIDelegate, WKNavigationDelegat
     }
     
     @IBAction func didTapUpvoteButton(_ sender: Any) {
+        checkEmailVerified(user: user)
+        
         upvoteButton.isEnabled = false
         downvoteButton.isEnabled = false
         
@@ -168,6 +171,8 @@ class WebViewViewController: UIViewController, WKUIDelegate, WKNavigationDelegat
     }
     
     @IBAction func didTapDownvoteButton(_ sender: Any) {
+        checkEmailVerified(user: user)
+        
         upvoteButton.isEnabled = false
         downvoteButton.isEnabled = false
         

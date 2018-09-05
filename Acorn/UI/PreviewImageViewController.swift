@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import FirebaseUI
 
 class PreviewImageViewController: UIViewController {
 
@@ -19,6 +20,8 @@ class PreviewImageViewController: UIViewController {
     let dataSource = DataSource.instance
     
     var article: Article?
+    
+    lazy var user = Auth.auth().currentUser!
     
     var commentVC: CommentViewController?
     var createPostVC: CreatePostViewController?
@@ -37,6 +40,8 @@ class PreviewImageViewController: UIViewController {
     }
     
     @IBAction func didTapSendButton(_ sender: Any) {
+        checkEmailVerified(user: user)
+        
         if let vc = createPostVC {
             vc.clearAttachments()
             

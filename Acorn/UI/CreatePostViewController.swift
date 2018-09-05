@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import FirebaseUI
 import Firebase
 import DropDown
 import ImagePicker
@@ -63,11 +64,13 @@ class CreatePostViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        user.getIDToken(completion: { (token, error) in
-            if error == nil {
-                self.token = token
+        InstanceID.instanceID().instanceID { (result, error) in
+            if let error = error {
+                print(error)
+            } else if let result = result {
+                self.token = result.token
             }
-        })
+        }
         
         cardView.layer.cornerRadius = 6
         cardView.layer.masksToBounds = true
@@ -124,6 +127,8 @@ class CreatePostViewController: UIViewController {
     
     
     @IBAction func didTapPostButton(_ sender: Any) {
+        checkEmailVerified(user: user)
+        
         if (postTextView.text.count < 1 || postTextView.text == "Write something...") {
             self.view.makeToast("Please write something before posting", duration: 2.0, position: .bottom)
             return

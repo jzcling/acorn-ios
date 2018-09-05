@@ -45,14 +45,14 @@ class DataSource {
     
     
     // Setup
-    func getUser(onComplete: @escaping (User) -> ()) {
+    func getUser(onComplete: @escaping (AcornUser) -> ()) {
         userRef.observeSingleEvent(of: .value) { (snap) in
-            let user = User(snapshot: snap)
+            let user = AcornUser(snapshot: snap)
             onComplete(user)
         }
     }
     
-    func getThemeSubscriptions(user: Firebase.User) {
+    func getThemeSubscriptions(user: User) {
         let uid = user.uid
         let subsRef = self.database.reference(withPath: "user/\(uid)/subscriptions")
         
@@ -488,12 +488,14 @@ class DataSource {
     func follow(article: Article) {
         var token: String?
         
-        user.getIDToken { (idToken, error) in
-            if error == nil {
-                token = idToken
+        InstanceID.instanceID().instanceID { (result, error) in
+            if let error = error {
+                print(error)
+            } else if let result = result {
+                token = result.token
+                let query = self.articleRef.child("\(article.objectID)/notificationTokens/\(self.uid)")
+                query.setValue(token)
             }
-            let query = self.articleRef.child("\(article.objectID)/notificationTokens/\(self.uid)")
-            query.setValue(token)
         }
     }
     

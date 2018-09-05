@@ -158,6 +158,7 @@ class FeedViewController: MDCCollectionViewController, FeedCvCellDelegate {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         if let currentUser = Auth.auth().currentUser  {
+            checkEmailVerified(user: currentUser)
             self.uid = currentUser.uid
             dataSource.getThemeSubscriptions(user: currentUser)
             themeKey = defaults.string(forKey: "themeKey")
@@ -696,6 +697,18 @@ extension UIViewController {
     func removeSpinner(_ spinner: UIView) {
         DispatchQueue.main.async {
             spinner.removeFromSuperview()
+        }
+    }
+    
+    func checkEmailVerified(user: User) {
+        user.reload()
+        if !user.isEmailVerified {
+            let ac = UIAlertController(title: nil, message: "Please verify your email address.", preferredStyle: .alert)
+            ac.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
+            ac.addAction(UIAlertAction(title: "Re-send verification email", style: .destructive, handler: { _ in
+                user.sendEmailVerification()
+            }))
+            self.present(ac, animated: true, completion: nil)
         }
     }
 }

@@ -7,6 +7,7 @@
 //
 
 import MaterialComponents
+import FirebaseUI
 import Firebase
 
 class FeedCvCellPostNoImage: UICollectionViewCell {
@@ -133,6 +134,8 @@ class FeedCvCellPostNoImage: UICollectionViewCell {
     }
     
     @IBAction func didTapUpvoteButton(_ sender: Any) {
+        delegate?.checkEmailVerified(user: user)
+        
         upvoteButton.isEnabled = false
         downvoteButton.isEnabled = false
         
@@ -165,6 +168,8 @@ class FeedCvCellPostNoImage: UICollectionViewCell {
     }
     
     @IBAction func didTapDownvoteButton(_ sender: Any) {
+        delegate?.checkEmailVerified(user: user)
+        
         upvoteButton.isEnabled = false
         downvoteButton.isEnabled = false
         
