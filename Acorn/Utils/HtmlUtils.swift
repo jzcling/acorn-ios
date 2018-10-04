@@ -66,22 +66,22 @@ class HtmlUtils {
         content = (ALT_IMAGE_PATTERN?.stringByReplacingMatches(in: content, options: [], range: NSMakeRange(0, content.count), withTemplate: "img "))!
         
         // clean by SwiftSoup
-        do {
-            WHITELIST = try Whitelist.relaxed().preserveRelativeLinks(true)
-                .addProtocols("img", "src", "http", "https")
-                .addTags("iframe", "video", "audio", "source", "track", "img")
-                .addAttributes("iframe", "src", "frameborder", "height", "width")
-                .addAttributes("video", "src", "controls", "height", "width", "poster")
-                .addAttributes("audio", "src", "controls")
-                .addAttributes("source", "src", "type")
-                .addAttributes("track", "src", "kind", "srclang", "label")
-            
-            content = try SwiftSoup.clean(content, baseUrl, WHITELIST!)!
-        } catch Exception.Error(_, let message) {
-            
-        } catch let error {
-            
-        }
+//        do {
+//            WHITELIST = try Whitelist.relaxed().preserveRelativeLinks(true)
+//                .addProtocols("img", "src", "http", "https")
+//                .addTags("iframe", "video", "audio", "source", "track", "img")
+//                .addAttributes("iframe", "src", "frameborder", "height", "width")
+//                .addAttributes("video", "src", "controls", "height", "width", "poster")
+//                .addAttributes("audio", "src", "controls")
+//                .addAttributes("source", "src", "type")
+//                .addAttributes("track", "src", "kind", "srclang", "label")
+//            
+//            content = try SwiftSoup.clean(content, baseUrl, WHITELIST!)!
+//        } catch Exception.Error(_, let message) {
+//            
+//        } catch let error {
+//            
+//        }
         
         content = (RELATIVE_IMAGE_PATTERN_2?.stringByReplacingMatches(in: content, options: [], range: NSMakeRange(0, content.count), withTemplate: " $1=$2" + baseUrl))!
         
