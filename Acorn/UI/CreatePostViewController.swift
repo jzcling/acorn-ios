@@ -26,8 +26,11 @@ class CreatePostViewController: UIViewController {
     
     var spinner: UIView?
     
+    @IBOutlet var mainView: UIView!
+    @IBOutlet weak var closeButton: UIButton!
     @IBOutlet weak var themeSelectionMenu: UIStackView!
     @IBOutlet weak var themeSelectionLabel: UILabel!
+    @IBOutlet weak var themeSelectionButton: UIImageView!
     @IBOutlet weak var postTextView: UITextView!
     @IBOutlet weak var postImageGroupView: UIView!
     @IBOutlet weak var postImageView: UIImageView!
@@ -59,6 +62,8 @@ class CreatePostViewController: UIViewController {
     
     let mainStoryboard = UIStoryboard(name: "Main", bundle: nil)
     
+    var nightModeOn = UserDefaults.standard.bool(forKey: "nightModePref")
+    
     let dataSource = DataSource.instance
     
     override func viewDidLoad() {
@@ -66,7 +71,7 @@ class CreatePostViewController: UIViewController {
         
         InstanceID.instanceID().instanceID { (result, error) in
             if let error = error {
-                print(error)
+                
             } else if let result = result {
                 self.token = result.token
             }
@@ -91,10 +96,17 @@ class CreatePostViewController: UIViewController {
         postTextView.textColor = .lightGray
         themeSelectionMenu.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(openThemeDropdown)))
         
-        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow(_:)),
-                                               name: NSNotification.Name.UIKeyboardWillChangeFrame, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide(_:)),
-                                               name: NSNotification.Name.UIKeyboardWillHide, object: nil)
+        if nightModeOn {
+            enableNightMode()
+        } else {
+            disableNightMode()
+        }
+        
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow(_:)), name: NSNotification.Name.UIKeyboardWillChangeFrame, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide(_:)), name: NSNotification.Name.UIKeyboardWillHide, object: nil)
+        
+        NotificationCenter.default.addObserver(self, selector: #selector(nightModeEnabled), name: .nightModeOn, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(nightModeDisabled), name: .nightModeOff, object: nil)
         
     }
 
@@ -108,7 +120,7 @@ class CreatePostViewController: UIViewController {
     }
     
     @IBAction func didTapRemoveAttachmentButton(_ sender: Any) {
-        print("removeAttachmentButton: Tapped")
+        
         clearAttachments()
     }
     
@@ -127,7 +139,10 @@ class CreatePostViewController: UIViewController {
     
     
     @IBAction func didTapPostButton(_ sender: Any) {
-        checkEmailVerified(user: user)
+        if !isUserEmailVerified(user: user) {
+            showEmailVerificationAlert(user: user)
+            return
+        }
         
         if (postTextView.text.count < 1 || postTextView.text == "Write something...") {
             self.view.makeToast("Please write something before posting", duration: 2.0, position: .bottom)
@@ -145,7 +160,6 @@ class CreatePostViewController: UIViewController {
         let objectID = "\(String(format: "%.0f", 5000000000000000 + postDate))_-1"
         let postText = postTextView.text
         let mainTheme = themeSelectionLabel.text?.trimmingCharacters(in: .whitespaces)
-        print("postDate: \(postDate), objectID: \(objectID)")
         
         let postAsDict: [String: Any?] = [
             "entityId": -1,
@@ -161,7 +175,7 @@ class CreatePostViewController: UIViewController {
             "pubDate": postDate,
             "imageUrl": self.cardImageUrl,
             "link": self.cardLink,
-            "trendingIndex": "500000_\(objectID)",
+            "trendingIndex": String(format: "%.0f", round((5000000000000000 + postDate)/10000000)),
             "category": [mainTheme ?? ""],
             "theme": [mainTheme ?? ""],
             "mainTheme": mainTheme ?? "",
@@ -173,9 +187,10 @@ class CreatePostViewController: UIViewController {
             let compressedImageData = UIImageJPEGRepresentation(image, 0.3)
             
             dataSource.createPost(post: postAsDict, postImageData: compressedImageData, onComplete: {
+                self.dataSource.follow(articleId: postAsDict["objectID"] as! String)
                 self.delegate?.postCreated()
             }) { (error) in
-                print(error)
+                
                 if let spinner = self.spinner {
                     self.removeSpinner(spinner)
                 }
@@ -185,9 +200,10 @@ class CreatePostViewController: UIViewController {
             }
         } else {
             dataSource.createPost(post: postAsDict, postImageData: nil, onComplete: {
-                    self.delegate?.postCreated()
+                self.dataSource.follow(articleId: postAsDict["objectID"] as! String)
+                self.delegate?.postCreated()
             }) { (error) in
-                print(error)
+                
                 if let spinner = self.spinner {
                     self.removeSpinner(spinner)
                 }
@@ -201,20 +217,70 @@ class CreatePostViewController: UIViewController {
     @objc private func openThemeDropdown() {
         let dropdown = DropDown()
         dropdown.anchorView = themeSelectionMenu
-        dropdown.dataSource = Resources.THEME_LIST
+        dropdown.dataSource = ResourcesDay.THEME_LIST
         dropdown.width = themeSelectionMenu.frame.width
         dropdown.direction = .bottom
-        dropdown.backgroundColor = Resources.CREATE_POST_BG_COLOR
-        dropdown.textColor = .black
+        dropdown.backgroundColor = nightModeOn ? ResourcesNight.CREATE_POST_BG_COLOR : ResourcesDay.CREATE_POST_BG_COLOR
+        dropdown.textColor = nightModeOn ? ResourcesNight.COLOR_DEFAULT_TEXT : ResourcesDay.COLOR_DEFAULT_TEXT
         dropdown.bottomOffset = CGPoint(x: 0, y: (dropdown.anchorView?.plainView.bounds.height)!)
         dropdown.selectionAction = { (index: Int, item: String) in
-            self.themeSelectionLabel.text = "  \(Resources.THEME_LIST[index])"
+            self.themeSelectionLabel.text = "  \(ResourcesDay.THEME_LIST[index])"
         }
         dropdown.show()
     }
     
     deinit {
         NotificationCenter.default.removeObserver(self)
+    }
+    
+    @objc func nightModeEnabled() {
+        enableNightMode()
+    }
+    
+    @objc func nightModeDisabled() {
+        disableNightMode()
+    }
+    
+    func enableNightMode() {
+        nightModeOn = true
+        mainView.backgroundColor = ResourcesNight.CREATE_POST_BG_COLOR
+        
+        postTextView.backgroundColor = ResourcesNight.CREATE_POST_BG_COLOR
+        if postTextView.text == "Write Something..." {
+            postTextView.textColor = .lightGray
+        } else {
+            postTextView.textColor = ResourcesNight.COLOR_DEFAULT_TEXT
+        }
+        
+        closeButton.tintColor = ResourcesNight.COLOR_ACCENT
+        
+        themeSelectionLabel.textColor = ResourcesNight.COLOR_DEFAULT_TEXT
+        themeSelectionButton.backgroundColor = ResourcesNight.COLOR_ACCENT
+        
+        cardTitleLabel.textColor = ResourcesNight.COLOR_DEFAULT_TEXT
+        cardSourceLabel.textColor = ResourcesNight.COLOR_DEFAULT_TEXT
+        cardView.backgroundColor = ResourcesNight.CARD_BG_COLOR
+    }
+    
+    func disableNightMode() {
+        nightModeOn = false
+        mainView.backgroundColor = ResourcesDay.CREATE_POST_BG_COLOR
+        
+        postTextView.backgroundColor = ResourcesDay.CREATE_POST_BG_COLOR
+        if postTextView.text == "Write Something..." {
+            postTextView.textColor = .lightGray
+        } else {
+            postTextView.textColor = ResourcesDay.COLOR_DEFAULT_TEXT
+        }
+        
+        closeButton.tintColor = ResourcesDay.COLOR_ACCENT
+        
+        themeSelectionLabel.textColor = ResourcesDay.COLOR_DEFAULT_TEXT
+        themeSelectionButton.backgroundColor = ResourcesDay.COLOR_ACCENT
+        
+        cardTitleLabel.textColor = ResourcesDay.COLOR_DEFAULT_TEXT
+        cardSourceLabel.textColor = ResourcesDay.COLOR_DEFAULT_TEXT
+        cardView.backgroundColor = ResourcesDay.CARD_BG_COLOR
     }
     
     func adjustLayoutForKeyboardShow(_ show: Bool, notification: Notification) {
@@ -295,90 +361,97 @@ extension CreatePostViewController: ImagePickerDelegate {
 extension CreatePostViewController: UITextViewDelegate {
     
     func textViewDidBeginEditing(_ textView: UITextView) {
-        if textView.textColor == .lightGray {
+        if nightModeOn {
+            textView.textColor = ResourcesNight.COLOR_DEFAULT_TEXT
+        } else {
+            textView.textColor = ResourcesDay.COLOR_DEFAULT_TEXT
+        }
+        if textView.text == "Write something..." {
             textView.text = nil
-            textView.textColor = .black
         }
     }
     
     func textViewDidEndEditing(_ textView: UITextView) {
+        if nightModeOn {
+            textView.textColor = ResourcesNight.COLOR_DEFAULT_TEXT
+        } else {
+            textView.textColor = ResourcesDay.COLOR_DEFAULT_TEXT
+        }
         if textView.text.isEmpty {
-            textView.text = "Write something.."
+            textView.text = "Write something..."
             textView.textColor = .lightGray
         }
     }
     
     func textViewDidChange(_ textView: UITextView) {
-        if !cardView.isHidden || !postImageGroupView.isHidden { return }
-        
-        let getArticleMetadataTask = DispatchWorkItem {
-            let urlPattern = try? NSRegularExpression(pattern: "((?:https?://|www\\.)[a-z0-9+&@#/%=˜_|$?!:,.-]*\\b)", options: .caseInsensitive)
-            if let firstMatch = urlPattern?.firstMatch(in: textView.text, options: [], range: NSMakeRange(0, textView.text.count)) {
-                self.cardLink = (textView.text as NSString).substring(with: firstMatch.range)
-                
-                guard let link = self.cardLink else {
-                    self.getArticleMetadataIsPending = false
-                    return
-                }
-                
-                if !link.starts(with: "https://") {
-                    self.cardLink = "https://\(link)"
-                }
-                
-                guard let url = URL(string: self.cardLink!) else {
-                    self.getArticleMetadataIsPending = false
-                    return
-                }
-                
-                do {
-                    print("url: \(url)")
-                    let htmlString = try String(contentsOf: url, encoding: String.Encoding.utf8)
-                    print(htmlString)
-                    let parsedHtml = try SwiftSoup.parse(htmlString)
-                    
-                    self.cardTitle = try parsedHtml.title()
-                    
-                    let sourceElements = try parsedHtml.select("meta[property=og:site_name]")
-                    self.cardSource = sourceElements.size() > 0 ? try sourceElements.first()!.attr("content") : nil
-                    
-                    let imageElements = try parsedHtml.select("meta[property=og:image]")
-                    self.cardImageUrl = imageElements.size() > 0 ? try imageElements.first()!.attr("content") : nil
-                    
-                    self.cardTitleLabel.text = self.cardTitle
-                    self.cardSourceLabel.text = self.cardSource
-                    if let imageUrl = self.cardImageUrl {
-                        self.cardImageView.sd_setImage(with: URL(string: imageUrl))
-                    }
-                    
-                    let tempTitleLabel = UILabel(frame: CGRect(x: 0, y: 0, width: self.postStackViewWidth - 142, height: CGFloat.greatestFiniteMagnitude))
-                    tempTitleLabel.numberOfLines = 0
-                    tempTitleLabel.lineBreakMode = .byWordWrapping
-                    tempTitleLabel.font = UIFont.systemFont(ofSize: 16.0)
-                    tempTitleLabel.text = self.cardTitle
-                    tempTitleLabel.sizeToFit()
-                    let titleHeight = tempTitleLabel.frame.height
-                    
-                    self.cardViewHeight = max(110, 44 + titleHeight)
-                    self.cardViewHeightConstraint.constant = self.cardViewHeight!
-                    self.cardView.isHidden = false
-                    
-                    self.getArticleMetadataIsPending = false
-                    
-                } catch Exception.Error(_, let message) {
-                    self.getArticleMetadataIsPending = false
-                    print(message)
-                } catch let error {
-                    self.getArticleMetadataIsPending = false
-                    print(error)
-                }
-            }
-        }
+        if !cardView.isHidden { return }
         
         if self.getArticleMetadataIsPending {
-            getArticleMetadataTask.cancel()
+            NSObject.cancelPreviousPerformRequests(withTarget: self)
         }
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: getArticleMetadataTask)
+        perform(#selector(getArticleMetaData), with: nil, afterDelay: 0.5)
         self.getArticleMetadataIsPending = true
+    }
+    
+    @objc func getArticleMetaData() {
+        let urlPattern = try? NSRegularExpression(pattern: "((?:https?://|www\\.)[a-z0-9+&@#/%=˜_|$?!:,.-]*\\b)", options: .caseInsensitive)
+        if let firstMatch = urlPattern?.firstMatch(in: self.postTextView.text, options: [], range: NSMakeRange(0, self.postTextView.text.count)) {
+            self.cardLink = (self.postTextView.text as NSString).substring(with: firstMatch.range)
+            
+            guard let link = self.cardLink else {
+                self.getArticleMetadataIsPending = false
+                return
+            }
+            
+            if !link.starts(with: "https://") && !link.starts(with: "http://"){
+                self.cardLink = "http://\(link)"
+            }
+            
+            guard let url = URL(string: self.cardLink!) else {
+                self.getArticleMetadataIsPending = false
+                return
+            }
+            
+            do {
+                let htmlString = try String(contentsOf: url, encoding: String.Encoding.utf8)
+                let parsedHtml = try SwiftSoup.parse(htmlString)
+                
+                self.cardTitle = try parsedHtml.title()
+                
+                let sourceElements = try parsedHtml.select("meta[property=og:site_name]")
+                self.cardSource = sourceElements.size() > 0 ? try sourceElements.first()!.attr("content") : nil
+                
+                let imageElements = try parsedHtml.select("meta[property=og:image]")
+                self.cardImageUrl = imageElements.size() > 0 ? try imageElements.first()!.attr("content") : nil
+                
+                self.cardTitleLabel.text = self.cardTitle
+                self.cardSourceLabel.text = self.cardSource
+                if let imageUrl = self.cardImageUrl {
+                    self.cardImageView.sd_setImage(with: URL(string: imageUrl))
+                }
+                
+                let tempTitleLabel = UILabel(frame: CGRect(x: 0, y: 0, width: self.postStackViewWidth - 142, height: CGFloat.greatestFiniteMagnitude))
+                tempTitleLabel.numberOfLines = 0
+                tempTitleLabel.lineBreakMode = .byWordWrapping
+                tempTitleLabel.font = UIFont.systemFont(ofSize: 16.0)
+                tempTitleLabel.text = self.cardTitle
+                tempTitleLabel.sizeToFit()
+                let titleHeight = tempTitleLabel.frame.height
+                
+                self.cardViewHeight = max(110, 44 + titleHeight)
+                self.cardViewHeightConstraint.constant = self.cardViewHeight!
+                self.cardView.isHidden = false
+                
+                self.getArticleMetadataIsPending = false
+                
+            } catch Exception.Error(_, let message) {
+                self.getArticleMetadataIsPending = false
+                
+            } catch let error {
+                self.getArticleMetadataIsPending = false
+                
+            }
+        }
     }
 }

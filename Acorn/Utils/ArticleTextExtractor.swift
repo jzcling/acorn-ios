@@ -46,9 +46,9 @@ class ArticleTextExtractor {
         do {
             return extractContent(doc: try SwiftSoup.parse(input))!
         } catch Exception.Error(_, let message) {
-            print(message)
+            
         } catch let error {
-            print(error)
+            
         }
         return nil
     }
@@ -56,7 +56,7 @@ class ArticleTextExtractor {
     func extractContent(doc: Document?) -> String? {
         do {
             if (doc == nil) {
-                print("missing document")
+                
                 return nil
             }
         
@@ -72,7 +72,6 @@ class ArticleTextExtractor {
                 let currentWeight = getWeight(entry)
                 
                 let html = try entry.html()
-                print("weight: \(currentWeight), html: \(html)")
                 
                 if (currentWeight > maxWeight) {
                     maxWeight = currentWeight
@@ -96,7 +95,7 @@ class ArticleTextExtractor {
             
             if (bestMatchElement != nil) {
                 var ret = try bestMatchElement!.html()
-                print(ret)
+                
                 if (ogImage != nil && !ret.contains(ogImage!)) {
                     ret = "<img src=\"\(ogImage!)\"><br>\n"+ret
                 }
@@ -105,9 +104,9 @@ class ArticleTextExtractor {
             
             return nil
         } catch Exception.Error(_, let message) {
-            print(message)
+            
         } catch let error {
-            print(error)
+            
         }
         return nil
     }
@@ -175,9 +174,9 @@ class ArticleTextExtractor {
             
             return weight
         } catch Exception.Error(_, let message) {
-            print(message)
+            
         } catch let error {
-            print(error)
+            
         }
         return 0
     }
@@ -208,9 +207,9 @@ class ArticleTextExtractor {
             
             return weight
         } catch Exception.Error(_, let message) {
-            print(message)
+            
         } catch let error {
-            print(error)
+            
         }
         return 0
     }
@@ -248,9 +247,9 @@ class ArticleTextExtractor {
                 try item.remove()
             }
         } catch Exception.Error(_, let message) {
-            print(message)
+            
         } catch let error {
-            print(error)
+            
         }
     }
     
@@ -271,9 +270,9 @@ class ArticleTextExtractor {
                 try style.remove()
             }
         } catch Exception.Error(_, let message) {
-            print(message)
+            
         } catch let error {
-            print(error)
+            
         }
     }
     
@@ -289,9 +288,9 @@ class ArticleTextExtractor {
                 try item.remove()
             }
         } catch Exception.Error(_, let message) {
-            print(message)
+            
         } catch let error {
-            print(error)
+            
         }
     }
     
@@ -312,9 +311,9 @@ class ArticleTextExtractor {
                 try item.remove()
             }
         } catch Exception.Error(_, let message) {
-            print(message)
+            
         } catch let error {
-            print(error)
+            
         }
     }
     
@@ -335,9 +334,9 @@ class ArticleTextExtractor {
                 try item.remove()
             }
         } catch Exception.Error(_, let message) {
-            print(message)
+            
         } catch let error {
-            print(error)
+            
         }
     }
     
@@ -348,9 +347,9 @@ class ArticleTextExtractor {
                 try item.remove()
             }
         } catch Exception.Error(_, let message) {
-            print(message)
+            
         } catch let error {
-            print(error)
+            
         }
     }
     
@@ -361,9 +360,9 @@ class ArticleTextExtractor {
                 try item.remove()
             }
         } catch Exception.Error(_, let message) {
-            print(message)
+            
         } catch let error {
-            print(error)
+            
         }
     }
     
@@ -444,9 +443,9 @@ class ArticleTextExtractor {
                 try item.remove()
             }
         } catch Exception.Error(_, let message) {
-            print(message)
+            
         } catch let error {
-            print(error)
+            
         }
     }
     
@@ -459,9 +458,9 @@ class ArticleTextExtractor {
             nodes.append(contentsOf: try doc.select("head").select("meta"))
             return nodes
         } catch Exception.Error(_, let message) {
-            print(message)
+            
         } catch let error {
-            print(error)
+            
         }
         return nil
     }
@@ -479,9 +478,9 @@ class ArticleTextExtractor {
             }
             return nodes
         } catch Exception.Error(_, let message) {
-            print(message)
+            
         } catch let error {
-            print(error)
+            
         }
         return nil
     }

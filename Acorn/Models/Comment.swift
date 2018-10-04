@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import FirebaseUI
 import Firebase
 
 class Comment {
@@ -20,6 +21,7 @@ class Comment {
     var isUrl: Bool
     var urlSource: String?
     var urlLink: String?
+    var isReported: Bool? = false
     
     init(snapshot: DataSnapshot) {
         let value = snapshot.value as! [String: Any]
@@ -33,9 +35,10 @@ class Comment {
         self.isUrl = value["isUrl"] as! Bool
         self.urlSource = value["urlSource"] as? String
         self.urlLink = value["urlLink"] as? String
+        self.isReported = value["isReported"] as? Bool ?? false
     }
     
-    init(commentId: String, uid: String, userDisplayName: String, commentText: String?, imageUrl: String?, localImageUri: String?, pubDate: Double, isUrl: Bool, urlSource: String?, urlLink: String?) {
+    init(commentId: String, uid: String, userDisplayName: String, commentText: String?, imageUrl: String?, localImageUri: String?, pubDate: Double, isUrl: Bool, urlSource: String?, urlLink: String?, isReported: Bool?) {
         self.commentId = commentId
         self.uid = uid
         self.userDisplayName = userDisplayName
@@ -46,5 +49,6 @@ class Comment {
         self.isUrl = isUrl
         self.urlSource = urlSource
         self.urlLink = urlLink
+        self.isReported = isReported
     }
 }

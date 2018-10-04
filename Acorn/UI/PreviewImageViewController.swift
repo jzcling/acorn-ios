@@ -10,16 +10,16 @@ import UIKit
 import FirebaseUI
 
 class PreviewImageViewController: UIViewController {
-
+    
     @IBOutlet weak var imageView: UIImageView!
     @IBOutlet weak var inputTextView: UITextView!
     @IBOutlet weak var sendButton: UIButton!
     var image: UIImage?
-    @IBOutlet weak var inputBarView: UIStackView!
+    @IBOutlet weak var inputBarView: UIView!
     
     let dataSource = DataSource.instance
     
-    var article: Article?
+    var articleId: String?
     
     lazy var user = Auth.auth().currentUser!
     
@@ -40,7 +40,10 @@ class PreviewImageViewController: UIViewController {
     }
     
     @IBAction func didTapSendButton(_ sender: Any) {
-        checkEmailVerified(user: user)
+        if !isUserEmailVerified(user: user) {
+            showEmailVerificationAlert(user: user)
+            return
+        }
         
         if let vc = createPostVC {
             vc.clearAttachments()
@@ -48,9 +51,9 @@ class PreviewImageViewController: UIViewController {
             if inputTextView.text.isEmpty {
                 DispatchQueue.main.async {
                     vc.cardView.isHidden = true
+                
                     vc.postImageGroupView.isHidden = false
                 
-//                    vc.postTextViewHeightConstraint.constant = vc.scrollViewHeight - vc.postImageView.frame.height
                     vc.postImageView.image = self.image
                 }
             } else {
@@ -65,10 +68,11 @@ class PreviewImageViewController: UIViewController {
             }
             dismiss(animated: true, completion: nil)
         } else if let _ = commentVC {
+            
             let imageData = UIImageJPEGRepresentation(imageView.image!, 0.3)
-            dataSource.sendComment(article: article!, commentText: inputTextView.text, commentImageData: imageData, onComplete: { self.dismiss(animated: true, completion: nil) }) { (error) in
+            dataSource.sendComment(articleId: articleId!, commentText: inputTextView.text, commentImageData: imageData, onComplete: { self.dismiss(animated: true, completion: nil) }) { (error) in
                 self.view.makeToast("An error occurred while posting")
-                print(error)
+                
             }
         }
     }

@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import FirebaseUI
 import Firebase
 
 class Article {
@@ -27,19 +28,20 @@ class Article {
     var mainTheme: String?
     var readTime: Int?
     var trendingIndex: String?
-    var voteCount: Int?
-    var commentCount: Int?
-    var saveCount: Int?
-    var shareCount: Int?
-    var category: [String]?
-    var theme: [String]?
-    var upvoters: [String: Double]?
-    var downvoters: [String: Double]?
-    var commenters: [String: Int]?
-    var savers: [String: Double]?
-    var sharers: [String: Double]?
-    var notificationTokens: [String: String]?
-    var changedSinceLastJob: Bool?
+    var voteCount: Int? = 0
+    var commentCount: Int? = 0
+    var saveCount: Int? = 0
+    var shareCount: Int? = 0
+    var category: [String]? = [String]()
+    var theme: [String]? = [String]()
+    var upvoters: [String: Double]? = [String: Double]()
+    var downvoters: [String: Double]? = [String: Double]()
+    var commenters: [String: Int]? = [String: Int]()
+    var savers: [String: Double]? = [String: Double]()
+    var sharers: [String: Double]? = [String: Double]()
+    var notificationTokens: [String: String]? = [String: String]()
+    var changedSinceLastJob: Bool? = true
+    var isReported: Bool? = false
     
     init(snapshot: DataSnapshot) {
         let value = snapshot.value as! [String: Any]
@@ -49,42 +51,37 @@ class Article {
         self.postAuthorUid = value["postAuthorUid"] as? String
         self.postAuthor = value["postAuthor"] as? String
         self.postText = value["postText"] as? String
-        var postImageUrl = value["postImageUrl"] as? String
-//        if let httpRange = postImageUrl?.range(of: "http:") {
-//            postImageUrl?.replaceSubrange(httpRange, with: "https:")
-//        }
+        
+        let postImageUrl = value["postImageUrl"] as? String
         self.postImageUrl = postImageUrl
         self.postDate = value["postDate"] as? Double
         self.title = value["title"] as? String
         self.source = value["source"] as? String
         self.pubDate = value["pubDate"] as! Double
-        var imageUrl = value["imageUrl"] as? String
-//        if let httpRange = imageUrl?.range(of: "http:") {
-//            imageUrl?.replaceSubrange(httpRange, with: "https:")
-//        }
+        
+        let imageUrl = value["imageUrl"] as? String
         self.imageUrl = imageUrl
-        var link = value["link"] as? String
-//        if let httpRange = link?.range(of: "http:") {
-//            link?.replaceSubrange(httpRange, with: "https:")
-//        }
+        
+        let link = value["link"] as? String
         self.link = link
         self.author = value["author"] as? String
         self.mainTheme = value["mainTheme"] as? String
         self.readTime = value["readTime"] as? Int
         self.trendingIndex = value["trendingIndex"] as? String
-        self.voteCount = value["voteCount"] as? Int
-        self.commentCount = value["commentCount"] as? Int
-        self.saveCount = value["saveCount"] as? Int
-        self.shareCount = value["shareCount"] as? Int
-        self.category = value["category"] as? [String]
-        self.theme = value["theme"] as? [String]
-        self.upvoters = value["upvoters"] as? [String: Double]
-        self.downvoters = value["downvoters"] as? [String: Double]
-        self.commenters = value["commenters"] as? [String: Int]
-        self.savers = value["savers"] as? [String: Double]
-        self.sharers = value["sharers"] as? [String: Double]
-        self.notificationTokens = value["notificationTokens"] as? [String: String]
-        self.changedSinceLastJob = value["changedSinceLastJob"] as? Bool
+        self.voteCount = value["voteCount"] as? Int ?? 0
+        self.commentCount = value["commentCount"] as? Int ?? 0
+        self.saveCount = value["saveCount"] as? Int ?? 0
+        self.shareCount = value["shareCount"] as? Int ?? 0
+        self.category = value["category"] as? [String] ?? [String]()
+        self.theme = value["theme"] as? [String] ?? [String] ()
+        self.upvoters = value["upvoters"] as? [String: Double] ?? [String: Double]()
+        self.downvoters = value["downvoters"] as? [String: Double] ?? [String: Double]()
+        self.commenters = value["commenters"] as? [String: Int] ?? [String: Int]()
+        self.savers = value["savers"] as? [String: Double] ?? [String: Double]()
+        self.sharers = value["sharers"] as? [String: Double] ?? [String: Double]()
+        self.notificationTokens = value["notificationTokens"] as? [String: String] ?? [String: String]()
+        self.changedSinceLastJob = value["changedSinceLastJob"] as? Bool ?? true
+        self.isReported = value["isReported"] as? Bool ?? false
     }
     
     init(json: [String: Any]) {
@@ -95,41 +92,33 @@ class Article {
         self.postAuthorUid = value["postAuthorUid"] as? String
         self.postAuthor = value["postAuthor"] as? String
         self.postText = value["postText"] as? String
-        var postImageUrl = value["postImageUrl"] as? String
-//        if let httpRange = postImageUrl?.range(of: "http:") {
-//            postImageUrl?.replaceSubrange(httpRange, with: "https:")
-//        }
+        let postImageUrl = value["postImageUrl"] as? String
         self.postImageUrl = postImageUrl
         self.postDate = value["postDate"] as? Double
         self.title = value["title"] as? String
         self.source = value["source"] as? String
         self.pubDate = value["pubDate"] as! Double
-        var imageUrl = value["imageUrl"] as? String
-//        if let httpRange = imageUrl?.range(of: "http:") {
-//            imageUrl?.replaceSubrange(httpRange, with: "https:")
-//        }
+        let imageUrl = value["imageUrl"] as? String
         self.imageUrl = imageUrl
-        var link = value["link"] as? String
-//        if let httpRange = link?.range(of: "http:") {
-//            link?.replaceSubrange(httpRange, with: "https:")
-//        }
+        let link = value["link"] as? String
         self.link = link
         self.author = value["author"] as? String
         self.mainTheme = value["mainTheme"] as? String
         self.readTime = value["readTime"] as? Int
         self.trendingIndex = value["trendingIndex"] as? String
-        self.voteCount = value["voteCount"] as? Int
-        self.commentCount = value["commentCount"] as? Int
-        self.saveCount = value["saveCount"] as? Int
-        self.shareCount = value["shareCount"] as? Int
-        self.category = value["category"] as? [String]
-        self.theme = value["theme"] as? [String]
-        self.upvoters = value["upvoters"] as? [String: Double]
-        self.downvoters = value["downvoters"] as? [String: Double]
-        self.commenters = value["commenters"] as? [String: Int]
-        self.savers = value["savers"] as? [String: Double]
-        self.sharers = value["sharers"] as? [String: Double]
-        self.notificationTokens = value["notificationTokens"] as? [String: String]
-        self.changedSinceLastJob = value["changedSinceLastJob"] as? Bool
+        self.voteCount = value["voteCount"] as? Int ?? 0
+        self.commentCount = value["commentCount"] as? Int ?? 0
+        self.saveCount = value["saveCount"] as? Int ?? 0
+        self.shareCount = value["shareCount"] as? Int ?? 0
+        self.category = value["category"] as? [String] ?? [String]()
+        self.theme = value["theme"] as? [String] ?? [String]()
+        self.upvoters = value["upvoters"] as? [String: Double] ?? [String: Double]()
+        self.downvoters = value["downvoters"] as? [String: Double] ?? [String: Double]()
+        self.commenters = value["commenters"] as? [String: Int] ?? [String: Int]()
+        self.savers = value["savers"] as? [String: Double] ?? [String: Double]()
+        self.sharers = value["sharers"] as? [String: Double] ?? [String: Double]()
+        self.notificationTokens = value["notificationTokens"] as? [String: String] ?? [String: String]()
+        self.changedSinceLastJob = value["changedSinceLastJob"] as? Bool ?? true
+        self.isReported = value["isReported"] as? Bool ?? false
     }
 }

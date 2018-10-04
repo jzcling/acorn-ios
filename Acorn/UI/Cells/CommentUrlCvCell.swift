@@ -20,21 +20,62 @@ class CommentUrlCvCell: UICollectionViewCell {
     @IBOutlet weak var sourceWidthConstraint: NSLayoutConstraint!
     
     var comment: Comment?
+    var textColor: UIColor?
+    
+    weak var delegate: CommentCvCellDelegate?
+    
+    let nightModeOn = UserDefaults.standard.bool(forKey: "nightModePref")
     
     override func awakeFromNib() {
         super.awakeFromNib()
         
         view.layer.cornerRadius = 12
-        self.translatesAutoresizingMaskIntoConstraints = false
-        
-        let screenWidth = UIScreen.main.bounds.size.width
-        self.titleWidthConstraint.constant = screenWidth * 0.75 - 2 * 16.0 - 88.0
-        self.sourceWidthConstraint.constant = screenWidth * 0.75 - 2 * 16.0 - 88.0
     }
     
     func populateCell(_ comment: Comment) {
         imageView.sd_setImage(with: URL(string: comment.imageUrl!), completed: nil)
-        titleLabel.text = comment.commentText
-        sourceLabel.text = comment.urlSource
+        titleLabel.text = ""
+        titleLabel.highlightedText = comment.commentText ?? ""
+        titleLabel.highlightedBackgroundColor = nightModeOn ? ResourcesNight.SEARCH_HIT_BG_COLOR : ResourcesDay.SEARCH_HIT_BG_COLOR
+        titleLabel.highlightedTextColor = nightModeOn ? ResourcesNight.SEARCH_HIT_TEXT_COLOR : ResourcesDay.SEARCH_HIT_TEXT_COLOR
+        
+        sourceLabel.text = ""
+        sourceLabel.highlightedText = comment.urlSource ?? ""
+        sourceLabel.highlightedBackgroundColor = nightModeOn ? ResourcesNight.SEARCH_HIT_BG_COLOR : ResourcesDay.SEARCH_HIT_BG_COLOR
+        sourceLabel.highlightedTextColor = nightModeOn ? ResourcesNight.SEARCH_HIT_TEXT_COLOR : ResourcesDay.SEARCH_HIT_TEXT_COLOR
+        
+        self.view.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(openExternalArticle)))
+        
+        self.view.addGestureRecognizer(UILongPressGestureRecognizer(target: self, action: #selector(openReportAlert)))
+    }
+    
+    override func prepareForReuse() {
+        imageView.sd_cancelCurrentImageLoad()
+        titleLabel.text = nil
+        titleLabel.highlightedText = nil
+        sourceLabel.text = nil
+        sourceLabel.highlightedText = nil
+        
+        super.prepareForReuse()
+    }
+    
+    @objc func openExternalArticle() {
+        guard let url = URL(string: comment?.urlLink ?? "") else { return }
+        UIApplication.shared.open(url)
+    }
+    
+    override func preferredLayoutAttributesFitting(_ layoutAttributes: UICollectionViewLayoutAttributes) -> UICollectionViewLayoutAttributes {
+        let attributes = super.preferredLayoutAttributesFitting(layoutAttributes)
+        
+        let targetSize = CGSize(width: layoutAttributes.frame.width, height: 0)
+        let size = contentView.systemLayoutSizeFitting(targetSize, withHorizontalFittingPriority: UILayoutPriority.required, verticalFittingPriority: UILayoutPriority.defaultLow)
+        
+        let frame = CGRect(origin: attributes.frame.origin, size: size)
+        attributes.frame = frame
+        return attributes
+    }
+    
+    @objc func openReportAlert() {
+        delegate?.openReportAlert(for: comment!)
     }
 }

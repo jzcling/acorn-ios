@@ -14,13 +14,18 @@ import GoogleSignIn
 import MaterialComponents
 import DropDown
 import Lightbox
+import Toast_Swift
+import DeviceKit
 
 class FeedViewController: MDCCollectionViewController, FeedCvCellDelegate {
     
+    @IBOutlet weak var notificationsButton: UIBarButtonItem!
     @IBOutlet weak var moreOptionsButton: UIBarButtonItem!
     
+    let appDelegate = UIApplication.shared.delegate as! AppDelegate
+    
     lazy var uid = Auth.auth().currentUser!.uid
-    lazy var appDelegate = UIApplication.shared.delegate as! AppDelegate
+    lazy var token = appDelegate.token
     
     var floatingButtonOffset: CGFloat = 0.0
     var spinner: UIView?
@@ -31,35 +36,50 @@ class FeedViewController: MDCCollectionViewController, FeedCvCellDelegate {
     let loadTrigger: Int = 5
     
     var selectedFeed: String?
-    var isNewLoad: Bool = false
     var isFirstTimeLogin: Bool = false
+    var wasRefreshCalled: Bool = false
+    var subscriptionsDidChange: Bool = false
     
     let defaults = UserDefaults.standard
     var themeKey: String?
     var themeFilters: [String]?
+    lazy var nightModeOn = defaults.bool(forKey: "nightModePref")
     
-    var articleList = [Article]()
+    // colors
+    lazy var colorAccent = nightModeOn ? ResourcesNight.COLOR_ACCENT : ResourcesDay.COLOR_ACCENT
+    lazy var colorPrimary = nightModeOn ? ResourcesNight.COLOR_PRIMARY : ResourcesDay.COLOR_PRIMARY
+    lazy var colorBackground = nightModeOn ? ResourcesNight.COLOR_BG : ResourcesDay.COLOR_BG
+    lazy var colorBackgroundMain = nightModeOn ? ResourcesNight.COLOR_BG_MAIN : ResourcesDay.COLOR_BG_MAIN
+    lazy var colorCardBackground = nightModeOn ? ResourcesNight.CARD_BG_COLOR : ResourcesDay.CARD_BG_COLOR
+    lazy var colorCardText = nightModeOn ? ResourcesNight.CARD_TEXT_COLOR : ResourcesDay.CARD_TEXT_COLOR
+    lazy var colorCardTextFaint = nightModeOn ? ResourcesNight.CARD_TEXT_COLOR_FAINT : ResourcesDay.CARD_TEXT_COLOR_FAINT
+    
+    var articleList = [Article]() {
+        didSet {
+            self.collectionView?.reloadData()
+        }
+    }
     
     let bottomBarView = MDCBottomAppBarView()
-    let subscriptionsButton = { () -> UIBarButtonItem in
+    lazy var subscriptionsButton = { () -> UIBarButtonItem in
         let button = UIBarButtonItem(image: #imageLiteral(resourceName: "ic_checklist"), style: .plain, target: self, action: #selector(getSubscriptionsFeed))
         button.accessibilityLabel = "Subscriptions"
-        button.tintColor = Resources.COLOR_ACCENT
+        button.tintColor = colorAccent
         return button
     }()
-    let recentButton = { () -> UIBarButtonItem in
+   lazy var recentButton = { () -> UIBarButtonItem in
         let button = UIBarButtonItem(image: #imageLiteral(resourceName: "ic_history"), style: .plain, target: self, action: #selector(getRecentFeed))
         button.accessibilityLabel = "Recent"
         button.tintColor = UIColor.lightGray
         return button
     }()
-    let trendingButton = { () -> UIBarButtonItem in
+    lazy var trendingButton = { () -> UIBarButtonItem in
         let button = UIBarButtonItem(image: #imageLiteral(resourceName: "ic_trending_up"), style: .plain, target: self, action: #selector(getTrendingFeed))
         button.accessibilityLabel = "Trending"
         button.tintColor = UIColor.lightGray
         return button
     }()
-    let savedButton = { () -> UIBarButtonItem in
+    lazy var savedButton = { () -> UIBarButtonItem in
         let button = UIBarButtonItem(image: #imageLiteral(resourceName: "ic_star"), style: .plain, target: self, action: #selector(getSavedFeed))
         button.accessibilityLabel = "Saved articles"
         button.tintColor = UIColor.lightGray
@@ -74,9 +94,7 @@ class FeedViewController: MDCCollectionViewController, FeedCvCellDelegate {
         view.addSubview(bottomBarView)
         
         // Add touch handler to the floating button.
-        bottomBarView.floatingButton.addTarget(self,
-                                               action: #selector(didTapFloatingButton),
-                                               for: .touchUpInside)
+        bottomBarView.floatingButton.addTarget(self, action: #selector(didTapFloatingButton), for: .touchUpInside)
         
         // Set the image on the floating button.
         bottomBarView.floatingButton.setImage(#imageLiteral(resourceName: "ic_plus"), for: .normal)
@@ -89,7 +107,7 @@ class FeedViewController: MDCCollectionViewController, FeedCvCellDelegate {
         bottomBarView.floatingButtonPosition = .trailing
         
         // Theme the floating button.
-        let colorScheme = MDCBasicColorScheme(primaryColor: Resources.COLOR_ACCENT)
+        let colorScheme = MDCBasicColorScheme(primaryColor: colorAccent)
         MDCButtonColorThemer.apply(colorScheme, to: bottomBarView.floatingButton)
         
         // Configure the navigation buttons to be shown on the bottom app bar.
@@ -97,20 +115,24 @@ class FeedViewController: MDCCollectionViewController, FeedCvCellDelegate {
         navigationController?.setToolbarHidden(true, animated: false)
         navigationController?.navigationBar.titleTextAttributes = [NSAttributedStringKey.foregroundColor: UIColor.white]
         navigationController?.navigationBar.tintColor = .white
-        navigationController?.navigationBar.barTintColor = Resources.COLOR_PRIMARY
+        navigationController?.navigationBar.barTintColor = colorPrimary
         
         bottomBarView.leadingBarButtonItems = [ subscriptionsButton, recentButton, trendingButton, savedButton ]
     }
     
     override func viewDidLoad() {
+        
         super.viewDidLoad()
-        // Do any additional setup after loading the view, typically from a nib.
         
         guard let collectionView = collectionView else {
             return
         }
         
-        isNewLoad = true
+        if nightModeOn {
+            enableNightMode()
+        } else {
+            disableNightMode()
+        }
         
         self.styler.cellStyle = .card
         self.styler.cellLayoutType = .grid
@@ -125,11 +147,78 @@ class FeedViewController: MDCCollectionViewController, FeedCvCellDelegate {
                                  action: #selector(refreshOptions(sender:)),
                                  for: .valueChanged)
         collectionView.refreshControl = refreshControl
+        
+        NotificationCenter.default.addObserver(self, selector: #selector(nightModeEnabled), name: .nightModeOn, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(nightModeDisabled), name: .nightModeOff, object: nil)
+    }
+    
+    @objc private func nightModeEnabled() {
+        enableNightMode()
+        self.collectionView?.reloadData()
+    }
+    
+    @objc private func nightModeDisabled() {
+        disableNightMode()
+        self.collectionView?.reloadData()
+    }
+    
+    func enableNightMode() {
+        nightModeOn = true
+        colorAccent = ResourcesNight.COLOR_ACCENT
+        colorPrimary = ResourcesNight.COLOR_PRIMARY
+        colorBackground = ResourcesNight.COLOR_BG
+        colorBackgroundMain = ResourcesNight.COLOR_BG_MAIN
+        colorCardBackground = ResourcesNight.CARD_BG_COLOR
+        colorCardText = ResourcesNight.CARD_TEXT_COLOR
+        colorCardTextFaint = ResourcesNight.CARD_TEXT_COLOR_FAINT
+        
+        self.collectionView?.backgroundColor = colorBackground
+        if selectedFeed == "Subscriptions" {
+            subscriptionsButton.tintColor = colorAccent
+        } else if selectedFeed == "Recent" {
+            recentButton.tintColor = colorAccent
+        } else if selectedFeed == "Trending" {
+            trendingButton.tintColor = colorAccent
+        } else if selectedFeed == "Saved" {
+            savedButton.tintColor = colorAccent
+        }
+        let colorScheme = MDCBasicColorScheme(primaryColor: colorAccent)
+        MDCButtonColorThemer.apply(colorScheme, to: bottomBarView.floatingButton)
+        bottomBarView.barTintColor = colorBackgroundMain
+        
+    }
+    
+    func disableNightMode() {
+        nightModeOn = false
+        colorAccent = ResourcesDay.COLOR_ACCENT
+        colorPrimary = ResourcesDay.COLOR_PRIMARY
+        colorBackground = ResourcesDay.COLOR_BG
+        colorBackgroundMain = ResourcesDay.COLOR_BG_MAIN
+        colorCardBackground = ResourcesDay.CARD_BG_COLOR
+        colorCardText = ResourcesDay.CARD_TEXT_COLOR
+        colorCardTextFaint = ResourcesDay.CARD_TEXT_COLOR_FAINT
+        
+        self.collectionView?.backgroundColor = colorBackground
+        if selectedFeed == "Subscriptions" {
+            subscriptionsButton.tintColor = colorAccent
+        } else if selectedFeed == "Recent" {
+            recentButton.tintColor = colorAccent
+        } else if selectedFeed == "Trending" {
+            trendingButton.tintColor = colorAccent
+        } else if selectedFeed == "Saved" {
+            savedButton.tintColor = colorAccent
+        }
+        let colorScheme = MDCBasicColorScheme(primaryColor: colorAccent)
+        MDCButtonColorThemer.apply(colorScheme, to: bottomBarView.floatingButton)
+        bottomBarView.barTintColor = colorBackgroundMain
+        
     }
     
     @objc private func refreshOptions(sender: UIRefreshControl) {
+        wasRefreshCalled = true
         reloadFeed()
         sender.endRefreshing()
+        wasRefreshCalled = false
     }
     
     private func reloadFeed() {
@@ -152,45 +241,98 @@ class FeedViewController: MDCCollectionViewController, FeedCvCellDelegate {
                                         height: size.height)
         bottomBarView.frame = bottomBarViewFrame
         MDCSnackbarManager.setBottomOffset(bottomBarView.frame.height)
-//        collectionView?.frame = CGRect(x: 0, y: 0, width: (collectionView?.bounds.width)!, height: (collectionView?.bounds.height)! - size.height)
     }
     
     override func viewDidAppear(_ animated: Bool) {
+        
         super.viewDidAppear(animated)
+        
         if let currentUser = Auth.auth().currentUser  {
-            checkEmailVerified(user: currentUser)
             self.uid = currentUser.uid
-            dataSource.getThemeSubscriptions(user: currentUser)
-            themeKey = defaults.string(forKey: "themeKey")
-            themeFilters = defaults.stringArray(forKey: "themeFilters")
+            
+            dataSource.getUser(user: currentUser) { (retrievedUser) in
+                if let retrievedUser = retrievedUser {
+                    if !self.isUserEmailVerified(user: currentUser) { self.showEmailVerificationAlert(user: currentUser) }
+                    
+                    self.dataSource.getThemeSubscriptions(user: currentUser) { themePrefs in
+                        self.themeKey = self.defaults.string(forKey: "themeKey")
+                        self.themeFilters = self.defaults.stringArray(forKey: "themeFilters")
+                        
+                        // If user has no theme prefs, go to theme selection scene
+                        
+                        if self.themeKey == nil {
+                            self.isFirstTimeLogin = true
+                            self.performSegue(withIdentifier: "Edit Subscriptions", sender: self)
+                        }
+                        
+                        retrievedUser.uid = self.uid
+                        retrievedUser.displayName = currentUser.displayName ?? ""
+                        retrievedUser.token = self.token ?? ""
+                        retrievedUser.email = currentUser.email ?? ""
+                        retrievedUser.device = Device().description
+                        retrievedUser.creationTimeStamp = (currentUser.metadata.creationDate?.timeIntervalSince1970 ?? 0) * 1000
+                        retrievedUser.lastSignInTimeStamp = (currentUser.metadata.lastSignInDate?.timeIntervalSince1970 ?? 0) * 1000
+                        
+                        self.dataSource.setUser(retrievedUser.toDict())
+                        
+                        self.loadData()
+                        self.loadNotifications()
+                    }
+                } else {
+                    let acornUser = AcornUser(uid: self.uid, displayName: currentUser.displayName ?? "", token: self.token ?? "", email: currentUser.email ?? "", device: Device().description, creationTimeStamp: (currentUser.metadata.creationDate?.timeIntervalSince1970 ?? 0) * 1000, lastSignInTimeStamp: (currentUser.metadata.lastSignInDate?.timeIntervalSince1970 ?? 0) * 1000)
+                    
+                    self.dataSource.setUser(acornUser.toDict())
+                    
+                    self.performSegue(withIdentifier: "Edit Subscriptions", sender: self)
+                }
+                
+                
+            }
+            
             //            Crashlytics.sharedInstance().setUserIdentifier(currentUser.uid)
         } else {
             launchLogin()
             return
         }
         
-        // If user has no theme prefs, go to theme selection scene
-        print("themeKey: \(themeKey ?? "nil")")
-        if themeKey == nil {
-            isFirstTimeLogin = true
-            performSegue(withIdentifier: "Edit Subscriptions", sender: self)
-        }
-        
         MDCSnackbarManager.setBottomOffset(bottomBarView.frame.height)
         navigationItem.leftBarButtonItems?[0].accessibilityLabel = "Notifications"
         navigationItem.rightBarButtonItems?[0].accessibilityLabel = "More options"
         navigationItem.rightBarButtonItems?[1].accessibilityLabel = "Search articles"
-        
-        if isNewLoad {
-            loadData()
-            isNewLoad = false
-        }
     }
     
-    private func launchLogin() {
+    func launchLogin() {
         let authViewController = FUIAuth.defaultAuthUI()?.authViewController()
         authViewController?.navigationBar.isHidden = true
         self.present(authViewController!, animated: true, completion: nil)
+    }
+    
+    func loadData() {
+        spinner = displaySpinner()
+        switch selectedFeed {
+        case "Subscriptions":
+            getSubscriptionsFeed()
+        case "Recent":
+            getRecentFeed()
+        case "Trending":
+            getTrendingFeed()
+        case "Saved":
+            getSavedFeed()
+        default:
+            getSubscriptionsFeed()
+        }
+    }
+    
+    func loadNotifications() {
+        if let notificationsDict = defaults.dictionary(forKey: "notifications") {
+            if notificationsDict.count > 0 {
+                notificationsButton.setBadge(text: String(notificationsDict.count))
+            } else {
+                notificationsButton.removeBadge()
+            }
+        } else {
+            notificationsButton.removeBadge()
+        }
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -202,128 +344,140 @@ class FeedViewController: MDCCollectionViewController, FeedCvCellDelegate {
         }
     }
     
-    @objc private func getSubscriptionsFeed() {
-        print("subscriptions")
-        if selectedFeed != "Subscriptions" {
+    @objc func getSubscriptionsFeed() {
+        
+        self.view.makeToast("Subscriptions")
+        if selectedFeed != "Subscriptions" || wasRefreshCalled || subscriptionsDidChange {
             resetView()
             selectedFeed = "Subscriptions"
+            self.subscriptionsButton.tintColor = self.colorAccent
             dataSource.getSubscriptionsFeed() { (articles: [Article]) -> () in
                 self.articleList = articles
-                print("articleList count: \(self.articleList.count)")
-                self.subscriptionsButton.tintColor = Resources.COLOR_ACCENT
+                
                 self.collectionView?.reloadData()
                 self.collectionViewLayout.invalidateLayout()
                 if let spinner = self.spinner { self.removeSpinner(spinner) }
             }
+        } else {
+            if let spinner = self.spinner { self.removeSpinner(spinner) }
         }
     }
     
-    private func getMoreSubscriptionsFeed(startAt: Double) {
+    func getMoreSubscriptionsFeed(startAt: Double) {
         if selectedFeed != "Subscriptions" { return }
         let initialList = self.articleList
         
-        print("additional subscriptions")
+        
         dataSource.getSubscriptionsFeed(startAt: startAt) { (articles: [Article]) -> () in
             var combinedList = Array(initialList.dropLast())
             combinedList.append(contentsOf: articles)
             self.articleList = combinedList
-            print("articleList count: \(self.articleList.count)")
+            
             self.collectionView?.reloadData()
             self.collectionViewLayout.invalidateLayout()
             if let spinner = self.spinner { self.removeSpinner(spinner) }
         }
     }
     
-    @objc private func getRecentFeed() {
-        print("recent")
-        if selectedFeed != "Recent" {
+    @objc func getRecentFeed() {
+        
+        self.view.makeToast("Recent")
+        if selectedFeed != "Recent" || wasRefreshCalled {
             resetView()
             selectedFeed = "Recent"
+            self.recentButton.tintColor = self.colorAccent
             dataSource.getRecentFeed() { (articles: [Article]) -> () in
                 self.articleList = articles
-                print("articleList count: \(self.articleList.count)")
-                self.recentButton.tintColor = Resources.COLOR_ACCENT
+                
                 self.collectionView?.reloadData()
                 self.collectionViewLayout.invalidateLayout()
                 if let spinner = self.spinner { self.removeSpinner(spinner) }
             }
+        } else {
+            if let spinner = self.spinner { self.removeSpinner(spinner) }
         }
     }
     
-    private func getMoreRecentFeed(startAt: Double) {
+    func getMoreRecentFeed(startAt: Double) {
         if selectedFeed != "Recent" { return }
         let initialList = self.articleList
         
-        print("additional recent")
+        
         dataSource.getRecentFeed(startAt: startAt) { (articles: [Article]) -> () in
             var combinedList = Array(initialList.dropLast())
             combinedList.append(contentsOf: articles)
             self.articleList = combinedList
-            print("articleList count: \(self.articleList.count)")
+            
             self.collectionView?.reloadData()
             self.collectionViewLayout.invalidateLayout()
             if let spinner = self.spinner { self.removeSpinner(spinner) }
         }
     }
     
-    @objc private func getTrendingFeed() {
-        print("trending")
-        if selectedFeed != "Trending" {
+    @objc func getTrendingFeed() {
+        
+        self.view.makeToast("Trending")
+        if selectedFeed != "Trending" || wasRefreshCalled {
             resetView()
             selectedFeed = "Trending"
+            self.trendingButton.tintColor = self.colorAccent
             dataSource.getTrendingFeed() { (articles: [Article]) -> () in
                 self.articleList = articles
-                print("articleList count: \(self.articleList.count)")
-                self.trendingButton.tintColor = Resources.COLOR_ACCENT
+                
                 self.collectionView?.reloadData()
                 self.collectionViewLayout.invalidateLayout()
                 if let spinner = self.spinner { self.removeSpinner(spinner) }
             }
+        } else {
+            if let spinner = self.spinner { self.removeSpinner(spinner) }
         }
     }
     
-    private func getMoreTrendingFeed(startAt: String) {
+    func getMoreTrendingFeed(startAt: String) {
         if selectedFeed != "Trending" { return }
         let initialList = self.articleList
         
-        print("additional trending")
+        
         dataSource.getTrendingFeed(startAt: startAt) { (articles: [Article]) -> () in
             var combinedList = Array(initialList.dropLast())
             combinedList.append(contentsOf: articles)
             self.articleList = combinedList
-            print("articleList count: \(self.articleList.count)")
+            
             self.collectionView?.reloadData()
             self.collectionViewLayout.invalidateLayout()
             if let spinner = self.spinner { self.removeSpinner(spinner) }
         }
     }
     
-    @objc private func getSavedFeed() {
-        print("saved")
-        if selectedFeed != "Saved" {
+    @objc func getSavedFeed() {
+        
+        self.view.makeToast("Saved Articles")
+        if selectedFeed != "Saved" || wasRefreshCalled {
             resetView()
             selectedFeed = "Saved"
+            self.savedButton.tintColor = self.colorAccent
             dataSource.getSavedFeed(startAt: 0) { (articles: [Article]) -> () in
                 self.articleList = articles
-                print("articleList count: \(self.articleList.count)")
-                self.savedButton.tintColor = Resources.COLOR_ACCENT
+                
                 self.collectionView?.reloadData()
                 self.collectionViewLayout.invalidateLayout()
                 if let spinner = self.spinner { self.removeSpinner(spinner) }
             }
+        } else {
+            if let spinner = self.spinner { self.removeSpinner(spinner) }
         }
     }
     
-    private func getMoreSavedFeed(startAt: Int) {
+    func getMoreSavedFeed(startAt: Int) {
         if selectedFeed != "Saved" { return }
         let initialList = self.articleList
         
-        print("additional saved")
+        
         dataSource.getSavedFeed(startAt: startAt) { (articles: [Article]) -> () in
             var combinedList = Array(initialList.dropLast())
             combinedList.append(contentsOf: articles)
             self.articleList = combinedList
-            print("articleList count: \(self.articleList.count)")
+            
             self.collectionView?.reloadData()
             self.collectionViewLayout.invalidateLayout()
             if let spinner = self.spinner { self.removeSpinner(spinner) }
@@ -344,11 +498,13 @@ class FeedViewController: MDCCollectionViewController, FeedCvCellDelegate {
         } else if segue.identifier == "Edit Subscriptions" {
             let vc = segue.destination as! SubscriptionsViewController
             vc.isFirstTimeLogin = self.isFirstTimeLogin
+            vc.vc = self
+        } else if segue.identifier == "Notifications" {
+            let vc = segue.destination as! NotificationsViewController
         }
     }
     
     @objc private func didTapFloatingButton() {
-        print("create post")
         performSegue(withIdentifier: "Create Post", sender: self)
     }
     
@@ -360,17 +516,17 @@ class FeedViewController: MDCCollectionViewController, FeedCvCellDelegate {
     @IBAction func didTapMoreOptions(_ sender: Any) {
         let dropdown = DropDown()
         dropdown.anchorView = moreOptionsButton
-        dropdown.dataSource = Resources.OPTIONS_LIST_FEED
+        dropdown.dataSource = ["Edit Subscriptions", "Settings", "Log Out", "Share App Invite"]//, "Recommended Articles Push"]
         dropdown.width = 200
         dropdown.direction = .bottom
-        dropdown.backgroundColor = Resources.OPTIONS_BG_COLOR
-        dropdown.textColor = Resources.OPTIONS_TEXT_COLOR
+        dropdown.backgroundColor = nightModeOn ? ResourcesNight.OPTIONS_BG_COLOR : ResourcesDay.OPTIONS_BG_COLOR
+        dropdown.textColor = nightModeOn ? ResourcesNight.OPTIONS_TEXT_COLOR : ResourcesDay.OPTIONS_TEXT_COLOR
         dropdown.bottomOffset = CGPoint(x: 0, y: (dropdown.anchorView?.plainView.bounds.height)!)
         dropdown.selectionAction = { (index: Int, item: String) in
             if item == "Edit Subscriptions" {
-                self.performSegue(withIdentifier: Resources.OPTIONS_LIST_FEED[index], sender: self)
+                self.performSegue(withIdentifier: "Edit Subscriptions", sender: self)
             } else if item == "Settings" {
-                self.view.makeToast("This feature will be implemented soon!")
+                self.performSegue(withIdentifier: "Settings", sender: self)
             } else if item == "Log Out" {
                 let ac = UIAlertController(title: nil, message: "Would you like to log out?", preferredStyle: .alert)
                 ac.addAction(UIAlertAction(title: "No", style: .cancel, handler: nil))
@@ -378,36 +534,39 @@ class FeedViewController: MDCCollectionViewController, FeedCvCellDelegate {
                     do {
                         try Auth.auth().signOut()
                     } catch {
-                        print("Error signing out: \(error.localizedDescription)")
+                        
                     }
                     self.resetView()
                     self.selectedFeed = nil
                     self.launchLogin()
                 }))
                 self.present(ac, animated: true, completion: nil)
+            } else if item == "Share App Invite" {
+                let shareText = "Get your favourite blog articles all in one app!"
+                let shareUrl = URL(string: "http://acorncommunity.sg")
+                let shareItems = [shareText, shareUrl ?? ""] as [Any]
+                let activityController = UIActivityViewController(activityItems: shareItems,  applicationActivities: nil)
+                DispatchQueue.main.async {
+                    self.present(activityController, animated: true)
+                }	
+//            } else if item == "Recommended Articles Push" {
+//                let recArticlesPref = self.defaults.bool(forKey: "recArticlesNotifPref")
+//                if recArticlesPref {
+//                    let waitTime = Double(arc4random_uniform(10))
+//
+//                    DispatchQueue.main.asyncAfter(deadline: .now() + waitTime) {
+//                        self.appDelegate.scheduleRecommendedArticlesPush() {
+//                            self.appDelegate.updateNotificationsBadge()
+//                        }
+//                    }
+//                }
             }
         }
         dropdown.show()
     }
     
     @IBAction func didTapNotifications(_ sender: Any) {
-        self.view.makeToast("This feature will be implemented soon!")
-    }
-    
-    func loadData() {
-        spinner = displaySpinner()
-        switch selectedFeed {
-        case "Subscriptions":
-            getSubscriptionsFeed()
-        case "Recent":
-            getRecentFeed()
-        case "Trending":
-            getTrendingFeed()
-        case "Saved":
-            getSavedFeed()
-        default:
-            getSubscriptionsFeed()
-        }
+        performSegue(withIdentifier: "Notifications", sender: self)
     }
     
     override func didReceiveMemoryWarning() {
@@ -431,6 +590,10 @@ class FeedViewController: MDCCollectionViewController, FeedCvCellDelegate {
             
             cell.delegate = self
             cell.article = article
+            cell.textColor = colorCardText
+            cell.textColorFaint = colorCardTextFaint
+            
+            cell.backgroundColor = colorCardBackground
             
             cell.populateCell(article: article)
             
@@ -442,6 +605,12 @@ class FeedViewController: MDCCollectionViewController, FeedCvCellDelegate {
                 let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "FeedCvCell", for: indexPath) as! FeedCvCell
                 cell.delegate = self
                 cell.article = article
+                cell.textColor = colorCardText
+                cell.textColorFaint = colorCardTextFaint
+                
+                cell.backgroundColor = colorCardBackground
+                
+                cell.sourceLabelWidthConstraint.constant = cellWidth!*7/24
                 
                 cell.populateContent(article: article, selectedFeed: self.selectedFeed!)
                 return cell
@@ -449,6 +618,12 @@ class FeedViewController: MDCCollectionViewController, FeedCvCellDelegate {
                 let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "FeedCvCellNoImage", for: indexPath) as! FeedCvCellNoImage
                 cell.delegate = self
                 cell.article = article
+                cell.textColor = colorCardText
+                cell.textColorFaint = colorCardTextFaint
+                
+                cell.backgroundColor = colorCardBackground
+                
+                cell.sourceLabelWidthConstraint.constant = cellWidth!/3
                 
                 cell.populateContent(article: article, selectedFeed: self.selectedFeed!)
                 return cell
@@ -458,6 +633,12 @@ class FeedViewController: MDCCollectionViewController, FeedCvCellDelegate {
                 let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "FeedCvCellPostWithArticle", for: indexPath) as! FeedCvCellPostWithArticle
                 cell.delegate = self
                 cell.article = article
+                cell.textColor = colorCardText
+                cell.textColorFaint = colorCardTextFaint
+                
+                cell.backgroundColor = colorCardBackground
+                
+                cell.sourceLabelWidthConstraint.constant = cellWidth!/3
                 
                 cell.populateContent(article: article, selectedFeed: self.selectedFeed!)
                 return cell
@@ -467,6 +648,12 @@ class FeedViewController: MDCCollectionViewController, FeedCvCellDelegate {
                         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "FeedCvCellPostWithArticle", for: indexPath) as! FeedCvCellPostWithArticle
                         cell.delegate = self
                         cell.article = article
+                        cell.textColor = colorCardText
+                        cell.textColorFaint = colorCardTextFaint
+                        
+                        cell.backgroundColor = colorCardBackground
+                        
+                        cell.sourceLabelWidthConstraint.constant = cellWidth!/3
                         
                         cell.populateContent(article: article, selectedFeed: self.selectedFeed!)
                         return cell
@@ -474,6 +661,12 @@ class FeedViewController: MDCCollectionViewController, FeedCvCellDelegate {
                         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "FeedCvCellPost", for: indexPath) as! FeedCvCellPost
                         cell.delegate = self
                         cell.article = article
+                        cell.textColor = colorCardText
+                        cell.textColorFaint = colorCardTextFaint
+                        
+                        cell.backgroundColor = colorCardBackground
+                        
+                        cell.sourceLabelWidthConstraint.constant = cellWidth!/3
                         
                         cell.populateContent(article: article, selectedFeed: self.selectedFeed!)
                         return cell
@@ -482,6 +675,12 @@ class FeedViewController: MDCCollectionViewController, FeedCvCellDelegate {
                     let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "FeedCvCellPostNoImage", for: indexPath) as! FeedCvCellPostNoImage
                     cell.delegate = self
                     cell.article = article
+                    cell.textColor = colorCardText
+                    cell.textColorFaint = colorCardTextFaint
+                    
+                    cell.backgroundColor = colorCardBackground
+                    
+                    cell.sourceLabelWidthConstraint.constant = cellWidth!/3
                     
                     cell.populateContent(article: article, selectedFeed: self.selectedFeed!)
                     return cell
@@ -490,105 +689,56 @@ class FeedViewController: MDCCollectionViewController, FeedCvCellDelegate {
         }
     }
     
-    func openArticle(_ cell: FeedCvCell) {
+    func openArticle(_ articleId: String) {
         let vc = mainStoryboard.instantiateViewController(withIdentifier: "WebView") as? WebViewViewController
-        vc?.article = cell.article
+        vc?.articleId = articleId
         vc?.feedVC = self
         present(vc!, animated: true, completion: nil)
     }
     
-    func openArticle(_ cell: FeedCvCellNoImage) {
-        let vc = mainStoryboard.instantiateViewController(withIdentifier: "WebView") as? WebViewViewController
-        vc?.article = cell.article
-        vc?.feedVC = self
-        present(vc!, animated: true, completion: nil)
-    }
-    
-    func openArticle(_ cell: FeedCvCellPostWithArticle) {
-        let vc = mainStoryboard.instantiateViewController(withIdentifier: "WebView") as? WebViewViewController
-        vc?.article = cell.article
-        vc?.feedVC = self
-        present(vc!, animated: true, completion: nil)
-    }
-    
-    func openArticle(_ cell: FeedCvCellSaved) {
-        let vc = mainStoryboard.instantiateViewController(withIdentifier: "WebView") as? WebViewViewController
-        vc?.article = cell.article
-        vc?.feedVC = self
-        present(vc!, animated: true, completion: nil)
-    }
-    
-    func openComments(_ cell: FeedCvCell) {
+    func openComments(_ articleId: String) {
         let vc = mainStoryboard.instantiateViewController(withIdentifier: "Comment") as? CommentViewController
-        vc?.article = cell.article
+        vc?.articleId = articleId
         present(vc!, animated:true, completion: nil)
     }
     
-    func openComments(_ cell: FeedCvCellNoImage) {
-        let vc = mainStoryboard.instantiateViewController(withIdentifier: "Comment") as? CommentViewController
-        vc?.article = cell.article
-        present(vc!, animated:true, completion: nil)
-    }
-    
-    func openComments(_ cell: FeedCvCellPost) {
-        let vc = mainStoryboard.instantiateViewController(withIdentifier: "Comment") as? CommentViewController
-        vc?.article = cell.article
-        present(vc!, animated:true, completion: nil)
-    }
-    
-    func openComments(_ cell: FeedCvCellPostNoImage) {
-        let vc = mainStoryboard.instantiateViewController(withIdentifier: "Comment") as? CommentViewController
-        vc?.article = cell.article
-        present(vc!, animated:true, completion: nil)
-    }
-    
-    func openComments(_ cell: FeedCvCellPostWithArticle) {
-        let vc = mainStoryboard.instantiateViewController(withIdentifier: "Comment") as? CommentViewController
-        vc?.article = cell.article
-        present(vc!, animated:true, completion: nil)
-    }
-    
-    func openComments(_ cell: FeedCvCellSaved) {
-        let vc = mainStoryboard.instantiateViewController(withIdentifier: "Comment") as? CommentViewController
-        vc?.article = cell.article
-        present(vc!, animated:true, completion: nil)
-    }
-    
-    func openShareActivity(_ cell: FeedCvCell) {
-        if let shareLink = cell.article?.link {
-            print(shareLink)
-            let activityController = UIActivityViewController(activityItems: [URL(string: shareLink) ?? ""],  applicationActivities: nil)
+    func openShareActivity(_ urlLink: String?) {
+        if let shareLink = urlLink {
+            let shareText = "Shared using Acorn: Your favourite blogs in a nutshell"
+            let shareUrl = URL(string: shareLink)
+            let shareItems = [shareText, shareUrl ?? ""] as [Any]
+            
+            let activityController = UIActivityViewController(activityItems: shareItems,  applicationActivities: nil)
             DispatchQueue.main.async {
                 self.present(activityController, animated: true)
             }
         }
     }
     
-    func openShareActivity(_ cell: FeedCvCellNoImage) {
-        if let shareLink = cell.article?.link {
-            let activityController = UIActivityViewController(activityItems: [URL(string: shareLink) ?? ""],  applicationActivities: nil)
-            DispatchQueue.main.async {
-                self.present(activityController, animated: true)
-            }
-        }
-    }
-    
-    func openShareActivity(_ cell: FeedCvCellPostWithArticle) {
-        if let shareLink = cell.article?.link {
-            let activityController = UIActivityViewController(activityItems: [URL(string: shareLink) ?? ""],  applicationActivities: nil)
-            DispatchQueue.main.async {
-                self.present(activityController, animated: true)
-            }
-        }
-    }
-    
-    func openImage(_ cell: FeedCvCellPost) {
-        if let link = cell.article?.link {
+    func openImage(_ urlLink: String?) {
+        if let link = urlLink {
             let image = LightboxImage(imageURL: URL(string: link)!)
             let lightbox = LightboxController(images: [image])
             lightbox.dynamicBackground = true
             present(lightbox, animated: true, completion: nil)
         }
+    }
+    
+    func openOptions(anchor: UIView, post: Article) {
+        let dropdown = DropDown()
+        dropdown.anchorView = anchor
+        dropdown.dataSource = ["Report post"]
+        dropdown.width = 100
+        dropdown.direction = .bottom
+        dropdown.backgroundColor = nightModeOn ? ResourcesNight.CARD_BG_COLOR : ResourcesDay.CARD_BG_COLOR
+        dropdown.textColor = nightModeOn ? ResourcesNight.CARD_TEXT_COLOR : ResourcesDay.CARD_TEXT_COLOR
+        dropdown.bottomOffset = CGPoint(x: 0, y: (dropdown.anchorView?.plainView.bounds.height)!)
+        dropdown.selectionAction = { (index: Int, item: String) in
+            if item == "Report post" {
+                self.dataSource.reportPost(post)
+            }
+        }
+        dropdown.show()
     }
     
     override func collectionView(_ collectionView: UICollectionView, cellHeightAt indexPath: IndexPath) -> CGFloat {
@@ -648,18 +798,18 @@ class FeedViewController: MDCCollectionViewController, FeedCvCellDelegate {
     
     override func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
         if indexPath.item == (self.articleList.count - self.loadTrigger) {
-            let article = articleList.last
+            let lastArticle = articleList.last
             switch selectedFeed {
             case "Subscriptions":
-                getMoreSubscriptionsFeed(startAt: (article?.pubDate)!)
+                getMoreSubscriptionsFeed(startAt: (lastArticle?.pubDate)!)
             case "Recent":
-                getMoreRecentFeed(startAt: (article?.pubDate)!)
+                getMoreRecentFeed(startAt: (lastArticle?.pubDate)!)
             case "Trending":
-                getMoreTrendingFeed(startAt: (article?.trendingIndex)!)
+                getMoreTrendingFeed(startAt: (lastArticle?.trendingIndex)!)
             case "Saved":
                 getMoreSavedFeed(startAt: articleList.count)
-            default:
-                print("selection not valid")
+            default: break
+                
             }
         }
     }
@@ -700,16 +850,18 @@ extension UIViewController {
         }
     }
     
-    func checkEmailVerified(user: User) {
+    func showEmailVerificationAlert(user: User) {
+        let ac = UIAlertController(title: nil, message: "Please verify your email address.", preferredStyle: .alert)
+        ac.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
+        ac.addAction(UIAlertAction(title: "Re-send verification email", style: .destructive, handler: { _ in
+            user.sendEmailVerification()
+        }))
+        self.present(ac, animated: true, completion: nil)
+    }
+    
+    func isUserEmailVerified(user: User) -> (Bool) {
         user.reload()
-        if !user.isEmailVerified {
-            let ac = UIAlertController(title: nil, message: "Please verify your email address.", preferredStyle: .alert)
-            ac.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
-            ac.addAction(UIAlertAction(title: "Re-send verification email", style: .destructive, handler: { _ in
-                user.sendEmailVerification()
-            }))
-            self.present(ac, animated: true, completion: nil)
-        }
+        return user.isEmailVerified
     }
 }
 

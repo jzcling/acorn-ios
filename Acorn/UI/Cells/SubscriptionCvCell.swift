@@ -11,16 +11,13 @@ import UIKit
 class SubscriptionCvCell: UICollectionViewCell {
     
     @IBOutlet weak var checkbox: Checkbox!
-    @IBOutlet weak var theme: UILabel!
+    @IBOutlet weak var themeLabel: UILabel!
     
     var object: Theme? {
         willSet {
         }
         didSet {
-//            print("didSet: name: \(String(describing: object?.name)), isSelected: \(String(describing: object?.isSelected))")
-            DispatchQueue.main.async {
-                self.checkbox.isChecked = (self.object?.isSelected)!
-            }
+            self.checkbox.isChecked = (self.object?.isSelected)!
         }
     }
     

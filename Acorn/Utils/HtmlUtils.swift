@@ -13,11 +13,13 @@ import SwiftSoup
 class HtmlUtils {
     var WHITELIST: Whitelist?
     
+    let nightModeOn = UserDefaults.standard.bool(forKey: "nightModePref")
+    
     let IMG_PATTERN = try? NSRegularExpression(pattern:"<img\\s+[^>]*src=\\s*['\"]([^'\"]+)['\"][^>]*>", options: .caseInsensitive)
     let ADS_PATTERN = try? NSRegularExpression(pattern:"<div class=['\"]mf-viral['\"]><table border=['\"]0['\"]>.*", options: .caseInsensitive)
     let LAZY_LOADING_PATTERN = try? NSRegularExpression(pattern:"\\s+src=[^>]+\\s+(original|data)[-]*(src=.*)", options: .caseInsensitive)
     let LAZY_LOADING_PATTERN_2 = try? NSRegularExpression(pattern:"\\s+(original|data)[^>]*?(src=.*)", options: .caseInsensitive)
-    let LAZY_LOADING_PATTERN_3 = try? NSRegularExpression(pattern:"\\s+(src=['\"].*?['\"][^>]+?)src=['\"].*?['\"]", options: .caseInsensitive)
+    let LAZY_LOADING_PATTERN_3 = try? NSRegularExpression(pattern:"\\s+(src=['\"].*?['\"])([^>]+?)data-lazy-src=(['\"].*?['\"])", options: .caseInsensitive)
     let LAZY_LOADING_PATTERN_4 = try? NSRegularExpression(pattern:"\\s+data-original=", options: .caseInsensitive)
     let EMPTY_IMAGE_PATTERN = try? NSRegularExpression(pattern:"<img\\s+(height=['\"]1['\"]\\s+width=['\"]1['\"]|width=['\"]1['\"]\\s+height=['\"]1['\"])\\s+[^>]*src=\\s*['\"]([^'\"]+)['\"][^>]*>", options: .caseInsensitive)
     let RELATIVE_IMAGE_PATTERN = try? NSRegularExpression(pattern:"\\s+(href|src)=([\"'])//", options: .caseInsensitive)
@@ -31,9 +33,9 @@ class HtmlUtils {
     let TABLE_START_PATTERN = try? NSRegularExpression(pattern:"(<table)", options: .caseInsensitive)
     let TABLE_END_PATTERN = try? NSRegularExpression(pattern:"(</table>)", options: .caseInsensitive)
     
-    let BACKGROUND_COLOR = "#f6f6f6"
-    let TEXT_COLOR = "#231f20"
-    let SUBTITLE_COLOR = "#666666"
+    lazy var BACKGROUND_COLOR = nightModeOn ? ResourcesNight.WEBVIEW_BG_COLOR_HEX : ResourcesDay.WEBVIEW_BG_COLOR_HEX
+    lazy var TEXT_COLOR = nightModeOn ? ResourcesNight.WEBVIEW_TEXT_COLOR_HEX : ResourcesDay.WEBVIEW_TEXT_COLOR_HEX
+    lazy var SUBTITLE_COLOR = nightModeOn ? ResourcesNight.WEBVIEW_SUBTITLE_COLOR_HEX : ResourcesDay.WEBVIEW_SUBTITLE_COLOR_HEX
     let QUOTE_BACKGROUND_COLOR = "#e6e6e6"
     let QUOTE_LEFT_COLOR = "#a6a6a6"
     let QUOTE_TEXT_COLOR = "#565656"
@@ -56,7 +58,7 @@ class HtmlUtils {
         // remove lazy loading images stuff
         content = (LAZY_LOADING_PATTERN?.stringByReplacingMatches(in: content, options: [], range: NSMakeRange(0, content.count), withTemplate: " $2"))!
         content = (LAZY_LOADING_PATTERN_2?.stringByReplacingMatches(in: content, options: [], range: NSMakeRange(0, content.count), withTemplate: " $2"))!
-        content = (LAZY_LOADING_PATTERN_3?.stringByReplacingMatches(in: content, options: [], range: NSMakeRange(0, content.count), withTemplate: " $1"))!
+        content = (LAZY_LOADING_PATTERN_3?.stringByReplacingMatches(in: content, options: [], range: NSMakeRange(0, content.count), withTemplate: " $2src=$3"))!
         content = (LAZY_LOADING_PATTERN_4?.stringByReplacingMatches(in: content, options: [], range: NSMakeRange(0, content.count), withTemplate: "src="))!
         // fix relative image paths
         content = (RELATIVE_IMAGE_PATTERN?.stringByReplacingMatches(in: content, options: [], range: NSMakeRange(0, content.count), withTemplate: " $1=$2http://"))!
@@ -76,9 +78,9 @@ class HtmlUtils {
             
             content = try SwiftSoup.clean(content, baseUrl, WHITELIST!)!
         } catch Exception.Error(_, let message) {
-            print(message)
+            
         } catch let error {
-            print(error)
+            
         }
         
         content = (RELATIVE_IMAGE_PATTERN_2?.stringByReplacingMatches(in: content, options: [], range: NSMakeRange(0, content.count), withTemplate: " $1=$2" + baseUrl))!
@@ -175,7 +177,6 @@ class HtmlUtils {
         var parsedHtml: String
         
         guard let url = URL(string: link) else {
-            print("Error: \(link) not valid")
             return nil
         }
         
@@ -188,9 +189,9 @@ class HtmlUtils {
                 return nil
             }
         } catch Exception.Error(_, let message) {
-            print(message)
+            
         } catch let error {
-            print(error)
+            
         }
         return nil
     }

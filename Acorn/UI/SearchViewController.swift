@@ -14,6 +14,10 @@ class SearchViewController: HitsTableViewController {
     @IBOutlet weak var tableView: HitsTableWidget!
     @IBOutlet weak var searchBar: SearchBarWidget!
     
+    var nightModeOn = UserDefaults.standard.bool(forKey: "nightModePref")
+    var cardBackgroundColor: UIColor?
+    var textColor: UIColor?
+    
     let mainStoryboard = UIStoryboard(name: "Main", bundle: nil)
     
     override func viewDidLoad() {
@@ -22,6 +26,42 @@ class SearchViewController: HitsTableViewController {
         hitsTableView = tableView
         
         InstantSearch.shared.registerAllWidgets(in: self.view)
+        
+        searchBar.becomeFirstResponder()
+        
+        if nightModeOn {
+            nightModeEnabled()
+        } else {
+            nightModeDisabled()
+        }
+        NotificationCenter.default.addObserver(self, selector: #selector(nightModeEnabled), name: .nightModeOn, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(nightModeDisabled), name: .nightModeOff, object: nil)
+    }
+    
+    @objc func nightModeEnabled() {
+        enableNightMode()
+        self.tableView.reloadData()
+    }
+    
+    @objc func nightModeDisabled() {
+        disableNightMode()
+        self.tableView.reloadData()
+    }
+    
+    func enableNightMode() {
+        nightModeOn = true
+        self.tableView.backgroundColor = ResourcesNight.COLOR_BG
+        
+        cardBackgroundColor = ResourcesNight.CARD_BG_COLOR
+        textColor = ResourcesNight.COLOR_DEFAULT_TEXT
+    }
+    
+    func disableNightMode() {
+        nightModeOn = false
+        self.tableView.backgroundColor = ResourcesDay.COLOR_BG
+        
+        cardBackgroundColor = ResourcesDay.CARD_BG_COLOR
+        textColor = ResourcesDay.COLOR_DEFAULT_TEXT
     }
 
     override func didReceiveMemoryWarning() {
@@ -33,32 +73,35 @@ class SearchViewController: HitsTableViewController {
         let cell = tableView.dequeueReusableCell(withIdentifier: "hitCell", for: indexPath) as! SearchHitsTvCell
         
         cell.hit = hit
+        cell.backgroundColor = cardBackgroundColor
+        cell.cellView.backgroundColor = cardBackgroundColor
+        cell.defaultTextColor = textColor
         
         return cell
     }
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath, containing hit: [String : Any]) {
         let article = Article(json: hit)
-        print("articleTitle: \(article.title ?? "")")
+        
         if article.link != nil && article.link != "" {
-            print("openArticle")
+            
             openArticle(article: article)
         } else {
-            print("openComments")
+            
             openComments(article: article)
         }
     }
     
     func openArticle(article: Article) {
         let vc = mainStoryboard.instantiateViewController(withIdentifier: "WebView") as? WebViewViewController
-        vc?.article = article
+        vc?.articleId = article.objectID
         vc?.searchVC = self
         present(vc!, animated: true, completion: nil)
     }
     
     func openComments(article: Article) {
         let vc = mainStoryboard.instantiateViewController(withIdentifier: "Comment") as? CommentViewController
-        vc?.article = article
+        vc?.articleId = article.objectID
         present(vc!, animated:true, completion: nil)
     }
     

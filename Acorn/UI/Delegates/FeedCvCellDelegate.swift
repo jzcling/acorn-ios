@@ -7,20 +7,14 @@
 //
 
 import Foundation
+import FirebaseUI
 
 protocol FeedCvCellDelegate: class {
-    func openArticle(_ cell: FeedCvCell)
-    func openArticle(_ cell: FeedCvCellNoImage)
-    func openArticle(_ cell: FeedCvCellPostWithArticle)
-    func openArticle(_ cell: FeedCvCellSaved)
-    func openComments(_ cell: FeedCvCell)
-    func openComments(_ cell: FeedCvCellNoImage)
-    func openComments(_ cell: FeedCvCellPost)
-    func openComments(_ cell: FeedCvCellPostNoImage)
-    func openComments(_ cell: FeedCvCellPostWithArticle)
-    func openComments(_ cell: FeedCvCellSaved)
-    func openImage(_ cell: FeedCvCellPost)
-    func openShareActivity(_ cell: FeedCvCell)
-    func openShareActivity(_ cell: FeedCvCellNoImage)
-    func openShareActivity(_ cell: FeedCvCellPostWithArticle)
+    func openArticle(_ articleId: String)
+    func openComments(_ articleId: String)
+    func openImage(_ urlLink: String?)
+    func openShareActivity(_ urlLink: String?)
+    func isUserEmailVerified(user: User) -> (Bool)
+    func showEmailVerificationAlert(user: User)
+    func openOptions(anchor: UIView, post: Article)
 }

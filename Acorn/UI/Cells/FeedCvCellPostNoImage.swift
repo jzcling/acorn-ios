@@ -20,20 +20,38 @@ class FeedCvCellPostNoImage: UICollectionViewCell {
     @IBOutlet weak var dateLabel: UILabel!
     @IBOutlet weak var netVoteImageView: UIImageView!
     @IBOutlet weak var voteCntLabel: UILabel!
+    @IBOutlet weak var commCntImageView: UIImageView!
     @IBOutlet weak var commCntLabel: UILabel!
     @IBOutlet weak var upvoteButton: UIButton!
     @IBOutlet weak var downvoteButton: UIButton!
     @IBOutlet weak var commentButton: UIButton!
     @IBOutlet weak var saveButton: UIButton!
     @IBOutlet weak var shareButton: UIButton!
+    @IBOutlet weak var optionsButton: UIButton!
+    
+    @IBOutlet weak var sourceDateSeparator: UILabel!
+    @IBOutlet weak var voteCommSeparator: UILabel!
+    
+    @IBOutlet weak var sourceLabelWidthConstraint: NSLayoutConstraint!
+    
     weak var delegate: FeedCvCellDelegate?
     
     var article: Article?
+    var textColor: UIColor?
+    var textColorFaint: UIColor?
     
     lazy var user = Auth.auth().currentUser!
     lazy var uid = user.uid
     
     let dataSource = DataSource.instance
+    
+    let nightModeOn = UserDefaults.standard.bool(forKey: "nightModePref")
+    lazy var upvoteTint = nightModeOn ? ResourcesNight.UPVOTE_TINT_COLOR : ResourcesDay.UPVOTE_TINT_COLOR
+    lazy var downvoteTint = nightModeOn ? ResourcesNight.DOWNVOTE_TINT_COLOR : ResourcesDay.DOWNVOTE_TINT_COLOR
+    lazy var commentTint = nightModeOn ? ResourcesNight.COMMENT_TINT_COLOR : ResourcesDay.COMMENT_TINT_COLOR
+    lazy var saveTint = nightModeOn ? ResourcesNight.SAVE_TINT_COLOR : ResourcesDay.SAVE_TINT_COLOR
+    lazy var shareTint = nightModeOn ? ResourcesNight.SHARE_TINT_COLOR : ResourcesDay.SHARE_TINT_COLOR
+    lazy var buttonDefaultTint = nightModeOn ? ResourcesNight.BUTTON_DEFAULT_TINT_COLOR : ResourcesDay.BUTTON_DEFAULT_TINT_COLOR
     
     override func awakeFromNib() {
         super.awakeFromNib()
@@ -51,27 +69,33 @@ class FeedCvCellPostNoImage: UICollectionViewCell {
     
     override func prepareForReuse() {
         super.prepareForReuse()
+        
         themeLabel.text = nil
         topSeparatorLabel.text = " • "
         readTimeLabel.text = nil
+        
         titleLabel.text = nil
+        
         sourceLabel.text = nil
         dateLabel.text = nil
-        netVoteImageView.image = #imageLiteral(resourceName: "ic_arrow_up")
-        netVoteImageView.tintColor = Resources.UPVOTE_TINT_COLOR
+        
+        netVoteImageView.image = #imageLiteral(resourceName: "ic_arrow_up_18")
+        netVoteImageView.tintColor = upvoteTint
         voteCntLabel.text = "0"
         commCntLabel.text = "0"
-        upvoteButton.tintColor = Resources.BUTTON_DEFAULT_TINT_COLOR
-        downvoteButton.tintColor = Resources.BUTTON_DEFAULT_TINT_COLOR
-        commentButton.tintColor = Resources.BUTTON_DEFAULT_TINT_COLOR
-        saveButton.tintColor = Resources.BUTTON_DEFAULT_TINT_COLOR
-        shareButton.tintColor = Resources.BUTTON_DEFAULT_TINT_COLOR
-        dataSource.removeArticleObserver(article: article!)
+        
+        upvoteButton.tintColor = buttonDefaultTint
+        downvoteButton.tintColor = buttonDefaultTint
+        commentButton.tintColor = buttonDefaultTint
+        saveButton.tintColor = buttonDefaultTint
+        shareButton.tintColor = buttonDefaultTint
+        
+        dataSource.removeArticleObserver(article!.objectID)
     }
 
     func populateContent(article: Article, selectedFeed: String) {
         if selectedFeed == "Subscriptions" {
-            dataSource.observeSingleArticle(article: article) { (retrievedArticle) in
+            dataSource.observeSingleArticle(articleId: article.objectID) { (retrievedArticle) in
                 self.article = retrievedArticle
                 self.populateCell(article: self.article!)
             }
@@ -96,45 +120,72 @@ class FeedCvCellPostNoImage: UICollectionViewCell {
         sourceLabel.text = article.postAuthor
         dateLabel.text = DateUtils.parsePrettyDate(unixTimestamp: -article.postDate!)
         if (article.voteCount != nil && article.voteCount! < 0) {
-            netVoteImageView.image = #imageLiteral(resourceName: "ic_arrow_down")
-            netVoteImageView.tintColor = Resources.DOWNVOTE_TINT_COLOR
+            netVoteImageView.image = #imageLiteral(resourceName: "ic_arrow_down_18")
+            netVoteImageView.tintColor = downvoteTint
+        } else {
+            netVoteImageView.tintColor = upvoteTint
         }
         voteCntLabel.text = String(article.voteCount != nil ? article.voteCount! : 0)
+        commCntImageView.tintColor = commentTint
         commCntLabel.text = String(article.commentCount != nil ? article.commentCount! : 0)
+        
+        themeLabel.textColor = textColorFaint
+        topSeparatorLabel.textColor = textColorFaint
+        readTimeLabel.textColor = textColorFaint
+        titleLabel.textColor = textColor
+        sourceLabel.textColor = textColor
+        dateLabel.textColor = textColor
+        voteCntLabel.textColor = textColor
+        commCntLabel.textColor = textColor
+        sourceDateSeparator.textColor = textColor
+        voteCommSeparator.textColor = textColor
         
         if let upvoters = article.upvoters {
             if upvoters.keys.contains(uid) {
-                upvoteButton.tintColor = Resources.UPVOTE_TINT_COLOR
+                upvoteButton.tintColor = upvoteTint
+            } else {
+                upvoteButton.tintColor = buttonDefaultTint
             }
         }
         
         if let downvoters = article.downvoters {
             if downvoters.keys.contains(uid) {
-                downvoteButton.tintColor = Resources.DOWNVOTE_TINT_COLOR
+                downvoteButton.tintColor = downvoteTint
+            } else {
+                downvoteButton.tintColor = buttonDefaultTint
             }
         }
         
         if let commenters = article.commenters {
             if commenters.keys.contains(uid) {
-                commentButton.tintColor = Resources.COMMENT_TINT_COLOR
+                commentButton.tintColor = commentTint
+            } else {
+                commentButton.tintColor = buttonDefaultTint
             }
         }
         
         if let savers = article.savers {
             if savers.keys.contains(uid) {
-                saveButton.tintColor = Resources.SAVE_TINT_COLOR
+                saveButton.tintColor = saveTint
+            } else {
+                saveButton.tintColor = buttonDefaultTint
             }
         }
         
         if let sharers = article.sharers {
             if sharers.keys.contains(uid) {
-                shareButton.tintColor = Resources.SHARE_TINT_COLOR
+                shareButton.tintColor = shareTint
+            } else {
+                shareButton.tintColor = buttonDefaultTint
             }
         }
     }
     
     @IBAction func didTapUpvoteButton(_ sender: Any) {
-        delegate?.checkEmailVerified(user: user)
+        if !delegate!.isUserEmailVerified(user: user) {
+            delegate!.showEmailVerificationAlert(user: user)
+            return
+        }
         
         upvoteButton.isEnabled = false
         downvoteButton.isEnabled = false
@@ -161,14 +212,17 @@ class FeedCvCellPostNoImage: UICollectionViewCell {
         dispatchGroup.enter()
         dataSource.updateUserVote(article: article!, actionIsUpvote: true) { dispatchGroup.leave() }
         dispatchGroup.notify(queue: .main) {
-            print("upvote: complete")
+            
             self.upvoteButton.isEnabled = true
             self.downvoteButton.isEnabled = true
         }
     }
     
     @IBAction func didTapDownvoteButton(_ sender: Any) {
-        delegate?.checkEmailVerified(user: user)
+        if !delegate!.isUserEmailVerified(user: user) {
+            delegate!.showEmailVerificationAlert(user: user)
+            return
+        }
         
         upvoteButton.isEnabled = false
         downvoteButton.isEnabled = false
@@ -195,7 +249,7 @@ class FeedCvCellPostNoImage: UICollectionViewCell {
         dispatchGroup.enter()
         dataSource.updateUserVote(article: article!, actionIsUpvote: false) { dispatchGroup.leave() }
         dispatchGroup.notify(queue: .main) {
-            print("downvote: complete")
+            
             self.upvoteButton.isEnabled = true
             self.downvoteButton.isEnabled = true
         }
@@ -203,6 +257,10 @@ class FeedCvCellPostNoImage: UICollectionViewCell {
     
     @IBAction func didTapCommentButton(_ sender: Any) {
         openComments()
+    }
+    
+    @objc func openComments() {
+        delegate?.openComments((self.article?.objectID)!)
     }
     
     @IBAction func didTapSaveButton(_ sender: Any) {
@@ -215,7 +273,7 @@ class FeedCvCellPostNoImage: UICollectionViewCell {
         dispatchGroup.enter()
         dataSource.updateUserSave(article: article!) { dispatchGroup.leave() }
         dispatchGroup.notify(queue: .main) {
-            print("save: complete")
+            
             self.saveButton.isEnabled = true
         }
     }
@@ -223,7 +281,8 @@ class FeedCvCellPostNoImage: UICollectionViewCell {
     @IBAction func didTapShareButton(_ sender: Any) {
     }
     
-    @objc func openComments() {
-        delegate?.openComments(self)
+    @IBAction func didTapOptionsButton(_ sender: Any) {
+        delegate?.openOptions(anchor: optionsButton, post: article!)
     }
+    
 }

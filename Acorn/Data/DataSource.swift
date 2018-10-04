@@ -15,8 +15,9 @@ class DataSource {
     
     static let instance = DataSource()
     
-    let algoliaClient = Client(appID: "O96PPLSF19", apiKey: "3b42d937aceab4818e2377325c76abf1")
-    lazy var algoliaIndex = algoliaClient.index(withName: "article")
+    var algoliaApiKey: String?
+    var algoliaClient: Client?
+    var algoliaIndex: Index?
     
     let limit = 10 as UInt
     
@@ -36,6 +37,10 @@ class DataSource {
     lazy var commentRef = self.database.reference(withPath: "comment")
     lazy var userRef = self.database.reference(withPath: "user/\(uid)")
     lazy var postRef = self.database.reference(withPath: "article")
+    lazy var commentsPreferenceRef = self.database.reference(withPath: "preference/commentsNotificationValue/\(uid)")
+    lazy var recArticlesPreferenceRef = self.database.reference(withPath: "preference/recArticlesNotificationValue/\(uid)")
+    lazy var algoliaRef = self.database.reference(withPath: "algoliaApiKey")
+    lazy var reportRef = self.database.reference(withPath: "reported")
     
     lazy var userStorage = self.storage.reference(withPath: uid)
     
@@ -45,22 +50,41 @@ class DataSource {
     
     
     // Setup
-    func getUser(onComplete: @escaping (AcornUser) -> ()) {
-        userRef.observeSingleEvent(of: .value) { (snap) in
-            let user = AcornUser(snapshot: snap)
-            onComplete(user)
+    func setupAlgoliaClient(onComplete: @escaping () -> ()) {
+        algoliaRef.observeSingleEvent(of: .value) { (snap) in
+            guard let apiKey = snap.value as? String else { return }
+            
+            self.algoliaApiKey = apiKey
+            self.algoliaClient = Client(appID: "O96PPLSF19", apiKey: apiKey)
+            self.algoliaIndex = self.algoliaClient?.index(withName: "article")
+            
+            onComplete()
         }
     }
     
-    func getThemeSubscriptions(user: User) {
+    func getUser(user: User, onComplete: @escaping (AcornUser?) -> ()) {
+        self.database.reference(withPath: "user/\(user.uid)").observeSingleEvent(of: .value) { (snap) in
+            if snap.exists() {
+                let user = AcornUser(snapshot: snap)
+                onComplete(user)
+            } else {
+                onComplete(nil)
+            }
+        }
+    }
+    
+    func setUser(_ user: [String: Any?]) {
+        userRef.setValue(user)
+    }
+    
+    func getThemeSubscriptions(user: User, onComplete: (([String]) -> ())?) {
         let uid = user.uid
         let subsRef = self.database.reference(withPath: "user/\(uid)/subscriptions")
+        var themePrefs = [String]()
         
-        let dispatchGroup = DispatchGroup()
-        dispatchGroup.enter()
         subsRef.observeSingleEvent(of: .value) { (snap) in
             if let subs = snap.value as? [String] {
-                let themePrefs = subs.sorted()
+                themePrefs = subs.sorted()
                 var tempThemeKey: String
                 var tempThemeFilters: String
                 tempThemeKey = themePrefs[0]
@@ -73,23 +97,25 @@ class DataSource {
                 self.themeFilters = tempThemeFilters
                 self.defaults.set(self.themeFilters, forKey: "themeFilters")
                 self.defaults.set(self.themeKey, forKey: "themeKey")
-                dispatchGroup.leave()
+                
+                
+                if let _ = onComplete { onComplete!(themePrefs) }
             } else {
                 self.defaults.set(nil, forKey: "themeFilters")
                 self.defaults.set(nil, forKey: "themeKey")
-                dispatchGroup.leave()
+                
+                
+                if let _ = onComplete { onComplete!(themePrefs) }
             }
-        }
-        dispatchGroup.notify(queue: .main) {
-            print("themeKey: \(self.themeKey ?? "nil")")
-            return
         }
     }
     
     func setThemeSubscriptions(_ themePrefs: [String]) {
-        let subsRef = self.database.reference(withPath: "user/\(uid)/subscriptions")
+        let subsRef = userRef.child("subscriptions")
+        let subsCountRef = userRef.child("subscriptionsCount")
         
         subsRef.setValue(themePrefs)
+        subsCountRef.setValue(themePrefs.count)
     }
     
     
@@ -99,18 +125,29 @@ class DataSource {
         var articleIds = [String]()
         
         query.observe(.childAdded) { (snap) in
-            print("articleID: \(snap.key)")
+            let article = Article(snapshot: snap)
+            
             if !articleIds.contains(snap.key) {
-                articles.append(Article(snapshot: snap))
-                print("articleLink: \(Article(snapshot: snap).link ?? "nil")")
-                articleIds.append(snap.key)
+                let isReported = article.isReported ?? false
+                if !isReported {
+                    articles.append(article)
+                    articleIds.append(snap.key)
+                }
             }
             onComplete(articles)
         }
         
         query.observe(.childChanged) { (snap) in
+            let article = Article(snapshot: snap)
+            
             if let index = articleIds.index(of: snap.key) {
-                articles[index] = Article(snapshot: snap)
+                let isReported = article.isReported ?? false
+                if isReported {
+                    articles.remove(at: index)
+                    articleIds.remove(at: index)
+                } else {
+                    articles[index] = article
+                }
             }
             onComplete(articles)
         }
@@ -139,17 +176,40 @@ class DataSource {
         themeKey = defaults.string(forKey: "themeKey")
         themeFilters = defaults.string(forKey: "themeFilters")
         let now = floor(Double(Date().timeIntervalSince1970 * 1000))
-        if themeKey != nil {
-            let hitsRef = searchRef.child(themeKey!).child("hits")
-            let initQuery = searchRef.child(themeKey!).child("lastQueryTimestamp")
-            initQuery.observeSingleEvent(of: .value) { (lastQuerySnap) in
-                if let lastQueryTimestamp = lastQuerySnap.value as? Double {
-                    let timeElapsed = DateUtils.hoursSince(unixTimestamp: lastQueryTimestamp)
-                    if timeElapsed >= 3 {
-                        print("getSubscriptionsFeed: new query: \(timeElapsed)")
+        setupAlgoliaClient {
+            if self.themeKey != nil {
+                let hitsRef = self.searchRef.child(self.themeKey!).child("hits")
+                let initQuery = self.searchRef.child(self.themeKey!).child("lastQueryTimestamp")
+                initQuery.observeSingleEvent(of: .value) { (lastQuerySnap) in
+                    if let lastQueryTimestamp = lastQuerySnap.value as? Double {
+                        let timeElapsed = DateUtils.hoursSince(unixTimestamp: lastQueryTimestamp)
+                        if timeElapsed >= 3 {
+                            
+                            let algoliaQuery = Query()
+                            algoliaQuery.filters = self.themeFilters
+                            self.algoliaIndex?.search(algoliaQuery) { (content, error) in
+                                if error == nil {
+                                    self.searchRef.child(self.themeKey!).setValue(content, withCompletionBlock: { (error, ref) in
+                                        initQuery.setValue(now)
+                                        let query = hitsRef.queryOrdered(byChild: "pubDate").queryLimited(toFirst: self.limit)
+                                        query.keepSynced(true)
+                                        self.observedFeedQueries.append(query)
+                                        self.observeArticles(query: query, onComplete: onComplete)
+                                    })
+                                }
+                            }
+                        } else {
+                            
+                            let query = hitsRef.queryOrdered(byChild: "pubDate").queryLimited(toFirst: self.limit)
+                            query.keepSynced(true)
+                            self.observedFeedQueries.append(query)
+                            self.observeArticles(query: query, onComplete: onComplete)
+                        }
+                    } else {
+                        
                         let algoliaQuery = Query()
                         algoliaQuery.filters = self.themeFilters
-                        self.algoliaIndex.search(algoliaQuery) { (content, error) in
+                        self.algoliaIndex?.search(algoliaQuery) { (content, error) in
                             if error == nil {
                                 self.searchRef.child(self.themeKey!).setValue(content, withCompletionBlock: { (error, ref) in
                                     initQuery.setValue(now)
@@ -160,32 +220,9 @@ class DataSource {
                                 })
                             }
                         }
-                    } else {
-                        print("getSubscriptionsFeed: last query within 3 hours: \(timeElapsed))")
-                        let query = hitsRef.queryOrdered(byChild: "pubDate").queryLimited(toFirst: self.limit)
-                        query.keepSynced(true)
-                        self.observedFeedQueries.append(query)
-                        self.observeArticles(query: query, onComplete: onComplete)
-                    }
-                } else {
-                    print("getSubscriptionsFeed: themeKey not found")
-                    let algoliaQuery = Query()
-                    algoliaQuery.filters = self.themeFilters
-                    self.algoliaIndex.search(algoliaQuery) { (content, error) in
-                        if error == nil {
-                            self.searchRef.child(self.themeKey!).setValue(content, withCompletionBlock: { (error, ref) in
-                                initQuery.setValue(now)
-                                let query = hitsRef.queryLimited(toFirst: self.limit)
-                                query.keepSynced(true)
-                                self.observedFeedQueries.append(query)
-                                self.observeArticles(query: query, onComplete: onComplete)
-                            })
-                        }
                     }
                 }
             }
-        } else {
-            print("getSubscriptionsFeed: no theme key")
         }
     }
     
@@ -198,12 +235,12 @@ class DataSource {
         self.observeArticles(query: query, onComplete: onComplete)
     }
     
-    func observeSingleArticle(article: Article, onComplete: @escaping ((Article) -> ())) {
-        let query = articleRef.child(article.objectID)
+    func observeSingleArticle(articleId: String, onComplete: @escaping ((Article) -> ())) {
+        let query = articleRef.child(articleId)
         query.observe(.value) { (snap) in
             onComplete(Article(snapshot: snap))
         }
-        self.observedArticlesQueries[article.objectID] = query
+        self.observedArticlesQueries[articleId] = query
     }
     
     func getRecentFeed(onComplete: @escaping ([Article]) -> ()) {
@@ -237,14 +274,11 @@ class DataSource {
     func getSavedFeed(startAt: Int, onComplete: @escaping ([Article]) -> ()) {
         var savedList = [String]()
         var articles = [Article]()
-        print("uid: \(uid)")
+        
         let savedQuery = userRef.child("savedItems")
         savedQuery.observeSingleEvent(of: .value) { (savedSnap) in
             if let savedItems = savedSnap.value as? [String: Double] {
-                for key in savedItems.keys {
-                    print("savedItem key: \(key)")
-                    savedList.append(key)
-                }
+                savedList.append(contentsOf: savedItems.keys)
                 if savedList.count == 0 { return }
                 var counter = 0
                 let endIndex = min(startAt + Int(self.limit), savedList.count)
@@ -266,17 +300,106 @@ class DataSource {
     
     func removeFeedObservers() {
         for query in observedFeedQueries {
-            print("removed: \(query.ref.url)")
+            
             query.removeAllObservers()
         }
         observedFeedQueries.removeAll()
     }
     
-    func removeArticleObserver(article: Article) {
-        if let query = observedArticlesQueries[article.objectID] {
-            print("removed: \(query.ref.url)")
+    func removeArticleObserver(_ articleId: String) {
+        if let query = observedArticlesQueries[articleId] {
+            
             query.removeAllObservers()
-            observedArticlesQueries.removeValue(forKey: article.objectID)
+            observedArticlesQueries.removeValue(forKey: articleId)
+        }
+    }
+    
+    func reportPost(_ article: Article) {
+        articleRef.child("\(article.objectID)/isReported").setValue(true)
+        reportRef.child("article/\(article.objectID)").setValue(article.postAuthorUid)
+        
+        if let posterUid = article.postAuthorUid {
+            let reportedUserRef = reportRef.child("user/\(posterUid)")
+            reportedUserRef.observeSingleEvent(of: .value) { (snap) in
+                let count = snap.value as? Int ?? 0
+                reportedUserRef.setValue(count + 1)
+            }
+        }
+    }
+    
+    
+    // Recommended Articles
+    func getRecommendedArticles(onComplete: @escaping ([Article]) -> ()) {
+        
+        themeKey = defaults.string(forKey: "themeKey")
+        themeFilters = defaults.string(forKey: "themeFilters")
+        let now = floor(Double(Date().timeIntervalSince1970 * 1000))
+        setupAlgoliaClient {
+            if self.themeKey != nil {
+                let hitsRef = self.searchRef.child(self.themeKey!).child("hits")
+                let initQuery = self.searchRef.child(self.themeKey!).child("lastQueryTimestamp")
+                initQuery.observeSingleEvent(of: .value) { (lastQuerySnap) in
+                    if let lastQueryTimestamp = lastQuerySnap.value as? Double {
+                        let timeElapsed = DateUtils.hoursSince(unixTimestamp: lastQueryTimestamp)
+                        if timeElapsed >= 3 {
+                            
+                            let algoliaQuery = Query()
+                            algoliaQuery.filters = self.themeFilters
+                            self.algoliaIndex?.search(algoliaQuery) { (content, error) in
+                                if error == nil {
+                                    self.searchRef.child(self.themeKey!).setValue(content, withCompletionBlock: { (error, ref) in
+                                        initQuery.setValue(now)
+                                        let query = hitsRef.queryLimited(toFirst: 5)
+                                        var articles = [Article]()
+                                        query.observe(.childAdded, with: { (snap) in
+                                            let article = Article(snapshot: snap)
+                                            articles.append(article)
+                                            if articles.count == 5 {
+                                                query.removeAllObservers()
+                                                onComplete(articles)
+                                            }
+                                        })
+                                    })
+                                }
+                            }
+                        } else {
+                            
+                            let query = hitsRef.queryLimited(toFirst: 5)
+                            var articles = [Article]()
+                            query.observe(.childAdded, with: { (snap) in
+                                let article = Article(snapshot: snap)
+                                articles.append(article)
+                                
+                                if articles.count == 5 {
+                                    query.removeAllObservers()
+                                    onComplete(articles)
+                                }
+                            })
+                        }
+                    } else {
+                        
+                        let algoliaQuery = Query()
+                        algoliaQuery.filters = self.themeFilters
+                        self.algoliaIndex?.search(algoliaQuery) { (content, error) in
+                            if error == nil {
+                                self.searchRef.child(self.themeKey!).setValue(content, withCompletionBlock: { (error, ref) in
+                                    initQuery.setValue(now)
+                                    let query = hitsRef.queryLimited(toFirst: 5)
+                                    var articles = [Article]()
+                                    query.observe(.childAdded, with: { (snap) in
+                                        let article = Article(snapshot: snap)
+                                        articles.append(article)
+                                        if articles.count == 5 {
+                                            query.removeAllObservers()
+                                            onComplete(articles)
+                                        }
+                                    })
+                                })
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
     
@@ -322,9 +445,9 @@ class DataSource {
             return TransactionResult.success(withValue: mutableData)
         }, andCompletionBlock: { (error, committed, snap) in
             if let error = error {
-                print(error.localizedDescription)
+                
             }
-            print("updateArticleVote: \(committed)")
+            
             onComplete()
         })
     }
@@ -338,13 +461,26 @@ class DataSource {
                 var downvotedItems = user["downvotedItems"] as? [String: Double] ?? [:]
                 var upvotedItemsCount = user["upvotedItemsCount"] as? Int ?? 0
                 var downvotedItemsCount = user["downvotedItemsCount"] as? Int ?? 0
+                var points = user["points"] as? Double ?? 0
                 
                 if actionIsUpvote {
-                    upvotedItems[self.uid] = now
-                    downvotedItems.removeValue(forKey: self.uid)
+                    if let _ = upvotedItems[self.uid] {
+                        upvotedItems.removeValue(forKey: self.uid)
+                        points = points - 1
+                    } else {
+                        upvotedItems[self.uid] = now
+                        downvotedItems.removeValue(forKey: self.uid)
+                        points = points + 1
+                    }
                 } else {
-                    upvotedItems.removeValue(forKey: self.uid)
-                    downvotedItems[self.uid] = now
+                    if let _ = downvotedItems[self.uid] {
+                        downvotedItems.removeValue(forKey: self.uid)
+                        points = points - 1
+                    } else {
+                        upvotedItems.removeValue(forKey: self.uid)
+                        downvotedItems[self.uid] = now
+                        points = points + 1
+                    }
                 }
                 
                 upvotedItemsCount = upvotedItems.count
@@ -354,6 +490,7 @@ class DataSource {
                 user["downvotedItems"] = downvotedItems as Any?
                 user["upvotedItemsCount"] = upvotedItemsCount as Any?
                 user["downvotedItemsCount"] = downvotedItemsCount as Any?
+                user["points"] = points as Any?
                 
                 mutableData.value = user
                 
@@ -362,9 +499,9 @@ class DataSource {
             return TransactionResult.success(withValue: mutableData)
         }, andCompletionBlock: { (error, committed, snap) in
             if let error = error {
-                print(error.localizedDescription)
+                
             }
-            print("updateUserVote: \(committed)")
+            
             onComplete()
         })
     }
@@ -396,9 +533,9 @@ class DataSource {
             return TransactionResult.success(withValue: mutableData)
         }, andCompletionBlock: { (error, committed, snap) in
             if let error = error {
-                print(error.localizedDescription)
+                
             }
-            print("updateArticleSave: \(committed)")
+            
             onComplete()
         })
     }
@@ -428,9 +565,9 @@ class DataSource {
             return TransactionResult.success(withValue: mutableData)
         }, andCompletionBlock: { (error, committed, snap) in
             if let error = error {
-                print(error.localizedDescription)
+                
             }
-            print("updateUserSave: \(committed)")
+            
             onComplete()
         })
     }
@@ -442,16 +579,20 @@ class DataSource {
         var commentIds = [String]()
         
         query.observe(.childAdded) { (snap) in
+            let comment = Comment(snapshot: snap)
+            
             if !commentIds.contains(snap.key) {
-                comments.append(Comment(snapshot: snap))
+                comments.append(comment)
                 commentIds.append(snap.key)
             }
             onComplete(comments)
         }
         
         query.observe(.childChanged) { (snap) in
+            let comment = Comment(snapshot: snap)
+            
             if let index = commentIds.index(of: snap.key) {
-                comments[index] = Comment(snapshot: snap)
+                comments[index] = comment
             }
             onComplete(comments)
         }
@@ -476,36 +617,36 @@ class DataSource {
         }
     }
     
-    func getArticleComments(_ article: Article, onComplete: @escaping ([Comment]) -> ()) {
-        let query = commentRef.child(article.objectID)
+    func getArticleComments(_ articleId: String, onComplete: @escaping ([Comment]) -> ()) {
+        let query = commentRef.child(articleId)
         observeComments(query: query, onComplete: onComplete)
     }
     
-    func removeCommentObservers(_ article: Article) {
-        commentRef.child(article.objectID).removeAllObservers()
+    func removeCommentObservers(_ articleId: String) {
+        commentRef.child(articleId).removeAllObservers()
     }
     
-    func follow(article: Article) {
+    func follow(articleId: String) {
         var token: String?
         
         InstanceID.instanceID().instanceID { (result, error) in
             if let error = error {
-                print(error)
+                
             } else if let result = result {
                 token = result.token
-                let query = self.articleRef.child("\(article.objectID)/notificationTokens/\(self.uid)")
+                let query = self.articleRef.child("\(articleId)/notificationTokens/\(self.uid)")
                 query.setValue(token)
             }
         }
     }
     
-    func unfollow(article: Article) {
-        let query = self.articleRef.child("\(article.objectID)/notificationTokens/\(self.uid)")
+    func unfollow(articleId: String) {
+        let query = self.articleRef.child("\(articleId)/notificationTokens/\(self.uid)")
         query.removeValue()
     }
     
-    func sendComment(article: Article, commentText: String?, commentImageData: Data?, onComplete: @escaping () -> (), onError: @escaping (String) -> ()) {
-        let commentRef = self.database.reference(withPath: "comment/\(article.objectID)")
+    func sendComment(articleId: String, commentText: String?, commentImageData: Data?, onComplete: @escaping () -> (), onError: @escaping (String) -> ()) {
+        let commentRef = self.database.reference(withPath: "comment/\(articleId)")
         
         let now = -floor(Double(Date().timeIntervalSince1970 * 1000))
         let key = commentRef.childByAutoId().key
@@ -526,6 +667,11 @@ class DataSource {
                         onError(error.localizedDescription)
                         return
                     }
+                    
+                    self.updateArticleComment(articleId: articleId)
+                    self.updateUserComment(articleId: articleId)
+                    
+                    onComplete()
                 }
             }, onError: { (error) in
                 onError(error)
@@ -537,24 +683,21 @@ class DataSource {
                     return
                 }
                 
-                //updateCommentCount()
-                //updateUserCommentCount()
-                //updateNotificationTokens()
-                //updateUserData(onComplete: pushUrlComment(commentRef, pubDate))
+                self.updateArticleComment(articleId: articleId)
+                self.updateUserComment(articleId: articleId)
                 
                 onComplete()
             }
         }
     }
     
-    func sendUrlComment(article: Article, urlLink: String, urlTitle: String, urlImageUrl: String?, urlSource: String?) {
-        let commentRef = self.database.reference(withPath: "comment/\(article.objectID)")
+    func sendUrlComment(articleId: String, urlLink: String, urlTitle: String, urlImageUrl: String?, urlSource: String?) {
+        let commentRef = self.database.reference(withPath: "comment/\(articleId)")
         
         let now = -floor(Double(Date().timeIntervalSince1970 * 1000))
         let key = commentRef.childByAutoId().key
         
         let commentAsDict: [String: Any?] = [
-            "commentId": key,
             "uid": uid,
             "userDisplayName": userDisplayName!,
             "commentText": urlTitle,
@@ -568,60 +711,93 @@ class DataSource {
         commentRef.child(key).setValue(commentAsDict)
     }
     
-    func addArticleCommentCount(article: Article) {
-        let ref = articleRef.child("\(article.objectID)/commentCount")
+    func updateArticleComment(articleId: String) {
+        let query = articleRef.child(articleId)
         
-        ref.runTransactionBlock({ (mutableData) -> TransactionResult in
-            if let commentCount = mutableData.value as? Int {
-                mutableData.value = commentCount + 1
+        let dispatchGroup = DispatchGroup()
+        dispatchGroup.enter()
+        var token: String = ""
+        InstanceID.instanceID().instanceID { (result, error) in
+            if let error = error {
+                
+            } else if let result = result {
+                token = result.token
+                dispatchGroup.leave()
+            }
+        }
+        
+        dispatchGroup.notify(queue: .main) {
+            query.runTransactionBlock({ (mutableData) -> TransactionResult in
+                if var article = mutableData.value as? [String: Any] {
+                    var commenters = article["commenters"] as? [String: Int] ?? [:]
+                    var commentCount = article["commentCount"] as? Int ?? 0
+                    var notificationTokens = article["notificationTokens"] as? [String: String] ?? [:]
+                    
+                    commenters[self.uid] = (commenters[self.uid] ?? 0) + 1
+                    commentCount += 1
+                    notificationTokens[self.uid] = token
+                    
+                    article["commenters"] = commenters as Any?
+                    article["commentCount"] = commentCount as Any?
+                    article["notificationTokens"] = notificationTokens as Any?
+                    article["changedSinceLastJob"] = true as Any?
+                    
+                    mutableData.value = article
+                    
+                    return TransactionResult.success(withValue: mutableData)
+                }
                 return TransactionResult.success(withValue: mutableData)
-            } else if mutableData.value == nil {
-                mutableData.value = 1
+            }, andCompletionBlock: { (error, committed, snap) in
+                if let error = error {
+                    
+                }
+                
+            })
+        }
+    }
+    
+    func updateUserComment(articleId: String) {
+        userRef.runTransactionBlock({ (mutableData) -> TransactionResult in
+            if var user = mutableData.value as? [String: Any] {
+                var commentedItems = user["commentedItems"] as? [String: Int] ?? [:]
+                var commentedItemsCount = user["commentedItemsCount"] as? Int ?? 0
+                var points = user["points"] as? Double ?? 0
+                
+                commentedItemsCount = commentedItems.count + 1
+                commentedItems[articleId] = commentedItemsCount
+                points = points + 1
+                
+                user["commentedItems"] = commentedItems as Any?
+                user["commentedItemsCount"] = commentedItemsCount as Any?
+                user["points"] = points as Any?
+                
+                mutableData.value = user
+                
+                return TransactionResult.success(withValue: mutableData)
             }
             return TransactionResult.success(withValue: mutableData)
         }, andCompletionBlock: { (error, committed, snap) in
             if let error = error {
-                print(error.localizedDescription)
+                
             }
+            
         })
     }
     
-    func addArticleCommenters(article: Article) {
-        let ref = articleRef.child("\(article.objectID)/commenters/\(uid)")
+    func reportComment(articleId: String, comment: Comment) {
+        commentRef.child("\(articleId)/\(comment.commentId)/isReported").setValue(true)
+        reportRef.child("comment/\(articleId)/\(comment.commentId)").setValue(comment.uid)
         
-        ref.runTransactionBlock({ (mutableData) -> TransactionResult in
-            if let commentCount = mutableData.value as? Int {
-                mutableData.value = commentCount + 1
-                return TransactionResult.success(withValue: mutableData)
-            } else if mutableData.value == nil {
-                mutableData.value = 1
-            }
-            return TransactionResult.success(withValue: mutableData)
-        }, andCompletionBlock: { (error, committed, snap) in
-            if let error = error {
-                print(error.localizedDescription)
-            }
-        })
+        let commenterUid = comment.uid
+        let reportedUserRef = reportRef.child("user/\(commenterUid)")
+        reportedUserRef.observeSingleEvent(of: .value) { (snap) in
+            let count = snap.value as? Int ?? 0
+            reportedUserRef.setValue(count + 1)
+        }
     }
     
-    func addArticleNotificationTokens(article: Article, token: String) {
-        let ref = articleRef.child("\(article.objectID)/notificationTokens/\(uid)")
-        
-        ref.runTransactionBlock({ (mutableData) -> TransactionResult in
-            if let _ = mutableData.value as? String {
-                mutableData.value = token
-                return TransactionResult.success(withValue: mutableData)
-            } else if mutableData.value == nil {
-                mutableData.value = token
-            }
-            return TransactionResult.success(withValue: mutableData)
-        }, andCompletionBlock: { (error, committed, snap) in
-            if let error = error {
-                print(error.localizedDescription)
-            }
-        })
-    }
     
+    // Post
     func createPost(post: Dictionary<String, Any?>, postImageData: Data?, onComplete: @escaping () -> (), onError: @escaping (String) -> ()) {
         var post = post
         
@@ -635,6 +811,8 @@ class DataSource {
                         return
                     }
                     
+                    self.updateUserPost(post: post)
+                    
                     onComplete()
                 })
             }, onError: { (error) in
@@ -647,22 +825,27 @@ class DataSource {
                     return
                 }
                 
+                self.updateUserPost(post: post)
+                
                 onComplete()
             })
         }
     }
     
-    func updateUserPost(post: Article) {
+    func updateUserPost(post: Dictionary<String, Any?>) {
         userRef.runTransactionBlock({ (mutableData) -> TransactionResult in
             if var user = mutableData.value as? [String: Any] {
                 var createdPosts = user["createdPosts"] as? [String: Double] ?? [:]
                 var createdPostsCount = user["createdPostsCount"] as? Int ?? 0
+                var points = user["points"] as? Double ?? 0
                 
-                createdPosts[post.objectID] = post.postDate
+                createdPosts[post["objectID"] as! String] = post["postDate"] as? Double
                 createdPostsCount = createdPosts.count
+                points = points + 1
                 
                 user["createdPosts"] = createdPosts as Any?
                 user["createdPostsCount"] = createdPostsCount as Any?
+                user["points"] = points as Any?
                 
                 mutableData.value = user
                 
@@ -671,9 +854,9 @@ class DataSource {
             return TransactionResult.success(withValue: mutableData)
         }, andCompletionBlock: { (error, committed, snap) in
             if let error = error {
-                print(error.localizedDescription)
+                
             }
-            print("updateUserPost: \(committed)")
+            
         })
     }
     
@@ -711,5 +894,22 @@ class DataSource {
     func setArticleReadTime(article: Article, readTime: Int) {
         let query = articleRef.child("\(article.objectID)/readTime")
         query.setValue(readTime)
+    }
+    
+    // Settings
+    func setCommentsNotificationPreference(bool: Bool) {
+        if !bool {
+            commentsPreferenceRef.setValue(bool)
+        } else {
+            commentsPreferenceRef.removeValue()
+        }
+    }
+    
+    func setRecArticlesNotificationPreference(bool: Bool) {
+        if !bool {
+            recArticlesPreferenceRef.setValue(bool)
+        } else {
+            recArticlesPreferenceRef.removeValue()
+        }
     }
 }
