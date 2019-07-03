@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>AD_UNIT_ID_FOR_BANNER_TEST</key>
+	<string>ca-app-pub-3940256099942544/2934735716</string>
+	<key>AD_UNIT_ID_FOR_INTERSTITIAL_TEST</key>
+	<string>ca-app-pub-3940256099942544/4411468910</string>
+	<key>CLIENT_ID</key>
+	<string>731605071041-rtk8bj220q6vt9rpp52rv8pv744crtt0.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.731605071041-rtk8bj220q6vt9rpp52rv8pv744crtt0</string>
+	<key>API_KEY</key>
+	<string>AIzaSyDZihY6eFL4jydaZVWHqpu3L9m-Wq0VG0I</string>
+	<key>GCM_SENDER_ID</key>
+	<string>731605071041</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>sg.acorncommunity.acorn</string>
+	<key>PROJECT_ID</key>
+	<string>acorn-924e0</string>
+	<key>STORAGE_BUCKET</key>
+	<string>acorn-924e0.appspot.com</string>
+	<key>IS_ADS_ENABLED</key>
+	<true></true>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<false></false>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:731605071041:ios:261005d5f3dc957b</string>
+	<key>DATABASE_URL</key>
+	<string>https://acorn-924e0.firebaseio.com</string>
+</dict>
+</plist>

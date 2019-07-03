@@ -1,0 +1,192 @@
+{
+  "rules": {
+    ".read": "auth != null",
+    "article": {
+      ".write": "newData.exists() && auth != null && auth.token.email_verified === true",
+      ".indexOn": [
+        "pubDate",
+        "trendingIndex",
+        "savers",
+        "changedSinceLastJob",
+        "mainTheme",
+        "source",
+        "title"
+      ],
+      "$oid": {
+        ".indexOn": [
+          "pubDate",
+          "trendingIndex",
+          "savers",
+          "changedSinceLastJob",
+          "mainTheme",
+          "source"
+        ],
+        "author": {
+          ".validate": "newData.exists() && newData.isString()"
+        },
+        "category": {
+          "$id": {
+            ".validate": "newData.exists() && newData.isString()"
+          }
+        },
+        "changedSinceLastJob": {
+          ".validate": "newData.exists() && newData.isBoolean()"
+        },
+        "commentCount": {
+          ".validate": "newData.exists() && newData.isNumber()"
+        },
+        "commenters": {
+          "$uid": {
+            ".validate": "newData.exists() && newData.isNumber() && root.child('user').child($uid).exists()"
+          }
+        },
+        "downvoters": {
+          "$uid": {
+            ".validate": "newData.exists() && newData.isNumber() && root.child('user').child($uid).exists()"
+          }
+        },
+        "entityId": {
+          ".validate": "newData.exists() && newData.isNumber()"
+        },
+        "imageUrl": {
+          ".validate": "newData.exists() && newData.isString()"
+        },
+        "link": {
+          ".validate": "newData.exists() && newData.isString()"
+        },
+        "mainTheme": {
+          ".validate": "newData.exists() && newData.isString()"
+        },
+        "objectID": {
+          ".validate": "newData.exists() && newData.val() == $oid"
+        },
+        "notificationTokens": {
+          "$uid": {
+            ".validate": "newData.exists() && newData.isString() && root.child('user').child($uid).exists()"
+          }
+        },
+        "postAuthor": {
+          ".validate": "newData.exists() && newData.isString()"
+        },
+        "postAuthorUid": {
+          ".validate": "newData.exists() && newData.isString()"
+        },
+        "postDate": {
+          ".validate": "newData.exists()"
+        },
+        "postImageUrl": {
+          ".validate": "newData.exists() && newData.isString()"
+        },
+        "postText": {
+          ".validate": "newData.exists() && newData.isString()"
+        },
+        "pubDate": {
+          ".validate": "newData.exists()"
+        },
+        "readTime": {
+          ".validate": "newData.exists() && newData.isNumber()"
+        },
+        "saveCount": {
+          ".validate": "newData.exists() && newData.isNumber()"
+        },
+        "savers": {
+          "$uid": {
+            ".validate": "newData.exists() && newData.isNumber() && root.child('user').child($uid).exists()"
+          }
+        },
+        "shareCount": {
+          ".validate": "newData.exists() && newData.isNumber()"
+        },
+        "sharers": {
+          "$uid": {
+            ".validate": "newData.exists() && newData.isNumber() && root.child('user').child($uid).exists()"
+          }
+        },
+        "source": {
+          ".validate": "newData.exists() && newData.isString()"
+        },
+        "theme": {
+          "$id": {
+            ".validate": "newData.exists() && newData.isString()"
+          }
+        },
+        "title": {
+          ".validate": "newData.exists() && newData.isString()"
+        },
+        "trendingIndex": {
+          ".validate": "newData.exists() && newData.isString() && newData.val().contains($oid)"
+        },
+        "type": {
+          ".validate": "newData.exists() && (newData.val() == 'post' || newData.val() == 'article')"
+        },
+        "upvoters": {
+          "$uid": {
+            ".validate": "newData.exists() && newData.isNumber() && root.child('user').child($uid).exists()"
+          }
+        },
+        "voteCount": {
+          ".validate": "newData.exists() && newData.isNumber()"
+        },
+        "$others": {
+          ".validate": false
+        }
+      }
+    },
+    "user": {
+      ".indexOn": [
+        "savedItems"
+      ],
+      "$uid": {
+        ".indexOn": [
+          "savedItems"
+        ],
+        ".write": "$uid === auth.uid"
+      }
+    },
+    "search": {
+      ".write": "auth != null",
+      "$themeList": {
+        ".indexOn": [
+          "hits"
+        ]
+      }
+    },
+    "comment": {
+      "$oid": {
+        "$cid": {
+          ".write": "newData.exists() && newData.child('uid').val() == auth.uid",
+          "commentText": {
+            ".validate": "newData.exists() && newData.isString() && newData.val().length <= 1000"
+          },
+          "imageUrl": {
+            ".validate": "newData.exists() && newData.isString()"
+          },
+          "isUrl": {
+            ".validate": "newData.exists() && newData.isBoolean()"
+          },
+          "localImageUri": {
+            ".validate": "newData.exists() && newData.isString()"
+          },
+          "pubDate": {
+            ".validate": "newData.exists()"
+          },
+          "uid": {
+            ".validate": "newData.exists() && newData.val() == auth.uid"
+          },
+          "urlDesc": {
+            ".validate": "newData.exists() && newData.isString()"
+          },
+          "urlLink": {
+            ".validate": "newData.exists() && newData.isString()"
+          },
+          "userDisplayName": {
+            ".validate": "newData.exists() && newData.isString()"
+          },
+          "$others": {
+            ".validate": false
+          }
+        }
+      }
+    }
+  }
+}
