@@ -87,19 +87,19 @@ class FeedCvCell: UICollectionViewCell {
     override func prepareForReuse() {
         super.prepareForReuse()
         
-        themeLabel.text = nil
+//        themeLabel.text = nil
         topSeparatorLabel.text = " • "
         readTimeLabel.text = nil
-        
-        titleLabel.text = nil
-        
-        sourceLabel.text = nil
-        dateLabel.text = nil
-        
-        netVoteImageView.image = #imageLiteral(resourceName: "ic_arrow_up_18")
-        netVoteImageView.tintColor = upvoteTint
-        voteCntLabel.text = "0"
-        commCntLabel.text = "0"
+//
+//        titleLabel.text = nil
+//
+//        sourceLabel.text = nil
+//        dateLabel.text = nil
+//
+//        netVoteImageView.image = #imageLiteral(resourceName: "ic_arrow_up_18")
+//        netVoteImageView.tintColor = upvoteTint
+//        voteCntLabel.text = "0"
+//        commCntLabel.text = "0"
         
         imageView.sd_cancelCurrentImageLoad()
         
@@ -113,7 +113,7 @@ class FeedCvCell: UICollectionViewCell {
     }
     
     func populateContent(article: Article, selectedFeed: String) {
-        if selectedFeed == "Subscriptions" {
+        if (selectedFeed == "Subscriptions" || selectedFeed == "Deals" || selectedFeed == "Trending") {
             dataSource.observeSingleArticle(articleId: article.objectID) { (retrievedArticle) in
                 self.article = retrievedArticle
                 self.populateCell(article: self.article!)
@@ -202,77 +202,11 @@ class FeedCvCell: UICollectionViewCell {
     }
     
     @IBAction func didTapUpvoteButton(_ sender: Any) {
-        if !delegate!.isUserEmailVerified(user: user) {
-            delegate!.showEmailVerificationAlert(user: user)
-            return
-        }
-        
-        upvoteButton.isEnabled = false
-        downvoteButton.isEnabled = false
-        
-        var wasUpvoted = false
-        var wasDownvoted = false
-        
-        if let upvoters = article?.upvoters {
-            if upvoters.keys.contains(uid) {
-                wasUpvoted = true
-            }
-        }
-        
-        if let downvoters = article?.downvoters {
-            if downvoters.keys.contains(uid) {
-                wasDownvoted = true
-            }
-        }
-        
-        let dispatchGroup = DispatchGroup()
-        dispatchGroup.enter()
-        dataSource.updateArticleVote(article: article!, actionIsUpvote: true, wasUpvoted: wasUpvoted, wasDownvoted: wasDownvoted) { dispatchGroup.leave() }
-        
-        dispatchGroup.enter()
-        dataSource.updateUserVote(article: article!, actionIsUpvote: true) { dispatchGroup.leave() }
-        dispatchGroup.notify(queue: .main) {
-            
-            self.upvoteButton.isEnabled = true
-            self.downvoteButton.isEnabled = true
-        }
+        delegate?.upvoteActionTapped(article: article!, upvoteButton: upvoteButton, downvoteButton: downvoteButton)
     }
     
     @IBAction func didTapDownvoteButton(_ sender: Any) {
-        if !delegate!.isUserEmailVerified(user: user) {
-            delegate!.showEmailVerificationAlert(user: user)
-            return
-        }
-        
-        upvoteButton.isEnabled = false
-        downvoteButton.isEnabled = false
-        
-        var wasUpvoted = false
-        var wasDownvoted = false
-        
-        if let upvoters = article?.upvoters {
-            if upvoters.keys.contains(uid) {
-                wasUpvoted = true
-            }
-        }
-        
-        if let downvoters = article?.downvoters {
-            if downvoters.keys.contains(uid) {
-                wasDownvoted = true
-            }
-        }
-        
-        let dispatchGroup = DispatchGroup()
-        dispatchGroup.enter()
-        dataSource.updateArticleVote(article: article!, actionIsUpvote: false, wasUpvoted: wasUpvoted, wasDownvoted: wasDownvoted) { dispatchGroup.leave() }
-        
-        dispatchGroup.enter()
-        dataSource.updateUserVote(article: article!, actionIsUpvote: false) { dispatchGroup.leave() }
-        dispatchGroup.notify(queue: .main) {
-            
-            self.upvoteButton.isEnabled = true
-            self.downvoteButton.isEnabled = true
-        }
+        delegate?.downvoteActionTapped(article: article!, upvoteButton: upvoteButton, downvoteButton: downvoteButton)
     }
     
     @IBAction func didTapCommentButton(_ sender: Any) {
@@ -280,25 +214,19 @@ class FeedCvCell: UICollectionViewCell {
     }
     
     @objc func openArticle() {
+        dataSource.recordOpenArticleDetails(articleId: (self.article?.objectID)!, mainTheme: self.article?.mainTheme ?? "General")
         delegate?.openArticle((self.article?.objectID)!)
     }
     
     @IBAction func didTapSaveButton(_ sender: Any) {
-        saveButton.isEnabled = false
-        
-        let dispatchGroup = DispatchGroup()
-        dispatchGroup.enter()
-        dataSource.updateArticleSave(article: article!) { dispatchGroup.leave() }
-        
-        dispatchGroup.enter()
-        dataSource.updateUserSave(article: article!) { dispatchGroup.leave() }
-        dispatchGroup.notify(queue: .main) {
-            
-            self.saveButton.isEnabled = true
-        }
+        delegate?.saveActionTapped(article: article!, saveButton: saveButton)
     }
     
     @IBAction func didTapShareButton(_ sender: Any) {
-        delegate?.openShareActivity(self.article?.link)
+        guard let article = self.article else { return }
+        let url = ShareUtils.createShareUri(articleId: article.objectID, url: article.link!, sharerId: uid)
+        ShareUtils.createShortDynamicLink(url: url, sharerId: uid) { (dynamicLink) in
+            self.delegate?.openShareActivity(dynamicLink, article)
+        }
     }
 }
