@@ -10,6 +10,8 @@
 	<string>731605071041-rtk8bj220q6vt9rpp52rv8pv744crtt0.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
 	<string>com.googleusercontent.apps.731605071041-rtk8bj220q6vt9rpp52rv8pv744crtt0</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>731605071041-1l477ttb1j6ilds07d3ku8pn0fi7rqbg.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
 	<string>AIzaSyDZihY6eFL4jydaZVWHqpu3L9m-Wq0VG0I</string>
 	<key>GCM_SENDER_ID</key>
@@ -27,7 +29,7 @@
 	<key>IS_ANALYTICS_ENABLED</key>
 	<false></false>
 	<key>IS_APPINVITE_ENABLED</key>
-	<false></false>
+	<true></true>
 	<key>IS_GCM_ENABLED</key>
 	<true></true>
 	<key>IS_SIGNIN_ENABLED</key>
@@ -36,5 +38,7 @@
 	<string>1:731605071041:ios:261005d5f3dc957b</string>
 	<key>DATABASE_URL</key>
 	<string>https://acorn-924e0.firebaseio.com</string>
+	<key>ADMOB_APP_ID</key>
+	<string>ca-app-pub-9396779536944241~7394397498</string>
 </dict>
 </plist>

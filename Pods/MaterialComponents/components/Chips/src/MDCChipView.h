@@ -1,21 +1,19 @@
-/*
- Copyright 2017-present the Material Components for iOS authors. All Rights Reserved.
+// Copyright 2017-present the Material Components for iOS authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
- http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
- */
-
-#import <UIKit/UIKit.h>
 #import <CoreGraphics/CoreGraphics.h>
+#import <UIKit/UIKit.h>
 
 #import "MaterialShadowElevations.h"
 #import "MaterialShapes.h"
@@ -113,10 +111,18 @@
 @property(nonatomic, strong, nullable) UIFont *titleFont UI_APPEARANCE_SELECTOR;
 
 /*
+ This property determines if an @c MDCChipView should use the @c MDCRippleView behavior or not.
+ By setting this property to @c YES, @c MDCStatefulRippleView is used to provide the user visual
+ touch feedback, instead of the legacy @c MDCInkView.
+ @note Defaults to @c NO.
+ */
+@property(nonatomic, assign) BOOL enableRippleBehavior;
+
+/*
  The color of the ink ripple.
  */
-@property(nonatomic, strong, null_resettable) UIColor *inkColor UI_APPEARANCE_SELECTOR
-    __deprecated_msg("Use setInkColor:forState:");
+@property(nonatomic, strong, null_resettable)
+    UIColor *inkColor UI_APPEARANCE_SELECTOR __deprecated_msg("Use setInkColor:forState:");
 
 /*
  The shape generator used to define the chip's shape.
@@ -136,6 +142,31 @@
  */
 @property(nonatomic, readwrite, setter=mdc_setAdjustsFontForContentSizeCategory:)
     BOOL mdc_adjustsFontForContentSizeCategory UI_APPEARANCE_SELECTOR;
+
+/**
+ Enable legacy font scaling curves for Dynamic Type.
+
+ Legacy font scaling uses the older [UIFont mdc_fontSizedForMaterialTextStyle:scaledForDynamicType:
+ category instead of the MDCFontScaler API.
+
+ Default value is YES.
+ */
+@property(nonatomic, readwrite, setter=mdc_setLegacyFontScaling:)
+    BOOL mdc_legacyFontScaling __deprecated;
+
+/**
+ Affects the fallback behavior for when a scaled font is not provided.
+
+ If enabled, the font size will adjust even if a scaled font has not been provided for
+ a given UIFont property on this component.
+
+ If disabled, the font size will only be adjusted if a scaled font has been provided.
+ This behavior most closely matches UIKit's.
+
+ Default value is YES, but this flag will eventually default to NO and then be deprecated
+ and deleted.
+ */
+@property(nonatomic, assign) BOOL adjustsFontForContentSizeCategoryWhenScaledFontIsUnavailable;
 
 /**
  The minimum dimensions of the Chip. A non-positive value for either height or width is equivalent
@@ -170,8 +201,8 @@
  @param backgroundColor The background color.
  @param state The control state.
  */
-- (void)setBackgroundColor:(nullable UIColor *)backgroundColor forState:(UIControlState)state
-    UI_APPEARANCE_SELECTOR;
+- (void)setBackgroundColor:(nullable UIColor *)backgroundColor
+                  forState:(UIControlState)state UI_APPEARANCE_SELECTOR;
 
 /*
  Returns the border color for a particular control state.
@@ -190,8 +221,8 @@
  @param borderColor The border color.
  @param state The control state.
  */
-- (void)setBorderColor:(nullable UIColor *)borderColor forState:(UIControlState)state
-    UI_APPEARANCE_SELECTOR;
+- (void)setBorderColor:(nullable UIColor *)borderColor
+              forState:(UIControlState)state UI_APPEARANCE_SELECTOR;
 
 /*
  Returns the border width for a particular control state.
@@ -229,8 +260,8 @@
  @param elevation The elevation.
  @param state The control state.
  */
-- (void)setElevation:(MDCShadowElevation)elevation forState:(UIControlState)state
-    UI_APPEARANCE_SELECTOR;
+- (void)setElevation:(MDCShadowElevation)elevation
+            forState:(UIControlState)state UI_APPEARANCE_SELECTOR;
 
 /*
  Returns the ink color for a particular control state.
@@ -249,8 +280,8 @@
  @param inkColor The ink color.
  @param state The control state.
  */
-- (void)setInkColor:(nullable UIColor *)inkColor forState:(UIControlState)state
-    UI_APPEARANCE_SELECTOR;
+- (void)setInkColor:(nullable UIColor *)inkColor
+           forState:(UIControlState)state UI_APPEARANCE_SELECTOR;
 
 /*
  Returns the shadow color for a particular control state.
@@ -269,8 +300,8 @@
  @param elevation The shadow color.
  @param state The control state.
  */
-- (void)setShadowColor:(nullable UIColor *)shadowColor forState:(UIControlState)state
-    UI_APPEARANCE_SELECTOR;
+- (void)setShadowColor:(nullable UIColor *)shadowColor
+              forState:(UIControlState)state UI_APPEARANCE_SELECTOR;
 
 /*
  Returns the title color for a particular control state.
@@ -289,7 +320,7 @@
  @param titleColor The title color.
  @param state The control state.
  */
-- (void)setTitleColor:(nullable UIColor *)titleColor forState:(UIControlState)state
-    UI_APPEARANCE_SELECTOR;
+- (void)setTitleColor:(nullable UIColor *)titleColor
+             forState:(UIControlState)state UI_APPEARANCE_SELECTOR;
 
 @end

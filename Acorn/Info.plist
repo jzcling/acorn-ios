@@ -17,7 +17,7 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.2.0</string>
+	<string>1.4.6</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -36,13 +36,43 @@
 				<string>fb120640472147728</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>sg.acorncommunity.acorn</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>sg.acorncommunity.acorn</string>
+			</array>
+		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>23</string>
+	<string>49</string>
+	<key>Fabric</key>
+	<dict>
+		<key>APIKey</key>
+		<string>dda0c4345f536cb14cf38e5b05d2089e28ff7f3f</string>
+		<key>Kits</key>
+		<array>
+			<dict>
+				<key>KitInfo</key>
+				<dict/>
+				<key>KitName</key>
+				<string>Crashlytics</string>
+			</dict>
+		</array>
+	</dict>
 	<key>FacebookAppID</key>
 	<string>120640472147728</string>
 	<key>FacebookDisplayName</key>
 	<string>Acorn</string>
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<string>NO</string>
+	<key>FirebaseDynamicLinksCustomDomain</key>
+	<array>
+		<string>https://acorncommunity.sg/share</string>
+	</array>
 	<key>LSApplicationCategoryType</key>
 	<string></string>
 	<key>LSRequiresIPhoneOS</key>
@@ -54,8 +84,10 @@
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>Your camera will only be used to take pictures to upload in a post or a comment. It will not be used for any other purpose.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Acorn needs "Always Allow" access to push location-based articles and deals to you when you are near MRT Stations.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Your location will help us to push location-based deals to you.</string>
+	<string>Your location will help us to push location-based articles and deals to you.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Your photo library will only be used to select pictures to upload in a post or a comment. It will not be used for any other purpose.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>

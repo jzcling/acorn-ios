@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 50;
+	objectVersion = 51;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -11,6 +11,8 @@
 		220A7C93212445F900E13616 /* FeedCvCellDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220A7C92212445F900E13616 /* FeedCvCellDelegate.swift */; };
 		220A7C9521244EDD00E13616 /* WebViewViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220A7C9421244EDD00E13616 /* WebViewViewController.swift */; };
 		220A7C9B21249B4300E13616 /* HtmlUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220A7C9A21249B4200E13616 /* HtmlUtils.swift */; };
+		220C7B8921A9120800EE97EE /* LocalDb.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220C7B8821A9120800EE97EE /* LocalDb.swift */; };
+		220C7B8B21A915F400EE97EE /* dbArticle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220C7B8A21A915F400EE97EE /* dbArticle.swift */; };
 		220E69BE2120BCE000D29665 /* Checkbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220E69BB2120BCE000D29665 /* Checkbox.swift */; };
 		220E69BF2120BCE000D29665 /* DateUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220E69BC2120BCE000D29665 /* DateUtils.swift */; };
 		220E69C02120BCE000D29665 /* ResourcesDay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220E69BD2120BCE000D29665 /* ResourcesDay.swift */; };
@@ -28,6 +30,9 @@
 		220E69E82121517000D29665 /* SubscriptionsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220E69E72121517000D29665 /* SubscriptionsViewController.swift */; };
 		220E69EC2122E88400D29665 /* SubscriptionsHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220E69EB2122E88400D29665 /* SubscriptionsHeaderView.swift */; };
 		220E69EE2122E8A400D29665 /* SubscriptionsFooterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220E69ED2122E8A400D29665 /* SubscriptionsFooterView.swift */; };
+		220FEF5521875B4B00B91CC6 /* VideoFeedViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220FEF5421875B4B00B91CC6 /* VideoFeedViewController.swift */; };
+		220FEF572188015200B91CC6 /* VideoFeedCvCellDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220FEF562188015200B91CC6 /* VideoFeedCvCellDelegate.swift */; };
+		220FEF592188137A00B91CC6 /* YTPlayerViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220FEF582188137A00B91CC6 /* YTPlayerViewController.swift */; };
 		22132ABD2148DA1F00283AB5 /* SettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22132ABC2148DA1F00283AB5 /* SettingsViewController.swift */; };
 		22132ABF2148E40A00283AB5 /* ResourcesNight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22132ABE2148E40A00283AB5 /* ResourcesNight.swift */; };
 		221735D621564CDA004F8F52 /* UIBarButtonItem+Badge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 221735D521564CDA004F8F52 /* UIBarButtonItem+Badge.swift */; };
@@ -42,7 +47,12 @@
 		223A3B29211F66A3007E4DCE /* AcornTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 223A3B28211F66A3007E4DCE /* AcornTests.swift */; };
 		223A3B34211F66A3007E4DCE /* AcornUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 223A3B33211F66A3007E4DCE /* AcornUITests.swift */; };
 		223A3BC52120A3A5007E4DCE /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 223A3BAD2120A3A5007E4DCE /* GoogleService-Info.plist */; };
-		2274C8502125EE660029B01B /* ActionButtonDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2274C84F2125EE660029B01B /* ActionButtonDelegate.swift */; };
+		223B073E218734C10066073B /* VideoFeedCvCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 223B073D218734C10066073B /* VideoFeedCvCell.swift */; };
+		223B0740218735890066073B /* Video.swift in Sources */ = {isa = PBXBuildFile; fileRef = 223B073F218735890066073B /* Video.swift */; };
+		224D3E63216DDE8B00352230 /* UserViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 224D3E62216DDE8B00352230 /* UserViewController.swift */; };
+		224D3E65216F2F5000352230 /* SavedArticlesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 224D3E64216F2F4F00352230 /* SavedArticlesViewController.swift */; };
+		224D3E67216F38CC00352230 /* ArticleListTvCellDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 224D3E66216F38CC00352230 /* ArticleListTvCellDelegate.swift */; };
+		224D3E69216F4B6400352230 /* SavedArticleTvCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 224D3E68216F4B6400352230 /* SavedArticleTvCell.swift */; };
 		2274C8522125FFF40029B01B /* Comment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2274C8512125FFF40029B01B /* Comment.swift */; };
 		2274C8542126BD940029B01B /* CommentViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2274C8532126BD940029B01B /* CommentViewController.swift */; };
 		2274C8582127592C0029B01B /* AcornUser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2274C8572127592C0029B01B /* AcornUser.swift */; };
@@ -50,6 +60,7 @@
 		2274C85C212928450029B01B /* CommentImageCvCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2274C85B212928450029B01B /* CommentImageCvCell.swift */; };
 		2274C85E212928590029B01B /* CommentTextCvCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2274C85D212928580029B01B /* CommentTextCvCell.swift */; };
 		2291C4D12125154C00659A04 /* ArticleTextExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2291C4D02125154C00659A04 /* ArticleTextExtractor.swift */; };
+		22A5D6AA21DB9F4E00C4335B /* ShareUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22A5D6A921DB9F4E00C4335B /* ShareUtils.swift */; };
 		22BAB365212E9B3E00E295F1 /* CommentUrlCvCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22BAB364212E9B3C00E295F1 /* CommentUrlCvCell.swift */; };
 		22BAB367212FC4FE00E295F1 /* PreviewImageViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22BAB366212FC4FE00E295F1 /* PreviewImageViewController.swift */; };
 		22BAB3692133F81200E295F1 /* CreatePostViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22BAB3682133F81100E295F1 /* CreatePostViewController.swift */; };
@@ -62,6 +73,16 @@
 		359F08DAC13B0954CD1D1AA6 /* Pods_AcornUITests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 05F4A337FB21AD45FE78980E /* Pods_AcornUITests.framework */; };
 		49EEB1C66AAE45044674E35A /* Pods_AcornTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 894C44ACB4849EB152A64A5F /* Pods_AcornTests.framework */; };
 		56B391299F9F1E08966E8FA5 /* Pods_Acorn.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E189092C98F9D856C9D99EAD /* Pods_Acorn.framework */; };
+		7004C37722EABF0A004FE73D /* ChannelsToRemoveViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7004C37622EABF0A004FE73D /* ChannelsToRemoveViewController.swift */; };
+		7004C37922EABFE5004FE73D /* ChannelTvCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7004C37822EABFE5004FE73D /* ChannelTvCell.swift */; };
+		703C9F0322BB788600E8FC9F /* NearbyViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 703C9F0222BB788600E8FC9F /* NearbyViewController.swift */; };
+		703C9F0522BB8E6F00E8FC9F /* MrtStation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 703C9F0422BB8E6F00E8FC9F /* MrtStation.swift */; };
+		703C9F0B22BB920E00E8FC9F /* Address.swift in Sources */ = {isa = PBXBuildFile; fileRef = 703C9F0A22BB920E00E8FC9F /* Address.swift */; };
+		704AE10822E586EF001888F9 /* FeedCvCellWithDuplicates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 704AE10722E586EF001888F9 /* FeedCvCellWithDuplicates.swift */; };
+		704AE10A22E5AC4D001888F9 /* DuplicateArticleCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 704AE10922E5AC4D001888F9 /* DuplicateArticleCell.swift */; };
+		704AE10C22E5AE76001888F9 /* FeedCvCellNoImageWithDuplicates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 704AE10B22E5AE76001888F9 /* FeedCvCellNoImageWithDuplicates.swift */; };
+		704E4DE922BBE3D700FDE419 /* NearbyArticleTvCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 704E4DE822BBE3D700FDE419 /* NearbyArticleTvCell.swift */; };
+		70FBE1F422CA687600BD5EB5 /* InviteUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70FBE1F322CA687600BD5EB5 /* InviteUtils.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -101,6 +122,8 @@
 		220A7C92212445F900E13616 /* FeedCvCellDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedCvCellDelegate.swift; sourceTree = "<group>"; };
 		220A7C9421244EDD00E13616 /* WebViewViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewViewController.swift; sourceTree = "<group>"; };
 		220A7C9A21249B4200E13616 /* HtmlUtils.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HtmlUtils.swift; sourceTree = "<group>"; };
+		220C7B8821A9120800EE97EE /* LocalDb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalDb.swift; sourceTree = "<group>"; };
+		220C7B8A21A915F400EE97EE /* dbArticle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = dbArticle.swift; sourceTree = "<group>"; };
 		220E69BB2120BCE000D29665 /* Checkbox.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Checkbox.swift; sourceTree = "<group>"; };
 		220E69BC2120BCE000D29665 /* DateUtils.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DateUtils.swift; sourceTree = "<group>"; };
 		220E69BD2120BCE000D29665 /* ResourcesDay.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ResourcesDay.swift; sourceTree = "<group>"; };
@@ -118,6 +141,9 @@
 		220E69E72121517000D29665 /* SubscriptionsViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SubscriptionsViewController.swift; sourceTree = "<group>"; };
 		220E69EB2122E88400D29665 /* SubscriptionsHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionsHeaderView.swift; sourceTree = "<group>"; };
 		220E69ED2122E8A400D29665 /* SubscriptionsFooterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionsFooterView.swift; sourceTree = "<group>"; };
+		220FEF5421875B4B00B91CC6 /* VideoFeedViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoFeedViewController.swift; sourceTree = "<group>"; };
+		220FEF562188015200B91CC6 /* VideoFeedCvCellDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoFeedCvCellDelegate.swift; sourceTree = "<group>"; };
+		220FEF582188137A00B91CC6 /* YTPlayerViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTPlayerViewController.swift; sourceTree = "<group>"; };
 		22132ABC2148DA1F00283AB5 /* SettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewController.swift; sourceTree = "<group>"; };
 		22132ABE2148E40A00283AB5 /* ResourcesNight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourcesNight.swift; sourceTree = "<group>"; };
 		221735D521564CDA004F8F52 /* UIBarButtonItem+Badge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIBarButtonItem+Badge.swift"; sourceTree = "<group>"; };
@@ -138,7 +164,12 @@
 		223A3B33211F66A3007E4DCE /* AcornUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AcornUITests.swift; sourceTree = "<group>"; };
 		223A3B35211F66A3007E4DCE /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		223A3BAD2120A3A5007E4DCE /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
-		2274C84F2125EE660029B01B /* ActionButtonDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionButtonDelegate.swift; sourceTree = "<group>"; };
+		223B073D218734C10066073B /* VideoFeedCvCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoFeedCvCell.swift; sourceTree = "<group>"; };
+		223B073F218735890066073B /* Video.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Video.swift; sourceTree = "<group>"; };
+		224D3E62216DDE8B00352230 /* UserViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserViewController.swift; sourceTree = "<group>"; };
+		224D3E64216F2F4F00352230 /* SavedArticlesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedArticlesViewController.swift; sourceTree = "<group>"; };
+		224D3E66216F38CC00352230 /* ArticleListTvCellDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArticleListTvCellDelegate.swift; sourceTree = "<group>"; };
+		224D3E68216F4B6400352230 /* SavedArticleTvCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedArticleTvCell.swift; sourceTree = "<group>"; };
 		2274C8512125FFF40029B01B /* Comment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Comment.swift; sourceTree = "<group>"; };
 		2274C8532126BD940029B01B /* CommentViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommentViewController.swift; sourceTree = "<group>"; };
 		2274C8572127592C0029B01B /* AcornUser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AcornUser.swift; sourceTree = "<group>"; };
@@ -146,6 +177,7 @@
 		2274C85B212928450029B01B /* CommentImageCvCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommentImageCvCell.swift; sourceTree = "<group>"; };
 		2274C85D212928580029B01B /* CommentTextCvCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommentTextCvCell.swift; sourceTree = "<group>"; };
 		2291C4D02125154C00659A04 /* ArticleTextExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArticleTextExtractor.swift; sourceTree = "<group>"; };
+		22A5D6A921DB9F4E00C4335B /* ShareUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareUtils.swift; sourceTree = "<group>"; };
 		22BAB364212E9B3C00E295F1 /* CommentUrlCvCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommentUrlCvCell.swift; sourceTree = "<group>"; };
 		22BAB366212FC4FE00E295F1 /* PreviewImageViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewImageViewController.swift; sourceTree = "<group>"; };
 		22BAB3682133F81100E295F1 /* CreatePostViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreatePostViewController.swift; sourceTree = "<group>"; };
@@ -159,6 +191,16 @@
 		22F25BEA21444CB500940724 /* Settings.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = Settings.bundle; sourceTree = "<group>"; };
 		364F8BD70BE553068539EB2F /* Pods-AcornUITests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AcornUITests.debug.xcconfig"; path = "Pods/Target Support Files/Pods-AcornUITests/Pods-AcornUITests.debug.xcconfig"; sourceTree = "<group>"; };
 		661763497AD000027A3A51FA /* Pods-Acorn.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Acorn.release.xcconfig"; path = "Pods/Target Support Files/Pods-Acorn/Pods-Acorn.release.xcconfig"; sourceTree = "<group>"; };
+		7004C37622EABF0A004FE73D /* ChannelsToRemoveViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelsToRemoveViewController.swift; sourceTree = "<group>"; };
+		7004C37822EABFE5004FE73D /* ChannelTvCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelTvCell.swift; sourceTree = "<group>"; };
+		703C9F0222BB788600E8FC9F /* NearbyViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NearbyViewController.swift; sourceTree = "<group>"; };
+		703C9F0422BB8E6F00E8FC9F /* MrtStation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MrtStation.swift; sourceTree = "<group>"; };
+		703C9F0A22BB920E00E8FC9F /* Address.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Address.swift; sourceTree = "<group>"; };
+		704AE10722E586EF001888F9 /* FeedCvCellWithDuplicates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedCvCellWithDuplicates.swift; sourceTree = "<group>"; };
+		704AE10922E5AC4D001888F9 /* DuplicateArticleCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateArticleCell.swift; sourceTree = "<group>"; };
+		704AE10B22E5AE76001888F9 /* FeedCvCellNoImageWithDuplicates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedCvCellNoImageWithDuplicates.swift; sourceTree = "<group>"; };
+		704E4DE822BBE3D700FDE419 /* NearbyArticleTvCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NearbyArticleTvCell.swift; sourceTree = "<group>"; };
+		70FBE1F322CA687600BD5EB5 /* InviteUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteUtils.swift; sourceTree = "<group>"; };
 		894C44ACB4849EB152A64A5F /* Pods_AcornTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_AcornTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		C81535A6874416C9E9B077AF /* Pods-AcornTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AcornTests.debug.xcconfig"; path = "Pods/Target Support Files/Pods-AcornTests/Pods-AcornTests.debug.xcconfig"; sourceTree = "<group>"; };
 		E189092C98F9D856C9D99EAD /* Pods_Acorn.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Acorn.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -223,6 +265,8 @@
 				22BAB36C2138575B00E295F1 /* BounceButton.swift */,
 				22D80766215296CC00F650E7 /* UIWebViewSearch.js */,
 				221735D521564CDA004F8F52 /* UIBarButtonItem+Badge.swift */,
+				22A5D6A921DB9F4E00C4335B /* ShareUtils.swift */,
+				70FBE1F322CA687600BD5EB5 /* InviteUtils.swift */,
 			);
 			path = Utils;
 			sourceTree = "<group>";
@@ -232,6 +276,9 @@
 			children = (
 				220E69C22120BE2800D29665 /* AuthPicker.swift */,
 				220E69C82120BEA500D29665 /* FeedViewController.swift */,
+				224D3E64216F2F4F00352230 /* SavedArticlesViewController.swift */,
+				703C9F0222BB788600E8FC9F /* NearbyViewController.swift */,
+				220FEF5421875B4B00B91CC6 /* VideoFeedViewController.swift */,
 				220A7C9421244EDD00E13616 /* WebViewViewController.swift */,
 				2274C8532126BD940029B01B /* CommentViewController.swift */,
 				22BAB3682133F81100E295F1 /* CreatePostViewController.swift */,
@@ -239,8 +286,11 @@
 				22BAB366212FC4FE00E295F1 /* PreviewImageViewController.swift */,
 				220E69E72121517000D29665 /* SubscriptionsViewController.swift */,
 				22132ABC2148DA1F00283AB5 /* SettingsViewController.swift */,
+				7004C37622EABF0A004FE73D /* ChannelsToRemoveViewController.swift */,
 				221FA974215A87480066ADEE /* NotificationsViewController.swift */,
+				224D3E62216DDE8B00352230 /* UserViewController.swift */,
 				2238107721648C6A000E1A4E /* EULAViewController.swift */,
+				220FEF582188137A00B91CC6 /* YTPlayerViewController.swift */,
 				220E69C32120BE2800D29665 /* AuthPicker.xib */,
 				220E69D02121516300D29665 /* Cells */,
 			);
@@ -251,6 +301,7 @@
 			isa = PBXGroup;
 			children = (
 				220E69CB2120BEF000D29665 /* DataSource.swift */,
+				220C7B8821A9120800EE97EE /* LocalDb.swift */,
 			);
 			path = Data;
 			sourceTree = "<group>";
@@ -262,6 +313,10 @@
 				2274C8512125FFF40029B01B /* Comment.swift */,
 				220A7C8E212330F600E13616 /* Theme.swift */,
 				2274C8572127592C0029B01B /* AcornUser.swift */,
+				223B073F218735890066073B /* Video.swift */,
+				220C7B8A21A915F400EE97EE /* dbArticle.swift */,
+				703C9F0422BB8E6F00E8FC9F /* MrtStation.swift */,
+				703C9F0A22BB920E00E8FC9F /* Address.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -270,11 +325,14 @@
 			isa = PBXGroup;
 			children = (
 				220E69D12121516300D29665 /* FeedCvCell.swift */,
+				704AE10722E586EF001888F9 /* FeedCvCellWithDuplicates.swift */,
 				220E69D32121516400D29665 /* FeedCvCellNoImage.swift */,
+				704AE10B22E5AE76001888F9 /* FeedCvCellNoImageWithDuplicates.swift */,
 				220E69D52121516400D29665 /* FeedCvCellPost.swift */,
 				220E69D72121516400D29665 /* FeedCvCellPostNoImage.swift */,
 				220E69D92121516400D29665 /* FeedCvCellPostWithArticle.swift */,
 				22BAB373213D526A00E295F1 /* FeedCvCellSaved.swift */,
+				223B073D218734C10066073B /* VideoFeedCvCell.swift */,
 				220E69DB2121516400D29665 /* SubscriptionCvCell.swift */,
 				220E69EB2122E88400D29665 /* SubscriptionsHeaderView.swift */,
 				220E69ED2122E8A400D29665 /* SubscriptionsFooterView.swift */,
@@ -284,6 +342,10 @@
 				22BAB364212E9B3C00E295F1 /* CommentUrlCvCell.swift */,
 				22BAB371213C665900E295F1 /* SearchHitsTvCell.swift */,
 				221FA972215A40ED0066ADEE /* NotificationTvCell.swift */,
+				224D3E68216F4B6400352230 /* SavedArticleTvCell.swift */,
+				704E4DE822BBE3D700FDE419 /* NearbyArticleTvCell.swift */,
+				704AE10922E5AC4D001888F9 /* DuplicateArticleCell.swift */,
+				7004C37822EABFE5004FE73D /* ChannelTvCell.swift */,
 			);
 			path = Cells;
 			sourceTree = "<group>";
@@ -353,8 +415,9 @@
 			isa = PBXGroup;
 			children = (
 				220A7C92212445F900E13616 /* FeedCvCellDelegate.swift */,
-				2274C84F2125EE660029B01B /* ActionButtonDelegate.swift */,
 				223810792164ADDC000E1A4E /* CommentCvCellDelegate.swift */,
+				224D3E66216F38CC00352230 /* ArticleListTvCellDelegate.swift */,
+				220FEF562188015200B91CC6 /* VideoFeedCvCellDelegate.swift */,
 			);
 			name = Delegates;
 			path = UI/Delegates;
@@ -387,6 +450,7 @@
 				5F4A8533627AC33884F16E09 /* [CP] Embed Pods Frameworks */,
 				25A6FCE386F8FDAFCA4BB03E /* [CP] Copy Pods Resources */,
 				22F25BE921425BC100940724 /* Embed App Extensions */,
+				224D3E61216CF65900352230 /* ShellScript */,
 			);
 			buildRules = (
 			);
@@ -464,18 +528,24 @@
 				TargetAttributes = {
 					223A3B0F211F6677007E4DCE = {
 						CreatedOnToolsVersion = 9.4.1;
+						LastSwiftMigration = 1010;
 						SystemCapabilities = {
 							com.apple.Push = {
+								enabled = 1;
+							};
+							com.apple.SafariKeychain = {
 								enabled = 1;
 							};
 						};
 					};
 					223A3B23211F66A3007E4DCE = {
 						CreatedOnToolsVersion = 9.4.1;
+						LastSwiftMigration = 1010;
 						TestTargetID = 223A3B0F211F6677007E4DCE;
 					};
 					223A3B2E211F66A3007E4DCE = {
 						CreatedOnToolsVersion = 9.4.1;
+						LastSwiftMigration = 1010;
 						TestTargetID = 223A3B0F211F6677007E4DCE;
 					};
 					22F25BDD21425BC000940724 = {
@@ -561,34 +631,35 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		25A6FCE386F8FDAFCA4BB03E /* [CP] Copy Pods Resources */ = {
+		224D3E61216CF65900352230 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			inputPaths = (
-				"${SRCROOT}/Pods/Target Support Files/Pods-Acorn/Pods-Acorn-resources.sh",
-				"${PODS_CONFIGURATION_BUILD_DIR}/FirebaseUI/FirebaseAuthUI.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/FirebaseUI/FirebaseFacebookAuthUI.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/FirebaseUI/FirebaseGoogleAuthUI.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/FirebaseUI/FirebasePhoneAuthUI.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/FirebaseUI/FirebaseTwitterAuthUI.bundle",
-				"${PODS_ROOT}/GoogleSignIn/Resources/GoogleSignIn.bundle",
-				"${PODS_ROOT}/TwitterKit/iOS/TwitterKit.framework/TwitterKitResources.bundle",
+				"$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)",
 			);
-			name = "[CP] Copy Pods Resources";
 			outputPaths = (
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/FirebaseAuthUI.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/FirebaseFacebookAuthUI.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/FirebaseGoogleAuthUI.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/FirebasePhoneAuthUI.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/FirebaseTwitterAuthUI.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GoogleSignIn.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/TwitterKitResources.bundle",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods-Acorn/Pods-Acorn-resources.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Fabric/run\" dda0c4345f536cb14cf38e5b05d2089e28ff7f3f 606c5bf1b31520ac2080cfa1cff488824328f6fa10deca1f676143b33301d165\n";
+		};
+		25A6FCE386F8FDAFCA4BB03E /* [CP] Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Acorn/Pods-Acorn-resources-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Copy Pods Resources";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Acorn/Pods-Acorn-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Acorn/Pods-Acorn-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		2786A8A576D9639477D117B6 /* [CP] Check Pods Manifest.lock */ = {
@@ -614,87 +685,16 @@
 			buildActionMask = 2147483647;
 			files = (
 			);
-			inputPaths = (
-				"${SRCROOT}/Pods/Target Support Files/Pods-Acorn/Pods-Acorn-frameworks.sh",
-				"${BUILT_PRODUCTS_DIR}/AlgoliaSearch-Client-Swift/AlgoliaSearch.framework",
-				"${BUILT_PRODUCTS_DIR}/Bolts/Bolts.framework",
-				"${BUILT_PRODUCTS_DIR}/BoringSSL/openssl.framework",
-				"${BUILT_PRODUCTS_DIR}/Cache/Cache.framework",
-				"${BUILT_PRODUCTS_DIR}/DeviceKit/DeviceKit.framework",
-				"${BUILT_PRODUCTS_DIR}/DropDown/DropDown.framework",
-				"${BUILT_PRODUCTS_DIR}/FBSDKCoreKit/FBSDKCoreKit.framework",
-				"${BUILT_PRODUCTS_DIR}/FBSDKLoginKit/FBSDKLoginKit.framework",
-				"${BUILT_PRODUCTS_DIR}/GTMOAuth2/GTMOAuth2.framework",
-				"${BUILT_PRODUCTS_DIR}/GTMSessionFetcher/GTMSessionFetcher.framework",
-				"${BUILT_PRODUCTS_DIR}/GoogleToolboxForMac/GoogleToolboxForMac.framework",
-				"${BUILT_PRODUCTS_DIR}/Hue/Hue.framework",
-				"${BUILT_PRODUCTS_DIR}/ImagePicker/ImagePicker.framework",
-				"${BUILT_PRODUCTS_DIR}/Imaginary/Imaginary.framework",
-				"${BUILT_PRODUCTS_DIR}/InstantSearch/InstantSearch.framework",
-				"${BUILT_PRODUCTS_DIR}/InstantSearchClient/InstantSearchClient.framework",
-				"${BUILT_PRODUCTS_DIR}/InstantSearchCore/InstantSearchCore.framework",
-				"${BUILT_PRODUCTS_DIR}/Lightbox/Lightbox.framework",
-				"${BUILT_PRODUCTS_DIR}/MDFInternationalization/MDFInternationalization.framework",
-				"${BUILT_PRODUCTS_DIR}/MDFTextAccessibility/MDFTextAccessibility.framework",
-				"${BUILT_PRODUCTS_DIR}/MaterialComponents/MaterialComponents.framework",
-				"${BUILT_PRODUCTS_DIR}/MotionAnimator/MotionAnimator.framework",
-				"${BUILT_PRODUCTS_DIR}/MotionInterchange/MotionInterchange.framework",
-				"${BUILT_PRODUCTS_DIR}/MotionTransitioning/MotionTransitioning.framework",
-				"${BUILT_PRODUCTS_DIR}/Protobuf/Protobuf.framework",
-				"${BUILT_PRODUCTS_DIR}/SDWebImage/SDWebImage.framework",
-				"${BUILT_PRODUCTS_DIR}/SwiftSoup/SwiftSoup.framework",
-				"${BUILT_PRODUCTS_DIR}/Toast-Swift/Toast_Swift.framework",
-				"${PODS_ROOT}/TwitterCore/iOS/TwitterCore.framework",
-				"${PODS_ROOT}/TwitterKit/iOS/TwitterKit.framework",
-				"${BUILT_PRODUCTS_DIR}/gRPC/GRPCClient.framework",
-				"${BUILT_PRODUCTS_DIR}/gRPC-Core/grpc.framework",
-				"${BUILT_PRODUCTS_DIR}/gRPC-ProtoRPC/ProtoRPC.framework",
-				"${BUILT_PRODUCTS_DIR}/gRPC-RxLibrary/RxLibrary.framework",
-				"${BUILT_PRODUCTS_DIR}/leveldb-library/leveldb.framework",
-				"${BUILT_PRODUCTS_DIR}/nanopb/nanopb.framework",
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Acorn/Pods-Acorn-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
 			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/AlgoliaSearch.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Bolts.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/openssl.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Cache.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/DeviceKit.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/DropDown.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/FBSDKCoreKit.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/FBSDKLoginKit.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/GTMOAuth2.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/GTMSessionFetcher.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/GoogleToolboxForMac.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Hue.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ImagePicker.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Imaginary.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/InstantSearch.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/InstantSearchClient.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/InstantSearchCore.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Lightbox.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/MDFInternationalization.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/MDFTextAccessibility.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/MaterialComponents.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/MotionAnimator.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/MotionInterchange.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/MotionTransitioning.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Protobuf.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/SDWebImage.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/SwiftSoup.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Toast_Swift.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/TwitterCore.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/TwitterKit.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/GRPCClient.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/grpc.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ProtoRPC.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/RxLibrary.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/leveldb.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/nanopb.framework",
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Acorn/Pods-Acorn-frameworks-${CONFIGURATION}-output-files.xcfilelist",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods-Acorn/Pods-Acorn-frameworks.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Acorn/Pods-Acorn-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		AA31101461491900E9DB4FC1 /* [CP] Check Pods Manifest.lock */ = {
@@ -724,47 +724,68 @@
 			files = (
 				2238107A2164ADDC000E1A4E /* CommentCvCellDelegate.swift in Sources */,
 				220E69EE2122E8A400D29665 /* SubscriptionsFooterView.swift in Sources */,
+				70FBE1F422CA687600BD5EB5 /* InviteUtils.swift in Sources */,
 				220A7C9B21249B4300E13616 /* HtmlUtils.swift in Sources */,
 				220E69CC2120BEF000D29665 /* DataSource.swift in Sources */,
 				22BAB367212FC4FE00E295F1 /* PreviewImageViewController.swift in Sources */,
 				220E69E42121516400D29665 /* FeedCvCellPostWithArticle.swift in Sources */,
 				220E69DE2121516400D29665 /* FeedCvCellNoImage.swift in Sources */,
+				703C9F0322BB788600E8FC9F /* NearbyViewController.swift in Sources */,
 				2274C8582127592C0029B01B /* AcornUser.swift in Sources */,
+				703C9F0B22BB920E00E8FC9F /* Address.swift in Sources */,
 				2274C85A212928080029B01B /* CommentImageTextCvCell.swift in Sources */,
 				220E69C42120BE2800D29665 /* AuthPicker.swift in Sources */,
-				2274C8502125EE660029B01B /* ActionButtonDelegate.swift in Sources */,
 				220E69EC2122E88400D29665 /* SubscriptionsHeaderView.swift in Sources */,
 				220E69E02121516400D29665 /* FeedCvCellPost.swift in Sources */,
 				22132ABF2148E40A00283AB5 /* ResourcesNight.swift in Sources */,
+				223B0740218735890066073B /* Video.swift in Sources */,
+				220C7B8B21A915F400EE97EE /* dbArticle.swift in Sources */,
 				220E69BE2120BCE000D29665 /* Checkbox.swift in Sources */,
+				704E4DE922BBE3D700FDE419 /* NearbyArticleTvCell.swift in Sources */,
+				7004C37922EABFE5004FE73D /* ChannelTvCell.swift in Sources */,
 				2274C8542126BD940029B01B /* CommentViewController.swift in Sources */,
+				22A5D6AA21DB9F4E00C4335B /* ShareUtils.swift in Sources */,
 				220E69C02120BCE000D29665 /* ResourcesDay.swift in Sources */,
 				22BAB365212E9B3E00E295F1 /* CommentUrlCvCell.swift in Sources */,
+				704AE10822E586EF001888F9 /* FeedCvCellWithDuplicates.swift in Sources */,
+				704AE10C22E5AE76001888F9 /* FeedCvCellNoImageWithDuplicates.swift in Sources */,
 				22BAB374213D526A00E295F1 /* FeedCvCellSaved.swift in Sources */,
 				221735D621564CDA004F8F52 /* UIBarButtonItem+Badge.swift in Sources */,
 				220A7C8F212330F600E13616 /* Theme.swift in Sources */,
+				223B073E218734C10066073B /* VideoFeedCvCell.swift in Sources */,
 				220A7C9521244EDD00E13616 /* WebViewViewController.swift in Sources */,
 				22BAB3692133F81200E295F1 /* CreatePostViewController.swift in Sources */,
+				224D3E65216F2F5000352230 /* SavedArticlesViewController.swift in Sources */,
 				2291C4D12125154C00659A04 /* ArticleTextExtractor.swift in Sources */,
 				22BAB36F213C42E900E295F1 /* SearchViewController.swift in Sources */,
+				224D3E63216DDE8B00352230 /* UserViewController.swift in Sources */,
 				220E69E62121516400D29665 /* SubscriptionCvCell.swift in Sources */,
+				220C7B8921A9120800EE97EE /* LocalDb.swift in Sources */,
 				220E69CF2120BF0700D29665 /* Article.swift in Sources */,
 				220E69BF2120BCE000D29665 /* DateUtils.swift in Sources */,
+				220FEF572188015200B91CC6 /* VideoFeedCvCellDelegate.swift in Sources */,
 				22132ABD2148DA1F00283AB5 /* SettingsViewController.swift in Sources */,
 				223A3B14211F6677007E4DCE /* AppDelegate.swift in Sources */,
+				7004C37722EABF0A004FE73D /* ChannelsToRemoveViewController.swift in Sources */,
+				220FEF5521875B4B00B91CC6 /* VideoFeedViewController.swift in Sources */,
 				220E69E82121517000D29665 /* SubscriptionsViewController.swift in Sources */,
+				224D3E69216F4B6400352230 /* SavedArticleTvCell.swift in Sources */,
 				221FA975215A87480066ADEE /* NotificationsViewController.swift in Sources */,
 				2274C8522125FFF40029B01B /* Comment.swift in Sources */,
 				220A7C93212445F900E13616 /* FeedCvCellDelegate.swift in Sources */,
 				2238107821648C6A000E1A4E /* EULAViewController.swift in Sources */,
 				220E69E22121516400D29665 /* FeedCvCellPostNoImage.swift in Sources */,
+				224D3E67216F38CC00352230 /* ArticleListTvCellDelegate.swift in Sources */,
 				220E69DC2121516400D29665 /* FeedCvCell.swift in Sources */,
+				703C9F0522BB8E6F00E8FC9F /* MrtStation.swift in Sources */,
 				22BAB36D2138575B00E295F1 /* BounceButton.swift in Sources */,
 				2274C85C212928450029B01B /* CommentImageCvCell.swift in Sources */,
 				221FA973215A40ED0066ADEE /* NotificationTvCell.swift in Sources */,
 				22BAB372213C665900E295F1 /* SearchHitsTvCell.swift in Sources */,
 				2274C85E212928590029B01B /* CommentTextCvCell.swift in Sources */,
+				704AE10A22E5AC4D001888F9 /* DuplicateArticleCell.swift in Sources */,
 				220E69C92120BEA500D29665 /* FeedViewController.swift in Sources */,
+				220FEF592188137A00B91CC6 /* YTPlayerViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -947,15 +968,18 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Acorn/Acorn.entitlements;
 				CODE_SIGN_STYLE = Automatic;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 9997Y4694S;
+				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Acorn/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 11.4;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = sg.acorncommunity.acorn;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 4.0;
+				SWIFT_VERSION = 4.2;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
@@ -968,14 +992,16 @@
 				CODE_SIGN_ENTITLEMENTS = Acorn/Acorn.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 9997Y4694S;
+				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Acorn/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 11.4;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = sg.acorncommunity.acorn;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 4.0;
+				SWIFT_VERSION = 4.2;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
@@ -996,7 +1022,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.acornsf.AcornTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 4.0;
+				SWIFT_VERSION = 4.2;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Acorn.app/Acorn";
 			};
@@ -1018,7 +1044,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.acornsf.AcornTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 4.0;
+				SWIFT_VERSION = 4.2;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Acorn.app/Acorn";
 			};
@@ -1039,7 +1065,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.acornsf.AcornUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 4.0;
+				SWIFT_VERSION = 4.2;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = Acorn;
 			};
@@ -1060,7 +1086,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.acornsf.AcornUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 4.0;
+				SWIFT_VERSION = 4.2;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = Acorn;
 			};

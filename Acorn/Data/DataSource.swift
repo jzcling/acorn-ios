@@ -10,6 +10,7 @@ import Foundation
 import FirebaseUI
 import Firebase
 import AlgoliaSearch
+import S2GeometrySwift
 
 class DataSource {
     
@@ -19,7 +20,7 @@ class DataSource {
     var algoliaClient: Client?
     var algoliaIndex: Index?
     
-    let limit = 10 as UInt
+    let limit = 100 as UInt
     
     let defaults = UserDefaults.standard
     var themeKey: String?
@@ -33,20 +34,36 @@ class DataSource {
     lazy var userDisplayName = user.displayName
     
     lazy var articleRef = self.database.reference(withPath: "article")
+    lazy var videoRef = self.database.reference(withPath: "video")
     lazy var searchRef = self.database.reference(withPath: "search")
     lazy var commentRef = self.database.reference(withPath: "comment")
     lazy var userRef = self.database.reference(withPath: "user/\(uid)")
     lazy var postRef = self.database.reference(withPath: "article")
+    lazy var addressRef = self.database.reference(withPath: "address")
     lazy var commentsPreferenceRef = self.database.reference(withPath: "preference/commentsNotificationValue/\(uid)")
     lazy var recArticlesPreferenceRef = self.database.reference(withPath: "preference/recArticlesNotificationValue/\(uid)")
+    lazy var recDealsPreferenceRef = self.database.reference(withPath: "preference/recDealsNotificationValue/\(uid)")
+    lazy var savedArticlesReminderPreferenceRef = self.database.reference(withPath: "preference/savedArticlesReminderNotificationValue/\(uid)")
+    lazy var locationPreferenceRef = self.database.reference(withPath: "preference/locationNotificationValue/\(uid)")
+    lazy var videosInFeedPreferenceRef = self.database.reference(withPath: "preference/videosInFeed/\(uid)")
     lazy var algoliaRef = self.database.reference(withPath: "algoliaApiKey")
+    lazy var youtubeApiRef = self.database.reference(withPath: "api/youtubeApiKey")
     lazy var reportRef = self.database.reference(withPath: "reported")
+    lazy var notificationRef = self.database.reference(withPath: "notification")
     
     lazy var userStorage = self.storage.reference(withPath: uid)
     
     var articleList = [Article]()
     var observedFeedQueries = [DatabaseQuery]()
     var observedArticlesQueries = [String: DatabaseQuery]()
+    var observedVideosQueries = [String: DatabaseQuery]()
+    
+    let TARGET_POINTS_MULTIPLIER = 3.0
+    let LEVEL_0 = "Budding Seed"
+    let LEVEL_1 = "Emerging Sprout"
+    let LEVEL_2 = "Thriving Sapling"
+    let LEVEL_3 = "Wise Oak"
+    var userStatus: String?
     
     
     // Setup
@@ -62,24 +79,72 @@ class DataSource {
         }
     }
     
+    func getYouTubeApi(onComplete: @escaping (String) -> ()) {
+        youtubeApiRef.observeSingleEvent(of: .value) { (snap) in
+            guard let apiKey = snap.value as? String else { return }
+            
+            onComplete(apiKey)
+        }
+    }
+    
     func getUser(user: User, onComplete: @escaping (AcornUser?) -> ()) {
-        self.database.reference(withPath: "user/\(user.uid)").observeSingleEvent(of: .value) { (snap) in
-            if snap.exists() {
-                let user = AcornUser(snapshot: snap)
-                onComplete(user)
+        let userRef = self.database.reference(withPath: "user/\(user.uid)")
+        userRef.observeSingleEvent(of: .value) { (snap) in
+            if let user = snap.value as? [String: Any] {
+                if user["uid"] != nil {
+                    let user = AcornUser(snapshot: snap)
+                    print("user: \(user.displayName)")
+                    onComplete(user)
+                } else {
+                    print("no user uid")
+                    onComplete(nil)
+                }
             } else {
+                print("no user data")
                 onComplete(nil)
             }
         }
     }
     
+    func removeAllListenersOnUser(user: User) {
+        self.userRef.removeAllObservers()
+    }
+    
     func setUser(_ user: [String: Any?]) {
-        userRef.setValue(user)
+        self.userRef.setValue(user)
+    }
+    
+    func updateUser(_ user: [String: Any?]) {
+        self.userRef.updateChildValues(user)
+    }
+    
+    func getUserStatus(_ status: Int) -> String {
+        switch status {
+        case 0: return self.LEVEL_0
+        case 1: return self.LEVEL_1
+        case 2: return self.LEVEL_2
+        case 3: return self.LEVEL_3
+        default: return self.LEVEL_0
+        }
+    }
+    
+    func getUserPremiumStatus(_ user: User, onComplete: @escaping ([String: Double]) -> ()) {
+        let userRef = self.database.reference(withPath: "user/\(user.uid)")
+        userRef.child("premiumStatus").observe(.value) { (snap) in
+            if let status = snap.value as? [String: Double] {
+                onComplete(status)
+            }
+        }
+    }
+    
+    func removePremiumStatusObserver() {
+        self.userRef.child("premiumStatus").removeAllObservers()
     }
     
     func getThemeSubscriptions(user: User, onComplete: (([String]) -> ())?) {
         let uid = user.uid
         let subsRef = self.database.reference(withPath: "user/\(uid)/subscriptions")
+//        subsRef.keepSynced(true);
         var themePrefs = [String]()
         
         subsRef.observeSingleEvent(of: .value) { (snap) in
@@ -120,11 +185,22 @@ class DataSource {
     
     
     // Feed
+    func observeSingleArticle(articleId: String, onComplete: @escaping ((Article) -> ())) {
+        let query = articleRef.child(articleId)
+        query.observe(.value) { (snap) in
+            if let value = snap.value as? [String: Any]{
+                onComplete(Article(json: value))
+            }
+        }
+        self.observedArticlesQueries[articleId] = query
+    }
+    
     func observeArticles(query: DatabaseQuery, onComplete: @escaping ([Article]) -> ()) {
         var articles = [Article]()
         var articleIds = [String]()
         
         query.observe(.childAdded) { (snap) in
+            guard let _ = snap.value else { return }
             let article = Article(snapshot: snap)
             
             if !articleIds.contains(snap.key) {
@@ -133,6 +209,7 @@ class DataSource {
                     articles.append(article)
                     articleIds.append(snap.key)
                 }
+//                print("articles: \(articles.count), articleId: \(article.objectID)");
             }
             onComplete(articles)
         }
@@ -172,51 +249,116 @@ class DataSource {
         }
     }
     
-    func getSubscriptionsFeed(onComplete: @escaping ([Article]) -> ()) {
-        themeKey = defaults.string(forKey: "themeKey")
-        themeFilters = defaults.string(forKey: "themeFilters")
+    func observeHitsArticles(query: DatabaseQuery, limit: UInt, onComplete: @escaping ([Article]) -> ()) {
+        var articles = [Article]()
+        var articleIds = [String]()
+        var duplicatesIds = [String]()
+        
+        query.observeSingleEvent(of: .value) { (snap) in
+            // if value changes, reset all articles and remove all observers
+            if articleIds.count > 0 {
+                for articleId in articleIds {
+                    self.articleRef.child(articleId).removeAllObservers()
+                }
+                articles.removeAll()
+                articleIds.removeAll()
+                duplicatesIds.removeAll()
+            }
+            
+            guard let _ = snap.value else { return }
+            var count = 0
+            for case let data as DataSnapshot in snap.children {
+                let hitsArticle = Article(snapshot: data)
+                self.articleRef.child(hitsArticle.objectID).observe(.value) { (articleSnap) in
+                    count += 1
+                    if let _ = articleSnap.value {
+                        let article = Article(snapshot: articleSnap)
+                        
+                        if !articleIds.contains(article.objectID) {
+                            let isReported = article.isReported ?? false
+                            if !isReported && !duplicatesIds.contains(article.objectID) {
+                                articles.append(article)
+                                articleIds.append(article.objectID)
+                                if let duplicates = article.duplicates {
+                                    duplicatesIds.append(contentsOf: Array(duplicates.keys))
+                                }
+                            }
+                        } else {
+                            if let index = articleIds.index(of: article.objectID) {
+                                let isReported = article.isReported ?? false
+                                if isReported {
+                                    self.articleRef.child(article.objectID).removeAllObservers()
+                                    articles.remove(at: index)
+                                    articleIds.remove(at: index)
+                                    if let duplicates = article.duplicates {
+                                        for duplicateId in duplicates.keys {
+                                            if let duplicateIndex = duplicatesIds.index(of: duplicateId) {
+                                                duplicatesIds.remove(at: duplicateIndex)
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    articles[index] = article
+                                }
+                            }
+                        }
+                    } else {
+                        if let index = articleIds.index(of: articleSnap.key) {
+                            self.articleRef.child(articleSnap.key).removeAllObservers()
+                            articleIds.remove(at: index)
+                            articles.remove(at: index)
+                        }
+                    }
+                    if (count == limit) { onComplete(articles) }
+                }
+            }
+        }
+    }
+    
+    func getAlgoliaHitsData(key: String?, filters: String?, onComplete: @escaping ([Article]) -> ()) {
         let now = floor(Double(Date().timeIntervalSince1970 * 1000))
         setupAlgoliaClient {
-            if self.themeKey != nil {
-                let hitsRef = self.searchRef.child(self.themeKey!).child("hits")
-                let initQuery = self.searchRef.child(self.themeKey!).child("lastQueryTimestamp")
+            if key != nil {
+                let hitsRef = self.searchRef.child(key!).child("hits")
+//                hitsRef.keepSynced(true);
+                let initQuery = self.searchRef.child(key!).child("lastQueryTimestamp")
                 initQuery.observeSingleEvent(of: .value) { (lastQuerySnap) in
                     if let lastQueryTimestamp = lastQuerySnap.value as? Double {
                         let timeElapsed = DateUtils.hoursSince(unixTimestamp: lastQueryTimestamp)
                         if timeElapsed >= 3 {
                             
                             let algoliaQuery = Query()
-                            algoliaQuery.filters = self.themeFilters
+                            algoliaQuery.filters = filters
                             self.algoliaIndex?.search(algoliaQuery) { (content, error) in
                                 if error == nil {
-                                    self.searchRef.child(self.themeKey!).setValue(content, withCompletionBlock: { (error, ref) in
+                                    self.searchRef.child(key!).setValue(content, withCompletionBlock: { (error, ref) in
                                         initQuery.setValue(now)
-                                        let query = hitsRef.queryOrdered(byChild: "pubDate").queryLimited(toFirst: self.limit)
-                                        query.keepSynced(true)
+                                        let query = hitsRef.queryOrdered(byChild: "trendingIndex").queryLimited(toFirst: self.limit)
+//                                        query.keepSynced(true)
                                         self.observedFeedQueries.append(query)
-                                        self.observeArticles(query: query, onComplete: onComplete)
+                                        self.observeHitsArticles(query: query, limit: self.limit, onComplete: onComplete)
                                     })
                                 }
                             }
                         } else {
                             
-                            let query = hitsRef.queryOrdered(byChild: "pubDate").queryLimited(toFirst: self.limit)
-                            query.keepSynced(true)
+                            let query = hitsRef.queryOrdered(byChild: "trendingIndex").queryLimited(toFirst: self.limit)
+//                            query.keepSynced(true)
                             self.observedFeedQueries.append(query)
-                            self.observeArticles(query: query, onComplete: onComplete)
+                            self.observeHitsArticles(query: query, limit: self.limit, onComplete: onComplete)
                         }
                     } else {
                         
                         let algoliaQuery = Query()
-                        algoliaQuery.filters = self.themeFilters
+                        algoliaQuery.filters = filters
                         self.algoliaIndex?.search(algoliaQuery) { (content, error) in
                             if error == nil {
-                                self.searchRef.child(self.themeKey!).setValue(content, withCompletionBlock: { (error, ref) in
+                                self.searchRef.child(key!).setValue(content, withCompletionBlock: { (error, ref) in
                                     initQuery.setValue(now)
-                                    let query = hitsRef.queryOrdered(byChild: "pubDate").queryLimited(toFirst: self.limit)
-                                    query.keepSynced(true)
+                                    let query = hitsRef.queryOrdered(byChild: "trendingIndex").queryLimited(toFirst: self.limit)
+//                                    query.keepSynced(true)
                                     self.observedFeedQueries.append(query)
-                                    self.observeArticles(query: query, onComplete: onComplete)
+                                    self.observeHitsArticles(query: query, limit: self.limit, onComplete: onComplete)
                                 })
                             }
                         }
@@ -226,70 +368,164 @@ class DataSource {
         }
     }
     
-    func getSubscriptionsFeed(startAt: Double, onComplete: @escaping ([Article]) -> ()) {
+    func getAlgoliaHitsData(key: String?, filters: String?, limit: UInt?, onComplete: @escaping ([Article]) -> ()) {
+        let now = floor(Double(Date().timeIntervalSince1970 * 1000))
+        setupAlgoliaClient {
+            if key != nil {
+                let hitsRef = self.searchRef.child(key!).child("hits")
+//                hitsRef.keepSynced(true);
+                let initQuery = self.searchRef.child(key!).child("lastQueryTimestamp")
+                initQuery.observeSingleEvent(of: .value) { (lastQuerySnap) in
+                    if let lastQueryTimestamp = lastQuerySnap.value as? Double {
+                        let timeElapsed = DateUtils.hoursSince(unixTimestamp: lastQueryTimestamp)
+                        if timeElapsed >= 3 {
+                            
+                            let algoliaQuery = Query()
+                            algoliaQuery.filters = filters
+                            self.algoliaIndex?.search(algoliaQuery) { (content, error) in
+                                if error == nil {
+                                    self.searchRef.child(key!).setValue(content, withCompletionBlock: { (error, ref) in
+                                        initQuery.setValue(now)
+                                        let query = hitsRef.queryOrdered(byChild: "trendingIndex").queryLimited(toFirst: limit ?? self.limit)
+//                                        query.keepSynced(true)
+                                        self.observedFeedQueries.append(query)
+                                        self.observeHitsArticles(query: query, limit: self.limit, onComplete: onComplete)
+                                    })
+                                }
+                            }
+                        } else {
+                            
+                            let query = hitsRef.queryOrdered(byChild: "trendingIndex").queryLimited(toFirst: self.limit)
+//                            query.keepSynced(true)
+                            self.observedFeedQueries.append(query)
+                            self.observeHitsArticles(query: query, limit: self.limit, onComplete: onComplete)
+                        }
+                    } else {
+                        
+                        let algoliaQuery = Query()
+                        algoliaQuery.filters = filters
+                        self.algoliaIndex?.search(algoliaQuery) { (content, error) in
+                            if error == nil {
+                                self.searchRef.child(key!).setValue(content, withCompletionBlock: { (error, ref) in
+                                    initQuery.setValue(now)
+                                    let query = hitsRef.queryOrdered(byChild: "trendingIndex").queryLimited(toFirst: self.limit)
+//                                    query.keepSynced(true)
+                                    self.observedFeedQueries.append(query)
+                                    self.observeHitsArticles(query: query, limit: self.limit, onComplete: onComplete)
+                                })
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    func getSubscriptionsFeed(onComplete: @escaping ([Article]) -> ()) {
+        themeKey = defaults.string(forKey: "themeKey")
+        themeFilters = defaults.string(forKey: "themeFilters")
+        getAlgoliaHitsData(key: themeKey, filters: themeFilters, onComplete: onComplete)
+    }
+    
+    func getSubscriptionsFeed(startAt: String, onComplete: @escaping ([Article]) -> ()) {
         themeKey = defaults.string(forKey: "themeKey")
         let hitsRef = searchRef.child(themeKey!).child("hits")
-        let query = hitsRef.queryOrdered(byChild: "pubDate").queryLimited(toFirst: self.limit + 1).queryStarting(atValue: startAt)
-        query.keepSynced(true)
+        let query = hitsRef.queryOrdered(byChild: "trendingIndex").queryLimited(toFirst: self.limit + 1).queryStarting(atValue: startAt)
+//        query.keepSynced(true)
         self.observedFeedQueries.append(query)
         self.observeArticles(query: query, onComplete: onComplete)
     }
     
-    func observeSingleArticle(articleId: String, onComplete: @escaping ((Article) -> ())) {
-        let query = articleRef.child(articleId)
-        query.observe(.value) { (snap) in
-            onComplete(Article(snapshot: snap))
-        }
-        self.observedArticlesQueries[articleId] = query
-    }
-    
     func getRecentFeed(onComplete: @escaping ([Article]) -> ()) {
-        let query = articleRef.queryOrdered(byChild: "pubDate").queryLimited(toFirst: limit)
-        query.keepSynced(true)
+        let query = articleRef.queryOrdered(byChild: "pubDate").queryLimited(toFirst: self.limit)
+//        query.keepSynced(true)
         observedFeedQueries.append(query)
         observeArticles(query: query, onComplete: onComplete)
     }
     
     func getRecentFeed(startAt: Double, onComplete: @escaping ([Article]) -> ()) {
-        let query = articleRef.queryOrdered(byChild: "pubDate").queryLimited(toFirst: limit + 1).queryStarting(atValue: startAt)
-        query.keepSynced(true)
+        let query = articleRef.queryOrdered(byChild: "pubDate").queryLimited(toFirst: self.limit + 1).queryStarting(atValue: startAt)
+//        query.keepSynced(true)
         observedFeedQueries.append(query)
         observeArticles(query: query, onComplete: onComplete)
     }
     
     func getTrendingFeed(onComplete: @escaping ([Article]) -> ()) {
-        let query = articleRef.queryOrdered(byChild: "trendingIndex").queryLimited(toFirst: limit)
-        query.keepSynced(true)
-        observedFeedQueries.append(query)
-        observeArticles(query: query, onComplete: onComplete)
+        themeKey = ResourcesDay.THEME_LIST.joined(separator: "_")
+        themeFilters = "mainTheme: \"" + ResourcesDay.THEME_LIST.joined(separator: "\" OR mainTheme: \"") + "\""
+        getAlgoliaHitsData(key: themeKey, filters: themeFilters, onComplete: onComplete)
     }
     
     func getTrendingFeed(startAt: String, onComplete: @escaping ([Article]) -> ()) {
-        let query = articleRef.queryOrdered(byChild: "trendingIndex").queryLimited(toFirst: limit + 1).queryStarting(atValue: startAt)
-        query.keepSynced(true)
-        observedFeedQueries.append(query)
-        observeArticles(query: query, onComplete: onComplete)
+        themeKey = ResourcesDay.THEME_LIST.joined(separator: "_")
+        let hitsRef = searchRef.child(themeKey!).child("hits")
+        let query = hitsRef.queryOrdered(byChild: "trendingIndex").queryLimited(toFirst: self.limit + 1).queryStarting(atValue: startAt)
+//        query.keepSynced(true)
+        self.observedFeedQueries.append(query)
+        self.observeArticles(query: query, onComplete: onComplete)
     }
     
-    func getSavedFeed(startAt: Int, onComplete: @escaping ([Article]) -> ()) {
+    func downloadSubscribedArticles(onComplete: @escaping () -> ()) {
+        let localDb = LocalDb.instance
+        themeKey = defaults.string(forKey: "themeKey")
+        themeFilters = defaults.string(forKey: "themeFilters")
+        getAlgoliaHitsData(key: themeKey, filters: themeFilters, limit: 100) { (articleList) in
+            if (articleList.count == 100) {
+                for article in articleList {
+                    if article.type == "article" {
+                        article.htmlContent = HtmlUtils().cleanHtmlContent(html: article.htmlContent ?? "", link: article.link ?? "", selector: article.selector, aid: article.objectID)
+                        let localArticle = dbArticle(uid: self.uid, article: article)
+                        localDb.insertArticle(localArticle)
+                    }
+                }
+                onComplete()
+            }
+        }
+    }
+    
+    func getDealsFeed(onComplete: @escaping ([Article]) -> ()) {
+        let dealsKey = "Deals"
+        let dealsFilter = "mainTheme: Deals"
+        getAlgoliaHitsData(key: dealsKey, filters: dealsFilter, onComplete: onComplete)
+    }
+    
+    func getDealsFeed(startAt: String, onComplete: @escaping ([Article]) -> ()) {
+        let dealsKey = "Deals"
+        let hitsRef = searchRef.child(dealsKey).child("hits")
+        let query = hitsRef.queryOrdered(byChild: "trendingIndex").queryLimited(toFirst: self.limit + 1).queryStarting(atValue: startAt)
+//        query.keepSynced(true)
+        self.observedFeedQueries.append(query)
+        self.observeArticles(query: query, onComplete: onComplete)
+    }
+    
+    func getSavedFeed(onComplete: @escaping ([Article]) -> ()) {
+        getSavedFeed(startAt: 0, limit: 200, onComplete: onComplete)
+    }
+    
+    func getSavedFeed(startAt: Int, limit: UInt, onComplete: @escaping ([Article]) -> ()) {
+        print("getSavedFeed")
         var savedList = [String]()
         var articles = [Article]()
         
         let savedQuery = userRef.child("savedItems")
+//        savedQuery.keepSynced(true);
         savedQuery.observeSingleEvent(of: .value) { (savedSnap) in
             if let savedItems = savedSnap.value as? [String: Double] {
+                print("saved items retrieved")
                 savedList.append(contentsOf: savedItems.keys)
                 if savedList.count == 0 { return }
-                var counter = 0
-                let endIndex = min(startAt + Int(self.limit), savedList.count)
+                var counter = startAt
+                let endIndex = min(startAt + Int(limit), savedList.count)
                 for saved in savedList[startAt ..< endIndex] {
-                    counter += 1
                     let query = self.articleRef.child(saved)
-                    query.keepSynced(true)
+//                    query.keepSynced(true)
                     self.observedFeedQueries.append(query)
                     query.observe(.value, with: { (articleSnap) in
-                        articles.append(Article(snapshot: articleSnap))
-                        if (saved == savedList.last || counter == self.limit) {
+                        counter += 1
+                        if let _ = articleSnap.value as? [String: Any] {
+                            articles.append(Article(snapshot: articleSnap))
+                        }
+                        if (counter == savedList.count || counter == limit) {
                             onComplete(articles)
                         }
                     })
@@ -298,19 +534,183 @@ class DataSource {
         }
     }
     
+    func getFilteredThemeFeed(key: String?, filters: String?, onComplete: @escaping ([Article]) -> ()) {
+        guard let key = key, let filters = filters else { return }
+        getAlgoliaHitsData(key: key, filters: filters, onComplete: onComplete)
+    }
+    
+    func getFilteredThemeFeed(startAt: String, key: String?, onComplete: @escaping ([Article]) -> ()) {
+        guard let key = key else { return }
+        let hitsRef = searchRef.child(key).child("hits")
+        let query = hitsRef.queryOrdered(byChild: "trendingIndex").queryLimited(toFirst: self.limit + 1).queryStarting(atValue: startAt)
+//        query.keepSynced(true)
+        self.observedFeedQueries.append(query)
+        self.observeArticles(query: query, onComplete: onComplete)
+    }
+    
+    func getNearbyFeed(lat: Double, lng: Double, radius: Double, weekOnly: Bool = false, limit: Int = 50, onComplete: @escaping ([Article]) -> ()) {
+        // get sphere cap centred at location
+        let point: S2Point = S2LatLng.fromDegrees(lat: lat, lng: lng).point
+        let angle: S1Angle = S1Angle.init(radians: radius / S2LatLng.earthRadiusMeters)
+        let cap: S2Cap = S2Cap.init(axis: point, angle: angle)
+        
+        // get covering cell ids
+        let coverer: S2RegionCoverer = S2RegionCoverer.init()
+        coverer.maxCells = 5
+        let covering = coverer.getInteriorCovering(region: cap)
+        
+        // get all addresses and associated articles in covering cells
+        var articleIds = [String: Double]()
+        let dispatchGroup = DispatchGroup()
+        for id in covering {
+            dispatchGroup.enter()
+            let minRange = String(id.rangeMin.id)
+            let maxRange = String(id.rangeMax.id)
+            print("minRange: " + minRange + ", maxRange: " + maxRange)
+            let addressQuery = self.addressRef.queryOrderedByKey().queryStarting(atValue: minRange).queryEnding(atValue: maxRange)
+            
+            addressQuery.observeSingleEvent(of: .value) { (snap) in
+                for case let data as DataSnapshot in snap.children {
+                    let address = Address(snapshot: data)
+                    for articleId in address.article.keys {
+                        if let reminderDate = address.article[articleId] {
+                            let cutoff = DateUtils.getFourteenDaysAgoMidnight()
+                            if (reminderDate > cutoff || reminderDate == 1) {
+                                /*
+                                 these are all the articles with no reminderDate or reminderDate more than 14 days ago, i.e. first date appearing in title is more than 14 days ago. this is so we avoid removing articles with dates from x to y where reminder date is x-1 but event is still valid as y has not reached. the implication is that there will be deals/events that expired up to 14 days ago
+                                */
+                                articleIds[articleId] = reminderDate
+                            } else {
+                                print("addressId: \(address.objectID), reminderDate: \(reminderDate)")
+                                self.addressRef.child(address.objectID).child("article").child(articleId).removeValue()
+                            }
+                        }
+                    }
+                }
+                
+                dispatchGroup.leave()
+            }
+        }
+        
+        dispatchGroup.notify(queue: .main) {
+            print("articleIds size: \(articleIds.count)")
+            self.filterNearbyArticles(articleIds: articleIds, weekOnly: weekOnly, limit: limit, onComplete: { (articles) in
+                onComplete(articles)
+            })
+        }
+    }
+    
+    func filterNearbyArticles(articleIds: [String: Double], weekOnly: Bool = false, limit: Int = 50, onComplete: @escaping ([Article]) -> ()) {
+        if articleIds.count == 0 {
+            onComplete([Article]())
+            return
+        }
+        
+        var articles = [Article]()
+        
+        var datedArticleIds = [String: Double]()
+        var undatedArticleIds = [String]()
+        for entry in articleIds {
+            if entry.value > 1 {
+                let now = Date().timeIntervalSince1970 * 1000
+                let absDiff = abs(now - entry.value)
+                if weekOnly {
+                    let weekAgoMidnight = DateUtils.getWeekAgoMidnight()
+                    let weekLaterMidnight = DateUtils.getWeekLaterMidnight()
+                    if (entry.value >= weekAgoMidnight && entry.value < weekLaterMidnight) {
+                        datedArticleIds[entry.key] = absDiff
+                    }
+                } else {
+                    datedArticleIds[entry.key] = absDiff
+                }
+            } else {
+                undatedArticleIds.append(entry.key)
+            }
+        }
+        
+        // sort datedArticleIds by proximity to today
+        let sortedDatedArticles = Array(datedArticleIds.keys).sorted(by: { datedArticleIds[$0]! < datedArticleIds[$1]! })
+        
+        // dated articles will go on top, undated articles will be randomised
+        let articleIdList = sortedDatedArticles + undatedArticleIds.shuffled()
+        
+        let articleLimit = min(limit, articleIdList.count)
+        let dispatchGroup = DispatchGroup()
+        for index in 0..<articleLimit {
+            let articleId = articleIdList[index]
+            let query = self.articleRef.child(articleId)
+            dispatchGroup.enter()
+            query.observeSingleEvent(of: .value) { (snap) in
+                let article = Article(snapshot: snap)
+                articles.append(article)
+                dispatchGroup.leave()
+            }
+        }
+        
+        dispatchGroup.notify(queue: .main) {
+            onComplete(articles)
+        }
+    }
+    
+    func getMrtStationByName(locale: String, onComplete: @escaping ([String: [String: Any]]) -> ()) {
+        let name = locale + " MRT Station"
+        var mrtStationMap = [String: [String: Any]]()
+        let mrtQuery = database.reference(withPath: "mrtStation").queryOrdered(byChild: "stationName").queryEqual(toValue: name)
+        mrtQuery.observeSingleEvent(of: .value) { (snap) in
+            for case let data as DataSnapshot in snap.children {
+                let station = MrtStation(snapshot: data)
+                if let locale = station.stationLocale {
+                    if (mrtStationMap[locale] == nil) {
+                        var location = [String: Any]()
+                        location["latitude"] = station.latitude
+                        location["longitude"] = station.longitude
+                        location["geofence"] = station.geofence
+                        mrtStationMap[locale] = location
+                    }
+                }
+            }
+            onComplete(mrtStationMap)
+        }
+    }
+    
+    func getMrtStations(onComplete: @escaping ([String: [String: Any]]) -> ()) {
+        var mrtStationMap = [String: [String: Any]]()
+        let mrtQuery = database.reference(withPath: "mrtStation").queryOrdered(byChild: "type").queryEqual(toValue: "MRT")
+        mrtQuery.observeSingleEvent(of: .value) { (snap) in
+            for case let data as DataSnapshot in snap.children {
+                let station = MrtStation(snapshot: data)
+                if let locale = station.stationLocale {
+                    if (mrtStationMap[locale] == nil) {
+                        var location = [String: Any]()
+                        location["latitude"] = station.latitude
+                        location["longitude"] = station.longitude
+                        location["geofence"] = station.geofence
+                        mrtStationMap[locale] = location
+                    }
+                }
+            }
+            onComplete(mrtStationMap)
+        }
+    }
+    
     func removeFeedObservers() {
         for query in observedFeedQueries {
-            
             query.removeAllObservers()
         }
         observedFeedQueries.removeAll()
     }
     
     func removeArticleObserver(_ articleId: String) {
-        if let query = observedArticlesQueries[articleId] {
-            
-            query.removeAllObservers()
+        if let _ = observedArticlesQueries[articleId] {
+            self.articleRef.child(articleId).removeAllObservers()
             observedArticlesQueries.removeValue(forKey: articleId)
+        }
+    }
+    
+    func removeVideoObserver(_ videoId: String) {
+        if let _ = observedVideosQueries[videoId] {
+            self.videoRef.child(videoId).removeAllObservers()
+            observedVideosQueries.removeValue(forKey: videoId)
         }
     }
     
@@ -330,7 +730,7 @@ class DataSource {
     
     // Recommended Articles
     func getRecommendedArticles(onComplete: @escaping ([Article]) -> ()) {
-        
+        let limit = 1
         themeKey = defaults.string(forKey: "themeKey")
         themeFilters = defaults.string(forKey: "themeFilters")
         let now = floor(Double(Date().timeIntervalSince1970 * 1000))
@@ -349,13 +749,13 @@ class DataSource {
                                 if error == nil {
                                     self.searchRef.child(self.themeKey!).setValue(content, withCompletionBlock: { (error, ref) in
                                         initQuery.setValue(now)
-                                        let query = hitsRef.queryLimited(toFirst: 5)
+                                        let query = hitsRef.queryLimited(toFirst: UInt(limit))
                                         var articles = [Article]()
                                         query.observe(.childAdded, with: { (snap) in
                                             let article = Article(snapshot: snap)
                                             articles.append(article)
-                                            if articles.count == 5 {
-                                                query.removeAllObservers()
+                                            if articles.count == limit {
+                                                hitsRef.removeAllObservers()
                                                 onComplete(articles)
                                             }
                                         })
@@ -364,14 +764,14 @@ class DataSource {
                             }
                         } else {
                             
-                            let query = hitsRef.queryLimited(toFirst: 5)
+                            let query = hitsRef.queryLimited(toFirst: UInt(limit))
                             var articles = [Article]()
                             query.observe(.childAdded, with: { (snap) in
                                 let article = Article(snapshot: snap)
                                 articles.append(article)
                                 
-                                if articles.count == 5 {
-                                    query.removeAllObservers()
+                                if articles.count == limit {
+                                    hitsRef.removeAllObservers()
                                     onComplete(articles)
                                 }
                             })
@@ -384,13 +784,13 @@ class DataSource {
                             if error == nil {
                                 self.searchRef.child(self.themeKey!).setValue(content, withCompletionBlock: { (error, ref) in
                                     initQuery.setValue(now)
-                                    let query = hitsRef.queryLimited(toFirst: 5)
+                                    let query = hitsRef.queryLimited(toFirst: UInt(limit))
                                     var articles = [Article]()
                                     query.observe(.childAdded, with: { (snap) in
                                         let article = Article(snapshot: snap)
                                         articles.append(article)
-                                        if articles.count == 5 {
-                                            query.removeAllObservers()
+                                        if articles.count == limit {
+                                            hitsRef.removeAllObservers()
                                             onComplete(articles)
                                         }
                                     })
@@ -402,6 +802,109 @@ class DataSource {
             }
         }
     }
+    
+    
+    // Recommended Deals
+    func getRecommendedDeals(onComplete: @escaping ([Article]) -> ()) {
+        let limit = 1
+        let dealsKey = "Deals"
+        let dealsFilter = "mainTheme: Deals"
+        let now = floor(Double(Date().timeIntervalSince1970 * 1000))
+        setupAlgoliaClient {
+            if self.themeKey != nil {
+                let hitsRef = self.searchRef.child(dealsKey).child("hits")
+                let initQuery = self.searchRef.child(dealsKey).child("lastQueryTimestamp")
+                initQuery.observeSingleEvent(of: .value) { (lastQuerySnap) in
+                    if let lastQueryTimestamp = lastQuerySnap.value as? Double {
+                        let timeElapsed = DateUtils.hoursSince(unixTimestamp: lastQueryTimestamp)
+                        if timeElapsed >= 3 {
+                            
+                            let algoliaQuery = Query()
+                            algoliaQuery.filters = dealsFilter
+                            self.algoliaIndex?.search(algoliaQuery) { (content, error) in
+                                if error == nil {
+                                    self.searchRef.child(dealsKey).setValue(content, withCompletionBlock: { (error, ref) in
+                                        initQuery.setValue(now)
+                                        let query = hitsRef.queryLimited(toFirst: UInt(limit))
+                                        var articles = [Article]()
+                                        query.observe(.childAdded, with: { (snap) in
+                                            let article = Article(snapshot: snap)
+                                            articles.append(article)
+                                            if articles.count == limit {
+                                                hitsRef.removeAllObservers()
+                                                onComplete(articles)
+                                            }
+                                        })
+                                    })
+                                }
+                            }
+                        } else {
+                            
+                            let query = hitsRef.queryLimited(toFirst: UInt(limit))
+                            var articles = [Article]()
+                            query.observe(.childAdded, with: { (snap) in
+                                let article = Article(snapshot: snap)
+                                articles.append(article)
+                                
+                                if articles.count == limit {
+                                    hitsRef.removeAllObservers()
+                                    onComplete(articles)
+                                }
+                            })
+                        }
+                    } else {
+                        
+                        let algoliaQuery = Query()
+                        algoliaQuery.filters = dealsFilter
+                        self.algoliaIndex?.search(algoliaQuery) { (content, error) in
+                            if error == nil {
+                                self.searchRef.child(dealsKey).setValue(content, withCompletionBlock: { (error, ref) in
+                                    initQuery.setValue(now)
+                                    let query = hitsRef.queryLimited(toFirst: UInt(limit))
+                                    var articles = [Article]()
+                                    query.observe(.childAdded, with: { (snap) in
+                                        let article = Article(snapshot: snap)
+                                        articles.append(article)
+                                        if articles.count == limit {
+                                            hitsRef.removeAllObservers()
+                                            onComplete(articles)
+                                        }
+                                    })
+                                })
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Saved articles reminder
+    func getSavedArticlesReminderData(onComplete: @escaping ([Article]) -> ()) {
+        var reminderList = [Article]()
+        self.userRef.child("savedItems").observeSingleEvent(of: .value) { (snap) in
+            if let savedItems = snap.value as? [String: Double] {
+                var doneList = [String]()
+                for id in savedItems.keys {
+                    self.articleRef.child(id).observeSingleEvent(of: .value) { (articleSnap) in
+                        doneList.append(id)
+                        let article = Article(snapshot: articleSnap)
+                        if let reminderDate = article.reminderDate {
+                            if (reminderDate > DateUtils.getThisMidnight() && reminderDate < DateUtils.getNextMidnight()) {
+                                reminderList.append(article)
+                            }
+                            
+                            if doneList.count >= savedItems.count {
+                                onComplete(reminderList)
+                            }
+                        }
+                    }
+                }
+                
+            }
+        }
+    }
+    
     
     
     // Feed Cells
@@ -418,16 +921,44 @@ class DataSource {
                 if (actionIsUpvote && wasUpvoted) {
                     upvoters.removeValue(forKey: self.uid)
                 } else if (actionIsUpvote && wasDownvoted) {
+                    Analytics.logEvent("upvote_article", parameters: [
+                        AnalyticsParameterItemID: article["objectID"] ?? "",
+                        AnalyticsParameterItemName: article["title"] ?? "",
+                        AnalyticsParameterItemCategory: article["mainTheme"] ?? "",
+                        "item_source": article["source"] ?? "",
+                        AnalyticsParameterContentType: article["type"] ?? ""
+                    ])
                     upvoters[self.uid] = now
                     downvoters.removeValue(forKey: self.uid)
                 } else if (actionIsUpvote && !wasUpvoted && !wasDownvoted) {
+                    Analytics.logEvent("upvote_article", parameters: [
+                        AnalyticsParameterItemID: article["objectID"] ?? "",
+                        AnalyticsParameterItemName: article["title"] ?? "",
+                        AnalyticsParameterItemCategory: article["mainTheme"] ?? "",
+                        "item_source": article["source"] ?? "",
+                        AnalyticsParameterContentType: article["type"] ?? ""
+                    ])
                     upvoters[self.uid] = now
                 } else if (!actionIsUpvote && wasUpvoted) {
                     upvoters.removeValue(forKey: self.uid)
+                    Analytics.logEvent("downvote_article", parameters: [
+                        AnalyticsParameterItemID: article["objectID"] ?? "",
+                        AnalyticsParameterItemName: article["title"] ?? "",
+                        AnalyticsParameterItemCategory: article["mainTheme"] ?? "",
+                        "item_source": article["source"] ?? "",
+                        AnalyticsParameterContentType: article["type"] ?? ""
+                    ])
                     downvoters[self.uid] = now
                 } else if (!actionIsUpvote && wasDownvoted) {
                     downvoters.removeValue(forKey: self.uid)
                 } else if (!actionIsUpvote && !wasUpvoted && !wasDownvoted) {
+                    Analytics.logEvent("downvote_article", parameters: [
+                        AnalyticsParameterItemID: article["objectID"] ?? "",
+                        AnalyticsParameterItemName: article["title"] ?? "",
+                        AnalyticsParameterItemCategory: article["mainTheme"] ?? "",
+                        "item_source": article["source"] ?? "",
+                        AnalyticsParameterContentType: article["type"] ?? ""
+                    ])
                     downvoters[self.uid] = now
                 }
                 
@@ -445,14 +976,14 @@ class DataSource {
             return TransactionResult.success(withValue: mutableData)
         }, andCompletionBlock: { (error, committed, snap) in
             if let error = error {
-                
+                print(error.localizedDescription)
             }
             
             onComplete()
         })
     }
     
-    func updateUserVote(article: Article, actionIsUpvote: Bool, onComplete: @escaping () -> ()) {
+    func updateUserVote(article: Article, actionIsUpvote: Bool, onComplete: @escaping (String?) -> ()) {
         let now = floor(Double(Date().timeIntervalSince1970 * 1000))
         
         userRef.runTransactionBlock({ (mutableData) -> TransactionResult in
@@ -462,25 +993,47 @@ class DataSource {
                 var upvotedItemsCount = user["upvotedItemsCount"] as? Int ?? 0
                 var downvotedItemsCount = user["downvotedItemsCount"] as? Int ?? 0
                 var points = user["points"] as? Double ?? 0
+                var targetPoints = user["targetPoints"] as? Double ?? 0
+                var status = user["status"] as? Int ?? 0
                 
                 if actionIsUpvote {
-                    if let _ = upvotedItems[self.uid] {
-                        upvotedItems.removeValue(forKey: self.uid)
-                        points = points - 1
+                    // upvote clicked
+                    if let _ = upvotedItems[article.objectID] {
+                        // previously upvoted
+                        upvotedItems.removeValue(forKey: article.objectID)
+                        points -= 1
                     } else {
-                        upvotedItems[self.uid] = now
-                        downvotedItems.removeValue(forKey: self.uid)
-                        points = points + 1
+                        upvotedItems[article.objectID] = now
+                        if let _ = downvotedItems[article.objectID] {
+                            // previously downvoted
+                            downvotedItems.removeValue(forKey: article.objectID)
+                        } else {
+                            // no prior votes
+                            points += 1
+                        }
                     }
                 } else {
-                    if let _ = downvotedItems[self.uid] {
-                        downvotedItems.removeValue(forKey: self.uid)
-                        points = points - 1
+                    // downvote clicked
+                    if let _ = downvotedItems[article.objectID] {
+                        // previously downvoted
+                        downvotedItems.removeValue(forKey: article.objectID)
+                        points -= 1
                     } else {
-                        upvotedItems.removeValue(forKey: self.uid)
-                        downvotedItems[self.uid] = now
-                        points = points + 1
+                        downvotedItems[article.objectID] = now
+                        if let _ = upvotedItems[article.objectID] {
+                            // previously upvoted
+                            upvotedItems.removeValue(forKey: article.objectID)
+                        } else {
+                            // no prior votes
+                            points = points + 1
+                        }
                     }
+                }
+                
+                if targetPoints <= points {
+                    targetPoints = targetPoints * self.TARGET_POINTS_MULTIPLIER
+                    status += 1
+                    self.userStatus = self.getUserStatus(status)
                 }
                 
                 upvotedItemsCount = upvotedItems.count
@@ -491,6 +1044,8 @@ class DataSource {
                 user["upvotedItemsCount"] = upvotedItemsCount as Any?
                 user["downvotedItemsCount"] = downvotedItemsCount as Any?
                 user["points"] = points as Any?
+                user["targetPoints"] = targetPoints as Any?
+                user["status"] = status as Any?
                 
                 mutableData.value = user
                 
@@ -499,10 +1054,10 @@ class DataSource {
             return TransactionResult.success(withValue: mutableData)
         }, andCompletionBlock: { (error, committed, snap) in
             if let error = error {
-                
+                print(error.localizedDescription)
             }
-            
-            onComplete()
+            onComplete(self.userStatus)
+            self.userStatus = nil
         })
     }
     
@@ -518,6 +1073,13 @@ class DataSource {
                 if let _ = savers[self.uid] {
                     savers.removeValue(forKey: self.uid)
                 } else {
+                    Analytics.logEvent("save_article", parameters: [
+                        AnalyticsParameterItemID: article["objectID"] ?? "",
+                        AnalyticsParameterItemName: article["title"] ?? "",
+                        AnalyticsParameterItemCategory: article["mainTheme"] ?? "",
+                        "item_source": article["source"] ?? "",
+                        AnalyticsParameterContentType: article["type"] ?? ""
+                    ])
                     savers[self.uid] = now
                 }
                 saveCount = savers.count
@@ -533,7 +1095,7 @@ class DataSource {
             return TransactionResult.success(withValue: mutableData)
         }, andCompletionBlock: { (error, committed, snap) in
             if let error = error {
-                
+                print(error.localizedDescription)
             }
             
             onComplete()
@@ -565,12 +1127,321 @@ class DataSource {
             return TransactionResult.success(withValue: mutableData)
         }, andCompletionBlock: { (error, committed, snap) in
             if let error = error {
-                
+                print(error.localizedDescription)
             }
             
             onComplete()
         })
     }
+    
+    
+    // Video Feed
+    func observeVideos(query: DatabaseQuery, onComplete: @escaping ([Video]) -> ()) {
+        var videos = [Video]()
+        var videoIds = [String]()
+        
+        query.observe(.childAdded) { (snap) in
+            let video = Video(snapshot: snap)
+            
+            if !videoIds.contains(snap.key) {
+                let isReported = video.isReported ?? false
+                if !isReported {
+                    videos.append(video)
+                    videoIds.append(snap.key)
+                }
+            }
+            onComplete(videos)
+        }
+        
+        query.observe(.childChanged) { (snap) in
+            let video = Video(snapshot: snap)
+            
+            if let index = videoIds.index(of: snap.key) {
+                let isReported = video.isReported ?? false
+                if isReported {
+                    videos.remove(at: index)
+                    videoIds.remove(at: index)
+                } else {
+                    videos[index] = video
+                }
+            }
+            onComplete(videos)
+        }
+        
+        query.observe(.childRemoved) { (snap) in
+            if let index = videoIds.index(of: snap.key) {
+                videos.remove(at: index)
+                videoIds.remove(at: index)
+            }
+            onComplete(videos)
+        }
+        
+        query.observe(.childMoved) { (snap, previousChildKey) in
+            if let index = videoIds.index(of: snap.key) {
+                videoIds.remove(at: index)
+                videos.remove(at: index)
+            }
+            let newIndex = (previousChildKey != nil) ? videoIds.index(of: previousChildKey!)! + 1 : 0
+            videoIds.insert(snap.key, at: newIndex)
+            videos.insert(Video(snapshot: snap), at: newIndex)
+            onComplete(videos)
+        }
+    }
+    
+    func getVideoFeed(onComplete: @escaping ([Video]) -> ()) {
+        let query = videoRef.queryOrdered(byChild: "trendingIndex").queryLimited(toFirst: self.limit)
+//        query.keepSynced(true)
+        observedFeedQueries.append(query)
+        observeVideos(query: query, onComplete: onComplete)
+    }
+    
+    func getVideoFeed(startAt: String, onComplete: @escaping ([Video]) -> ()) {
+        let query = videoRef.queryOrdered(byChild: "trendingIndex").queryLimited(toFirst: self.limit + 1).queryStarting(atValue: startAt)
+//        query.keepSynced(true)
+        observedFeedQueries.append(query)
+        observeVideos(query: query, onComplete: onComplete)
+    }
+    
+    func observeVideosForMainFeed(query: DatabaseQuery, onComplete: @escaping ([Video]) -> ()) {
+        var videos = [Video]()
+        var videoIds = [String]()
+        
+        query.observeSingleEvent(of: .value) { (snap) in
+            // if value changes, reset all articles and remove all observers
+            if videoIds.count > 0 {
+                for videoId in videoIds {
+                    self.videoRef.child(videoId).removeAllObservers()
+                }
+                videos.removeAll()
+                videoIds.removeAll()
+            }
+            
+            guard let _ = snap.value else { return }
+            for case let data as DataSnapshot in snap.children {
+                let video = Video(snapshot: data)
+                if !videoIds.contains(video.objectID) {
+                    let isReported = video.isReported ?? false
+                    if !isReported {
+                        videos.append(video)
+                        videoIds.append(video.objectID)
+                    }
+                } else {
+                    if let index = videoIds.index(of: video.objectID) {
+                        let isReported = video.isReported ?? false
+                        if isReported {
+                            self.videoRef.child(video.objectID).removeAllObservers()
+                            videos.remove(at: index)
+                            videoIds.remove(at: index)
+                        } else {
+                            videos[index] = video
+                        }
+                    }
+                }
+            }
+            onComplete(videos)
+        }
+    }
+    
+    func getVideosForMainFeed(onComplete: @escaping ([Video]) -> ()) {
+        let cutoffDate = -DateUtils.getThreeDaysAgoMidnight()
+        let query = videoRef.queryOrdered(byChild: "pubDate").queryEnding(atValue: cutoffDate)
+        observedFeedQueries.append(query)
+        observeVideosForMainFeed(query: query, onComplete: onComplete)
+    }
+    
+    
+    // Video Feed Cells
+    func updateVideoVote(video: Video, actionIsUpvote: Bool, wasUpvoted: Bool, wasDownvoted: Bool, onComplete: @escaping () -> ()) {
+        let query = videoRef.child(video.objectID)
+        let now = floor(Double(Date().timeIntervalSince1970 * 1000))
+        
+        query.runTransactionBlock({ (mutableData) -> TransactionResult in
+            if var video = mutableData.value as? [String: Any] {
+                var upvoters = video["upvoters"] as? [String: Double] ?? [:]
+                var downvoters = video["downvoters"] as? [String: Double] ?? [:]
+                var voteCount = video["voteCount"] as? Int ?? 0
+                
+                if (actionIsUpvote && wasUpvoted) {
+                    upvoters.removeValue(forKey: self.uid)
+                } else if (actionIsUpvote && wasDownvoted) {
+                    upvoters[self.uid] = now
+                    downvoters.removeValue(forKey: self.uid)
+                } else if (actionIsUpvote && !wasUpvoted && !wasDownvoted) {
+                    upvoters[self.uid] = now
+                } else if (!actionIsUpvote && wasUpvoted) {
+                    upvoters.removeValue(forKey: self.uid)
+                    downvoters[self.uid] = now
+                } else if (!actionIsUpvote && wasDownvoted) {
+                    downvoters.removeValue(forKey: self.uid)
+                } else if (!actionIsUpvote && !wasUpvoted && !wasDownvoted) {
+                    downvoters[self.uid] = now
+                }
+                
+                voteCount = upvoters.count - downvoters.count
+                
+                video["upvoters"] = upvoters as Any?
+                video["downvoters"] = downvoters as Any?
+                video["voteCount"] = voteCount as Any?
+                video["changedSinceLastJob"] = true as Any?
+                
+                mutableData.value = video
+                
+                return TransactionResult.success(withValue: mutableData)
+            }
+            return TransactionResult.success(withValue: mutableData)
+        }, andCompletionBlock: { (error, committed, snap) in
+            if let error = error {
+                print(error.localizedDescription)
+            }
+            
+            onComplete()
+        })
+    }
+    
+    func updateUserVote(video: Video, actionIsUpvote: Bool, onComplete: @escaping (String?) -> ()) {
+        let now = floor(Double(Date().timeIntervalSince1970 * 1000))
+        
+        userRef.runTransactionBlock({ (mutableData) -> TransactionResult in
+            if var user = mutableData.value as? [String: Any] {
+                var upvotedItems = user["upvotedItems"] as? [String: Double] ?? [:]
+                var downvotedItems = user["downvotedItems"] as? [String: Double] ?? [:]
+                var upvotedItemsCount = user["upvotedItemsCount"] as? Int ?? 0
+                var downvotedItemsCount = user["downvotedItemsCount"] as? Int ?? 0
+                var points = user["points"] as? Double ?? 0
+                var targetPoints = user["targetPoints"] as? Double ?? 0
+                var status = user["status"] as? Int ?? 0
+                
+                if actionIsUpvote {
+                    // upvote clicked
+                    if let _ = upvotedItems[video.objectID] {
+                        // previously upvoted
+                        upvotedItems.removeValue(forKey: video.objectID)
+                        points -= 1
+                    } else {
+                        upvotedItems[video.objectID] = now
+                        if let _ = downvotedItems[video.objectID] {
+                            // previously downvoted
+                            downvotedItems.removeValue(forKey: video.objectID)
+                        } else {
+                            // no prior votes
+                            points += 1
+                        }
+                    }
+                } else {
+                    // downvote clicked
+                    if let _ = downvotedItems[video.objectID] {
+                        // previously downvoted
+                        downvotedItems.removeValue(forKey: video.objectID)
+                        points -= 1
+                    } else {
+                        downvotedItems[video.objectID] = now
+                        if let _ = upvotedItems[video.objectID] {
+                            // previously upvoted
+                            upvotedItems.removeValue(forKey: video.objectID)
+                        } else {
+                            // no prior votes
+                            points = points + 1
+                        }
+                    }
+                }
+                
+                if targetPoints <= points {
+                    targetPoints = targetPoints * self.TARGET_POINTS_MULTIPLIER
+                    status += 1
+                    self.userStatus = self.getUserStatus(status)
+                }
+                
+                upvotedItemsCount = upvotedItems.count
+                downvotedItemsCount = downvotedItems.count
+                
+                user["upvotedItems"] = upvotedItems as Any?
+                user["downvotedItems"] = downvotedItems as Any?
+                user["upvotedItemsCount"] = upvotedItemsCount as Any?
+                user["downvotedItemsCount"] = downvotedItemsCount as Any?
+                user["points"] = points as Any?
+                user["targetPoints"] = targetPoints as Any?
+                user["status"] = status as Any?
+                
+                mutableData.value = user
+                
+                return TransactionResult.success(withValue: mutableData)
+            }
+            return TransactionResult.success(withValue: mutableData)
+        }, andCompletionBlock: { (error, committed, snap) in
+            if let error = error {
+                print(error.localizedDescription)
+            }
+            onComplete(self.userStatus)
+            self.userStatus = nil
+        })
+    }
+    
+    func updateVideoSave(video: Video, onComplete: @escaping () -> ()) {
+        let query = videoRef.child(video.objectID)
+        let now = floor(Double(Date().timeIntervalSince1970 * 1000))
+        
+        query.runTransactionBlock({ (mutableData) -> TransactionResult in
+            if var video = mutableData.value as? [String: Any] {
+                var savers = video["savers"] as? [String: Double] ?? [:]
+                var saveCount = video["saveCount"] as? Int ?? 0
+                
+                if let _ = savers[self.uid] {
+                    savers.removeValue(forKey: self.uid)
+                } else {
+                    savers[self.uid] = now
+                }
+                saveCount = savers.count
+                
+                video["savers"] = savers as Any?
+                video["saveCount"] = saveCount as Any?
+                video["changedSinceLastJob"] = true as Any?
+                
+                mutableData.value = video
+                
+                return TransactionResult.success(withValue: mutableData)
+            }
+            return TransactionResult.success(withValue: mutableData)
+        }, andCompletionBlock: { (error, committed, snap) in
+            if let error = error {
+                print(error.localizedDescription)
+            }
+            
+            onComplete()
+        })
+    }
+    
+    func updateUserSave(video: Video, onComplete: @escaping () -> ()) {
+        let now = floor(Double(Date().timeIntervalSince1970 * 1000))
+        
+        userRef.runTransactionBlock({ (mutableData) -> TransactionResult in
+            if var user = mutableData.value as? [String: Any] {
+                var savedItems = user["savedItems"] as? [String: Double] ?? [:]
+                var savedItemsCount = user["savedItemsCount"] as? Int ?? 0
+                
+                if let _ = savedItems[video.objectID] {
+                    savedItems.removeValue(forKey: video.objectID)
+                } else {
+                    savedItems[video.objectID] = now
+                }
+                savedItemsCount = savedItems.count
+                
+                user["savedItems"] = savedItems as Any?
+                user["savedItemsCount"] = savedItemsCount as Any?
+                
+                mutableData.value = user
+                
+                return TransactionResult.success(withValue: mutableData)
+            }
+            return TransactionResult.success(withValue: mutableData)
+        }, andCompletionBlock: { (error, committed, snap) in
+            if let error = error {
+                print(error.localizedDescription)
+            }
+            
+            onComplete()
+        })
+    }
+    
     
     
     // Comments
@@ -631,7 +1502,7 @@ class DataSource {
         
         InstanceID.instanceID().instanceID { (result, error) in
             if let error = error {
-                
+                print(error.localizedDescription)
             } else if let result = result {
                 token = result.token
                 let query = self.articleRef.child("\(articleId)/notificationTokens/\(self.uid)")
@@ -645,7 +1516,7 @@ class DataSource {
         query.removeValue()
     }
     
-    func sendComment(articleId: String, commentText: String?, commentImageData: Data?, onComplete: @escaping () -> (), onError: @escaping (String) -> ()) {
+    func sendComment(articleId: String, commentText: String?, commentImageData: Data?, onComplete: @escaping (String?) -> (), onError: @escaping (String) -> ()) {
         let commentRef = self.database.reference(withPath: "comment/\(articleId)")
         
         let now = -floor(Double(Date().timeIntervalSince1970 * 1000))
@@ -659,9 +1530,25 @@ class DataSource {
             "isUrl": false
         ]
         
-        if let imageData = commentImageData {
-            saveImageToStorage(key: key, imageData: imageData, onComplete: { (url) in
-                commentAsDict["imageUrl"] = url
+        if let key = key {
+            if let imageData = commentImageData {
+                saveImageToStorage(key: key, imageData: imageData, onComplete: { (url) in
+                    commentAsDict["imageUrl"] = url
+                    commentRef.child(key).setValue(commentAsDict) { (error, ref) in
+                        if let error = error {
+                            onError(error.localizedDescription)
+                            return
+                        }
+                        
+                        self.updateArticleComment(articleId: articleId)
+                        self.updateUserComment(articleId: articleId) { (userStatus) in
+                            onComplete(userStatus)
+                        }
+                    }
+                }, onError: { (error) in
+                    onError(error)
+                })
+            } else {
                 commentRef.child(key).setValue(commentAsDict) { (error, ref) in
                     if let error = error {
                         onError(error.localizedDescription)
@@ -669,25 +1556,13 @@ class DataSource {
                     }
                     
                     self.updateArticleComment(articleId: articleId)
-                    self.updateUserComment(articleId: articleId)
-                    
-                    onComplete()
+                    self.updateUserComment(articleId: articleId) { (userStatus) in
+                        onComplete(userStatus)
+                    }
                 }
-            }, onError: { (error) in
-                onError(error)
-            })
-        } else {
-            commentRef.child(key).setValue(commentAsDict) { (error, ref) in
-                if let error = error {
-                    onError(error.localizedDescription)
-                    return
-                }
-                
-                self.updateArticleComment(articleId: articleId)
-                self.updateUserComment(articleId: articleId)
-                
-                onComplete()
             }
+        } else {
+            onError("An unexpected error occurred")
         }
     }
     
@@ -695,20 +1570,25 @@ class DataSource {
         let commentRef = self.database.reference(withPath: "comment/\(articleId)")
         
         let now = -floor(Double(Date().timeIntervalSince1970 * 1000))
-        let key = commentRef.childByAutoId().key
+        if let key = commentRef.childByAutoId().key {
         
-        let commentAsDict: [String: Any?] = [
-            "uid": uid,
-            "userDisplayName": userDisplayName!,
-            "commentText": urlTitle,
-            "imageUrl": urlImageUrl,
-            "pubDate": now,
-            "isUrl": true,
-            "urlSource": urlSource,
-            "urlLink": urlLink
-        ]
-        
-        commentRef.child(key).setValue(commentAsDict)
+            let commentAsDict: [String: Any?] = [
+                "uid": uid,
+                "userDisplayName": userDisplayName!,
+                "commentText": urlTitle,
+                "imageUrl": urlImageUrl,
+                "pubDate": now,
+                "isUrl": true,
+                "urlSource": urlSource,
+                "urlLink": urlLink
+            ]
+            
+            commentRef.child(key).setValue(commentAsDict)
+            return
+        } else {
+            print("sendUrlComment: failed to generate key")
+            return
+        }
     }
     
     func updateArticleComment(articleId: String) {
@@ -719,7 +1599,7 @@ class DataSource {
         var token: String = ""
         InstanceID.instanceID().instanceID { (result, error) in
             if let error = error {
-                
+                print(error.localizedDescription)
             } else if let result = result {
                 token = result.token
                 dispatchGroup.leave()
@@ -749,27 +1629,37 @@ class DataSource {
                 return TransactionResult.success(withValue: mutableData)
             }, andCompletionBlock: { (error, committed, snap) in
                 if let error = error {
-                    
+                    print(error.localizedDescription)
                 }
                 
             })
         }
     }
     
-    func updateUserComment(articleId: String) {
+    func updateUserComment(articleId: String, onComplete: @escaping (String?) -> ()) {
         userRef.runTransactionBlock({ (mutableData) -> TransactionResult in
             if var user = mutableData.value as? [String: Any] {
                 var commentedItems = user["commentedItems"] as? [String: Int] ?? [:]
                 var commentedItemsCount = user["commentedItemsCount"] as? Int ?? 0
                 var points = user["points"] as? Double ?? 0
+                var targetPoints = user["targetPoints"] as? Double ?? 0
+                var status = user["status"] as? Int ?? 0
                 
-                commentedItemsCount = commentedItems.count + 1
+                commentedItemsCount += 1
                 commentedItems[articleId] = commentedItemsCount
-                points = points + 1
+                points += 1
+                
+                if targetPoints <= points {
+                    targetPoints = targetPoints * self.TARGET_POINTS_MULTIPLIER
+                    status += 1
+                    self.userStatus = self.getUserStatus(status)
+                }
                 
                 user["commentedItems"] = commentedItems as Any?
                 user["commentedItemsCount"] = commentedItemsCount as Any?
                 user["points"] = points as Any?
+                user["targetPoints"] = targetPoints as Any?
+                user["status"] = status as Any?
                 
                 mutableData.value = user
                 
@@ -778,9 +1668,10 @@ class DataSource {
             return TransactionResult.success(withValue: mutableData)
         }, andCompletionBlock: { (error, committed, snap) in
             if let error = error {
-                
+                print(error.localizedDescription)
             }
-            
+            onComplete(self.userStatus)
+            self.userStatus = nil
         })
     }
     
@@ -798,7 +1689,7 @@ class DataSource {
     
     
     // Post
-    func createPost(post: Dictionary<String, Any?>, postImageData: Data?, onComplete: @escaping () -> (), onError: @escaping (String) -> ()) {
+    func createPost(post: Dictionary<String, Any?>, postImageData: Data?, onComplete: @escaping (String?) -> (), onError: @escaping (String) -> ()) {
         var post = post
         
         if let imageData = postImageData {
@@ -811,9 +1702,9 @@ class DataSource {
                         return
                     }
                     
-                    self.updateUserPost(post: post)
-                    
-                    onComplete()
+                    self.updateUserPost(post: post) { (userStatus) in
+                        onComplete(userStatus)
+                    }
                 })
             }, onError: { (error) in
                 onError(error)
@@ -825,27 +1716,37 @@ class DataSource {
                     return
                 }
                 
-                self.updateUserPost(post: post)
-                
-                onComplete()
+                self.updateUserPost(post: post) { (userStatus) in
+                    onComplete(userStatus)
+                }
             })
         }
     }
     
-    func updateUserPost(post: Dictionary<String, Any?>) {
+    func updateUserPost(post: Dictionary<String, Any?>, onComplete: @escaping (String?) -> ()) {
         userRef.runTransactionBlock({ (mutableData) -> TransactionResult in
             if var user = mutableData.value as? [String: Any] {
                 var createdPosts = user["createdPosts"] as? [String: Double] ?? [:]
                 var createdPostsCount = user["createdPostsCount"] as? Int ?? 0
                 var points = user["points"] as? Double ?? 0
+                var targetPoints = user["targetPoints"] as? Double ?? 0
+                var status = user["status"] as? Int ?? 0
                 
                 createdPosts[post["objectID"] as! String] = post["postDate"] as? Double
                 createdPostsCount = createdPosts.count
                 points = points + 1
                 
+                if targetPoints <= points {
+                    targetPoints = targetPoints * self.TARGET_POINTS_MULTIPLIER
+                    status += 1
+                    self.userStatus = self.getUserStatus(status)
+                }
+                
                 user["createdPosts"] = createdPosts as Any?
                 user["createdPostsCount"] = createdPostsCount as Any?
                 user["points"] = points as Any?
+                user["targetPoints"] = targetPoints as Any?
+                user["status"] = status as Any?
                 
                 mutableData.value = user
                 
@@ -854,9 +1755,10 @@ class DataSource {
             return TransactionResult.success(withValue: mutableData)
         }, andCompletionBlock: { (error, committed, snap) in
             if let error = error {
-                
+                print(error.localizedDescription)
             }
-            
+            onComplete(self.userStatus)
+            self.userStatus = nil
         })
     }
     
@@ -896,6 +1798,10 @@ class DataSource {
         query.setValue(readTime)
     }
     
+    func setArticleReadTime(articleId: String, readTime: Int) {
+        articleRef.child("\(articleId)/readTime").setValue(readTime)
+    }
+    
     // Settings
     func setCommentsNotificationPreference(bool: Bool) {
         if !bool {
@@ -911,5 +1817,166 @@ class DataSource {
         } else {
             recArticlesPreferenceRef.removeValue()
         }
+    }
+    
+    func setRecDealsNotificationPreference(bool: Bool) {
+        if !bool {
+            recDealsPreferenceRef.setValue(bool)
+        } else {
+            recDealsPreferenceRef.removeValue()
+        }
+    }
+    
+    func setSavedArticlesReminderNotificationPreference(bool: Bool) {
+        if !bool {
+            savedArticlesReminderPreferenceRef.setValue(bool)
+            Messaging.messaging().subscribe(toTopic: "savedArticlesReminderPush")
+        } else {
+            savedArticlesReminderPreferenceRef.removeValue()
+            Messaging.messaging().unsubscribe(fromTopic: "savedArticlesReminderPush")
+        }
+    }
+    
+    func setLocationNotificationPreference(bool: Bool) {
+        if !bool {
+            locationPreferenceRef.setValue(bool)
+        } else {
+            locationPreferenceRef.removeValue()
+        }
+    }
+    
+    func setVideosInFeedPreference(_ bool: Bool) {
+        if !bool {
+            videosInFeedPreferenceRef.child("showVideos").setValue(bool)
+        } else {
+            videosInFeedPreferenceRef.child("showVideos").removeValue()
+        }
+    }
+    
+    func setVideosInFeedPreference(for source: String, _ bool: Bool) {
+        if !bool {
+            videosInFeedPreferenceRef.child("channelsToRemove").child(source).setValue(Date().timeIntervalSince1970 * 1000.0)
+        } else {
+            videosInFeedPreferenceRef.child("channelsToRemove").child(source).removeValue()
+        }
+    }
+    
+    
+    // Data collection
+    func recordOpenArticleDetails(articleId: String, mainTheme: String) {
+        let now = floor(Double(Date().timeIntervalSince1970 * 1000))
+        articleRef.child(articleId).runTransactionBlock({ (mutableData) -> TransactionResult in
+            if var article = mutableData.value as? [String: Any] {
+                var openedBy = article["openedBy"] as? [String: Double] ?? [:]
+                var openCount = article["openCount"] as? Int ?? 0
+                
+                openedBy[self.uid] = now
+                openCount += 1
+                
+                article["openedBy"] = openedBy as Any?
+                article["openCount"] = openCount as Any?
+                article["changedSinceLastJob"] = true as Any?
+                
+                mutableData.value = article
+                
+                return TransactionResult.success(withValue: mutableData)
+            }
+            return TransactionResult.success(withValue: mutableData)
+        }, andCompletionBlock: { (error, committed, snap) in
+            if let error = error {
+                print(error.localizedDescription)
+            }
+        })
+        
+        userRef.runTransactionBlock({ (mutableData) -> TransactionResult in
+            if var user = mutableData.value as? [String: Any] {
+                var openedArticles = user["openedArticles"] as? [String: Double] ?? [:]
+                var openedThemes = user["openedThemes"] as? [String: Int] ?? [:]
+                
+                let themeOpenCount = openedThemes[mainTheme] ?? 0
+                
+                openedArticles[articleId] = now
+                openedThemes[mainTheme] = themeOpenCount + 1
+                
+                user["openedArticles"] = openedArticles as Any?
+                user["openedThemes"] = openedThemes as Any?
+                
+                mutableData.value = user
+                
+                return TransactionResult.success(withValue: mutableData)
+            }
+            return TransactionResult.success(withValue: mutableData)
+        }, andCompletionBlock: { (error, committed, snap) in
+            if let error = error {
+                print(error.localizedDescription)
+            }
+        })
+    }
+    
+    func recordOpenVideoDetails(videoId: String) {	
+        let now = floor(Double(Date().timeIntervalSince1970 * 1000))
+        videoRef.child(videoId).runTransactionBlock({ (mutableData) -> TransactionResult in
+            if var video = mutableData.value as? [String: Any] {
+                var viewedBy = video["viewedBy"] as? [String: Double] ?? [:]
+                var viewCount = video["viewCount"] as? Int ?? 0
+                
+                viewedBy[self.uid] = now
+                viewCount += 1
+                
+                video["viewedBy"] = viewedBy as Any?
+                video["viewCount"] = viewCount as Any?
+                video["changedSinceLastJob"] = true as Any?
+                
+                mutableData.value = video
+                
+                return TransactionResult.success(withValue: mutableData)
+            }
+            return TransactionResult.success(withValue: mutableData)
+        }, andCompletionBlock: { (error, committed, snap) in
+            if let error = error {
+                print(error.localizedDescription)
+            }
+        })
+        
+        userRef.runTransactionBlock({ (mutableData) -> TransactionResult in
+            if var user = mutableData.value as? [String: Any] {
+                var viewedVideos = user["viewedVideos"] as? [String: Double] ?? [:]
+                
+                viewedVideos[videoId] = now
+                
+                user["viewedVideos"] = viewedVideos as Any?
+                
+                mutableData.value = user
+                
+                return TransactionResult.success(withValue: mutableData)
+            }
+            return TransactionResult.success(withValue: mutableData)
+        }, andCompletionBlock: { (error, committed, snap) in
+            if let error = error {
+                print(error.localizedDescription)
+            }
+        })
+    }
+    
+    func setReferrerFor(uid: String, referrer: String) {
+        let updates = ["/\(uid)/referredBy": referrer]
+        self.userRef.updateChildValues(updates)
+    }
+    
+    func logNotificationClicked(uid: String?, itemId: String = "", type: String) {
+        Analytics.logEvent("click_notification", parameters: [
+            AnalyticsParameterItemID: itemId,
+            "notification_type": type
+        ])
+        
+        guard let uid = uid else { return }
+        let data: [String: Any] = [
+            "userId": uid,
+            "itemId": itemId,
+            "type": type,
+            "date": Date().timeIntervalSince1970 * 1000
+        ]
+        
+        self.notificationRef.child(uid).updateChildValues(data)
     }
 }

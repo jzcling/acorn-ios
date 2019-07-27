@@ -1,29 +1,28 @@
-/*
- Copyright 2018-present the Material Components for iOS authors. All Rights Reserved.
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
- http://www.apache.org/licenses/LICENSE-2.0
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
- */
+// Copyright 2018-present the Material Components for iOS authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #import "MDCBaseCell.h"
 
 #import "MaterialInk.h"
+#import "MaterialRipple.h"
 #import "MaterialShadowLayer.h"
-
-static NSString *const MDCListBaseCellInkViewKey = @"MDCListBaseCellInkViewKey";
-static NSString *const MDCListBaseCellCurrentInkColorKey = @"MDCListBaseCellCurrentInkColorKey";
-static NSString *const MDCListBaseCellCurrentElevationKey = @"MDCListBaseCellCurrentElevationKey";
 
 @interface MDCBaseCell ()
 
-@property (nonatomic, assign) CGPoint lastTouch;
-@property (strong, nonatomic, nonnull) MDCInkView *inkView;
+@property(nonatomic, assign) CGPoint lastTouch;
+@property(strong, nonatomic, nonnull) MDCInkView *inkView;
+@property(strong, nonatomic, nonnull) MDCRippleView *rippleView;
 
 @end
 
@@ -42,32 +41,9 @@ static NSString *const MDCListBaseCellCurrentElevationKey = @"MDCListBaseCellCur
 - (instancetype)initWithCoder:(NSCoder *)aDecoder {
   self = [super initWithCoder:aDecoder];
   if (self) {
-    MDCInkView *decodedInkView = [aDecoder decodeObjectOfClass:[MDCInkView class]
-                                                        forKey:MDCListBaseCellInkViewKey];
-    if (decodedInkView) {
-      self.inkView = decodedInkView;
-    }
-    UIColor *decodedColor = [aDecoder decodeObjectOfClass:[UIColor class]
-                                                   forKey:MDCListBaseCellCurrentInkColorKey];
-    if (decodedColor) {
-      self.inkView.inkColor = decodedColor;
-    }
-    NSNumber *decodedElevation = [aDecoder decodeObjectOfClass:[NSNumber class]
-                                                        forKey:MDCListBaseCellCurrentElevationKey];
-    if (decodedElevation) {
-      self.elevation = (CGFloat)[decodedElevation doubleValue];
-    }
     [self commonMDCBaseCellInit];
   }
   return self;
-}
-
-- (void)encodeWithCoder:(NSCoder *)coder {
-  [super encodeWithCoder:coder];
-  [coder encodeObject:_inkView forKey:MDCListBaseCellInkViewKey];
-  [coder encodeObject:_inkView.inkColor forKey:MDCListBaseCellCurrentInkColorKey];
-  [coder encodeObject:[NSNumber numberWithDouble:(double)_elevation]
-               forKey:MDCListBaseCellCurrentInkColorKey];
 }
 
 #pragma mark Setup
@@ -78,20 +54,19 @@ static NSString *const MDCListBaseCellCurrentElevationKey = @"MDCListBaseCellCur
   }
   _inkView.usesLegacyInkRipple = NO;
   [self addSubview:_inkView];
+  if (!self.rippleView) {
+    self.rippleView = [[MDCRippleView alloc] initWithFrame:self.bounds];
+  }
 }
 
 #pragma mark Ink
 
 - (void)startInk {
-  [self.inkView startTouchBeganAtPoint:_lastTouch
-                              animated:YES
-                        withCompletion:nil];
+  [self.inkView startTouchBeganAtPoint:_lastTouch animated:YES withCompletion:nil];
 }
 
 - (void)endInk {
-  [self.inkView startTouchEndAtPoint:_lastTouch
-                            animated:YES
-                      withCompletion:nil];
+  [self.inkView startTouchEndAtPoint:_lastTouch animated:YES withCompletion:nil];
 }
 
 #pragma mark Shadow
@@ -108,16 +83,11 @@ static NSString *const MDCListBaseCellCurrentElevationKey = @"MDCListBaseCellCur
 #pragma mark - UIResponder
 
 - (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
-  [super touchesBegan:touches withEvent:event];
   UITouch *touch = [touches anyObject];
   CGPoint location = [touch locationInView:self];
   self.lastTouch = location;
-  [self startInk];
-}
-
-- (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
-  [super touchesEnded:touches withEvent:event];
-  [self endInk];
+  // Call super only after -lastTouch has been recorded, since super can call -setHighlighted:.
+  [super touchesBegan:touches withEvent:event];
 }
 
 #pragma mark UIView Overrides
@@ -136,8 +106,12 @@ static NSString *const MDCListBaseCellCurrentElevationKey = @"MDCListBaseCellCur
 
 - (void)setHighlighted:(BOOL)highlighted {
   [super setHighlighted:highlighted];
-  if (!highlighted) {
+  if (highlighted) {
+    [self startInk];
+    [self.rippleView beginRippleTouchDownAtPoint:_lastTouch animated:YES completion:nil];
+  } else {
     [self endInk];
+    [self.rippleView beginRippleTouchUpAnimated:YES completion:nil];
   }
 }
 
@@ -145,6 +119,7 @@ static NSString *const MDCListBaseCellCurrentElevationKey = @"MDCListBaseCellCur
   [super prepareForReuse];
   self.elevation = 0;
   [self.inkView cancelAllAnimationsAnimated:NO];
+  [self.rippleView cancelAllRipplesAnimated:NO completion:nil];
 }
 
 #pragma mark Accessors
@@ -168,11 +143,38 @@ static NSString *const MDCListBaseCellCurrentElevationKey = @"MDCListBaseCellCur
   return self.inkView.inkColor;
 }
 
+- (void)setRippleColor:(UIColor *)rippleColor {
+  if ([self.rippleColor isEqual:rippleColor]) {
+    return;
+  }
+  self.rippleView.rippleColor = rippleColor;
+}
+
+- (UIColor *)rippleColor {
+  return self.rippleView.rippleColor;
+}
+
 - (MDCShadowLayer *)shadowLayer {
   if ([self.layer isMemberOfClass:[MDCShadowLayer class]]) {
     return (MDCShadowLayer *)self.layer;
   }
   return nil;
+}
+
+- (void)setEnableRippleBehavior:(BOOL)enableRippleBehavior {
+  if (_enableRippleBehavior == enableRippleBehavior) {
+    return;
+  }
+  _enableRippleBehavior = enableRippleBehavior;
+
+  if (enableRippleBehavior) {
+    [self.inkView removeFromSuperview];
+    self.rippleView.frame = self.bounds;
+    [self addSubview:self.rippleView];
+  } else {
+    [self.rippleView removeFromSuperview];
+    [self addSubview:self.inkView];
+  }
 }
 
 @end

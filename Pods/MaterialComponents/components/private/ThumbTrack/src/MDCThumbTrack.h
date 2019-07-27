@@ -1,18 +1,16 @@
-/*
- Copyright 2015-present the Material Components for iOS authors. All Rights Reserved.
-
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
- http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
- */
+// Copyright 2015-present the Material Components for iOS authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #import <UIKit/UIKit.h>
 
@@ -55,8 +53,20 @@
 /** The color of the discrete "ticks" in the "off" portion of the track. */
 @property(nullable, nonatomic, strong) UIColor *trackOffTickColor;
 
-/** The color of the Ink ripple. */
-@property(nullable, nonatomic, strong) UIColor *inkColor;
+/**
+ By setting this property to @c YES, the Ripple component will be used instead of Ink
+ to display visual feedback to the user.
+
+ @note This property will eventually be enabled by default, deprecated, and then deleted as part
+ of our migration to Ripple. Learn more at
+ https://github.com/material-components/material-components-ios/tree/develop/components/Ink#migration-guide-ink-to-ripple
+
+ Defaults to NO.
+ */
+@property(nonatomic, assign) BOOL enableRippleBehavior;
+
+/** The color of the ripple. */
+@property(nullable, nonatomic, strong) UIColor *rippleColor;
 
 /**
  The color of the value label's text.
@@ -143,10 +153,10 @@
 @property(nonatomic, assign) BOOL thumbGrowsWhenDragging;
 
 /** The max radius of the ripple when the user touches the thumb. */
-@property(nonatomic, assign) CGFloat thumbMaxRippleRadius;
+@property(nonatomic, assign) CGFloat thumbRippleMaximumRadius;
 
-/** Whether the thumb should display ink splashes on touch. */
-@property(nonatomic, assign) BOOL shouldDisplayInk;
+/** Whether the thumb should display ripple splashes on touch. */
+@property(nonatomic, assign) BOOL shouldDisplayRipple;
 
 /** Whether or not to display dots indicating discrete locations. Default is NO. */
 @property(nonatomic, assign) BOOL shouldDisplayDiscreteDots;
@@ -265,6 +275,33 @@
  */
 @property(nullable, nonatomic, strong) UIColor *primaryColor;
 
+@end
+
+@interface MDCThumbTrack (ToBeDeprecated)
+
+/**
+ The color of the Ink ripple.
+ @warning This method will eventually be deprecated. Opt-in to Ripple by setting
+ enableRippleBehavior to YES, and then use rippleColor instead. Learn more at
+ https://github.com/material-components/material-components-ios/tree/develop/components/Ink#migration-guide-ink-to-ripple
+ */
+@property(nullable, nonatomic, strong) UIColor *inkColor;
+
+/**
+ Whether the thumb should display ink splashes on touch.
+ @warning This method will eventually be deprecated. Opt-in to Ripple by setting
+ enableRippleBehavior to YES, and then use shouldDisplayRipple instead. Learn more at
+ https://github.com/material-components/material-components-ios/tree/develop/components/Ink#migration-guide-ink-to-ripple
+ */
+@property(nonatomic, assign) BOOL shouldDisplayInk;
+
+/**
+ The max radius of the ripple when the user touches the thumb.
+ @warning This method will eventually be deprecated. Opt-in to Ripple by setting
+ enableRippleBehavior to YES, and then use thumbRippleMaximumRadius instead. Learn more at
+ https://github.com/material-components/material-components-ios/tree/develop/components/Ink#migration-guide-ink-to-ripple
+ */
+@property(nonatomic, assign) CGFloat thumbMaxRippleRadius;
 
 @end
 

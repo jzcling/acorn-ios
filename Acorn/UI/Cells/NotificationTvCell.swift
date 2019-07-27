@@ -10,11 +10,6 @@ import UIKit
 import SDWebImage
 import FirebaseStorage
 
-protocol NotificationTvCellDelegate: class {
-    func openArticle(_ articleId: String)
-    func openComments(_ articleId: String)
-}
-
 class NotificationTvCell: UITableViewCell {
 
     @IBOutlet weak var headerTextLabel: UILabel!
@@ -24,23 +19,7 @@ class NotificationTvCell: UITableViewCell {
     @IBOutlet weak var extraLabel: UILabel!
     @IBOutlet weak var notificationImageView: UIImageView!
     
-    var notification: String? {
-        didSet {
-            populateCell()
-        }
-    }
-    lazy var content = notification!.components(separatedBy: "•")
-    lazy var type = content[0]
-    lazy var articleId = content[1]
-    lazy var headerText = content[2]
-    lazy var title = content[3]
-    lazy var source = content[4]
-    lazy var imageUrl = content[5]
-    lazy var theme = content[6]
-    lazy var extra = content[7]
-    lazy var timestamp = content[8]
-    
-    weak var delegate: NotificationTvCellDelegate?
+    var notification: String?
     
     let nightModeOn = UserDefaults.standard.bool(forKey: "nightModePref")
     lazy var defaultTextColor = nightModeOn ? ResourcesNight.COLOR_DEFAULT_TEXT : ResourcesDay.COLOR_DEFAULT_TEXT
@@ -72,10 +51,22 @@ class NotificationTvCell: UITableViewCell {
     }
 
     func populateCell() {
+        let content = notification!.components(separatedBy: "|•|")
+        let type = content[0]
+        let articleId = content[1]
+        let headerText = content[2]
+        let title = content[3]
+        let source = content[4]
+        let imageUrl = content[5]
+        let theme = content[6]
+        let extra = content[7]
+        let timestamp = content[8]
+        let link = content[9]
+        
         headerTextLabel.text = headerText
         titleLabel.text = title
         sourceLabel.text = source
-        if type == "article" {
+        if (type == "article" || type == "deal") {
             extraLabel.text = DateUtils.parsePrettyDate(unixTimestamp: -Double(extra)!)
         } else if type == "comment" {
             extraLabel.text = extra

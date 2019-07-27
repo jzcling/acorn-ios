@@ -60,7 +60,7 @@ class FeedCvCell: UICollectionViewCell {
         let inkTouchController = MDCInkTouchController(view: self)
         inkTouchController.addInkView()
         
-        self.layer.cornerRadius = 6
+        self.layer.cornerRadius = 10
         
         self.layer.shouldRasterize = true
         self.layer.rasterizationScale = UIScreen.main.scale
@@ -87,19 +87,8 @@ class FeedCvCell: UICollectionViewCell {
     override func prepareForReuse() {
         super.prepareForReuse()
         
-//        themeLabel.text = nil
         topSeparatorLabel.text = " • "
         readTimeLabel.text = nil
-//
-//        titleLabel.text = nil
-//
-//        sourceLabel.text = nil
-//        dateLabel.text = nil
-//
-//        netVoteImageView.image = #imageLiteral(resourceName: "ic_arrow_up_18")
-//        netVoteImageView.tintColor = upvoteTint
-//        voteCntLabel.text = "0"
-//        commCntLabel.text = "0"
         
         imageView.sd_cancelCurrentImageLoad()
         
@@ -113,15 +102,8 @@ class FeedCvCell: UICollectionViewCell {
     }
     
     func populateContent(article: Article, selectedFeed: String) {
-        if (selectedFeed == "Subscriptions" || selectedFeed == "Deals" || selectedFeed == "Trending") {
-            dataSource.observeSingleArticle(articleId: article.objectID) { (retrievedArticle) in
-                self.article = retrievedArticle
-                self.populateCell(article: self.article!)
-            }
-        } else {
-            self.article = article
-            populateCell(article: self.article!)
-        }
+        self.article = article
+        populateCell(article: self.article!)
     }
     
     func populateCell(article: Article) {

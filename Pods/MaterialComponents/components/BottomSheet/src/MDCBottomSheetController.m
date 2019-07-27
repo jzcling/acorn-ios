@@ -1,18 +1,16 @@
-/*
- Copyright 2017-present the Material Components for iOS authors. All Rights Reserved.
-
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
- http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
- */
+// Copyright 2017-present the Material Components for iOS authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #import "MDCBottomSheetController.h"
 
@@ -52,6 +50,7 @@
 - (void)viewDidLoad {
   [super viewDidLoad];
 
+  self.view.preservesSuperviewLayoutMargins = YES;
   self.contentViewController.view.autoresizingMask =
       UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
   self.contentViewController.view.frame = self.view.bounds;
@@ -74,6 +73,14 @@
   [self.contentViewController.view layoutIfNeeded];
 }
 
+- (void)viewDidAppear:(BOOL)animated {
+  [super viewDidAppear:animated];
+
+  if (self.shouldFlashScrollIndicatorsOnAppearance) {
+    [self.trackingScrollView flashScrollIndicators];
+  }
+}
+
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
   return self.contentViewController.supportedInterfaceOrientations;
 }
@@ -82,10 +89,17 @@
   if (!self.dismissOnBackgroundTap) {
     return NO;
   }
-  __weak __typeof(self) weakSelf = self;
-  [self dismissViewControllerAnimated:YES completion:^{
-    [weakSelf.delegate bottomSheetControllerDidDismissBottomSheet:weakSelf];
-  }];
+  __weak MDCBottomSheetController *weakSelf = self;
+  [self dismissViewControllerAnimated:YES
+                           completion:^{
+                             __strong MDCBottomSheetController *strongSelf = weakSelf;
+                             if ([strongSelf.delegate
+                                     respondsToSelector:@selector
+                                     (bottomSheetControllerDidDismissBottomSheet:)]) {
+                               [strongSelf.delegate
+                                   bottomSheetControllerDidDismissBottomSheet:strongSelf];
+                             }
+                           }];
   return YES;
 }
 
@@ -128,6 +142,17 @@
                         sheetState:(MDCSheetState)sheetState {
   _state = sheetState;
   [self updateShapeGenerator];
+  if ([self.delegate respondsToSelector:@selector(bottomSheetControllerStateChanged:state:)]) {
+    [self.delegate bottomSheetControllerStateChanged:self state:sheetState];
+  }
+}
+
+- (void)bottomSheetDidChangeYOffset:(nonnull MDCBottomSheetPresentationController *)bottomSheet
+                            yOffset:(CGFloat)yOffset {
+  if ([self.delegate respondsToSelector:@selector(bottomSheetControllerDidChangeYOffset:
+                                                                                yOffset:)]) {
+    [self.delegate bottomSheetControllerDidChangeYOffset:self yOffset:yOffset];
+  }
 }
 
 - (id<MDCShapeGenerating>)shapeGeneratorForState:(MDCSheetState)state {
@@ -141,8 +166,7 @@
   return nil;
 }
 
-- (void)setShapeGenerator:(id<MDCShapeGenerating>)shapeGenerator
-                 forState:(MDCSheetState)state {
+- (void)setShapeGenerator:(id<MDCShapeGenerating>)shapeGenerator forState:(MDCSheetState)state {
   _shapeGenerators[@(state)] = shapeGenerator;
 
   [self updateShapeGenerator];
@@ -154,7 +178,7 @@
     self.view.shapeGenerator = shapeGenerator;
     if (shapeGenerator != nil) {
       self.contentViewController.view.layer.mask =
-      ((MDCShapedShadowLayer *)self.view.layer).shapeLayer;
+          ((MDCShapedShadowLayer *)self.view.layer).shapeLayer;
     } else {
       self.contentViewController.view.layer.mask = nil;
     }
@@ -172,6 +196,14 @@
 - (void)setModalPresentationStyle:(__unused UIModalPresentationStyle)modalPresentationStyle {
   NSAssert(NO, @"MDCBottomSheetController.modalPresentationStyle cannot be changed.");
   return;
+}
+
+- (void)setScrimColor:(UIColor *)scrimColor {
+  _transitionController.scrimColor = scrimColor;
+}
+
+- (UIColor *)scrimColor {
+  return _transitionController.scrimColor;
 }
 
 - (void)setIsScrimAccessibilityElement:(BOOL)isScrimAccessibilityElement {
@@ -211,7 +243,9 @@
 - (void)bottomSheetPresentationControllerDidDismissBottomSheet:
     (nonnull __unused MDCBottomSheetPresentationController *)bottomSheet {
 #pragma clang diagnostic pop
-  [self.delegate bottomSheetControllerDidDismissBottomSheet:self];
+  if ([self.delegate respondsToSelector:@selector(bottomSheetControllerDidDismissBottomSheet:)]) {
+    [self.delegate bottomSheetControllerDidDismissBottomSheet:self];
+  }
 }
 
 @end

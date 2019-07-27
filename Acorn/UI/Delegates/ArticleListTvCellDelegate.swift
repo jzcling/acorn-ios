@@ -7,3 +7,8 @@
 //
 
 import Foundation
+
+protocol ArticleListTvCellDelegate: class {
+    func openArticle(_ articleId: String)
+    func openComments(_ articleId: String)
+}

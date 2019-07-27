@@ -1,18 +1,16 @@
-/*
- Copyright 2016-present the Material Components for iOS authors. All Rights Reserved.
-
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
- http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
- */
+// Copyright 2016-present the Material Components for iOS authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #import <UIKit/UIKit.h>
 
@@ -124,12 +122,35 @@ IB_DESIGNABLE
 @property(nonatomic) MDCNavigationBarTitleViewLayoutBehavior titleViewLayoutBehavior;
 
 /**
+ The horizontal insets that the MDCNavigationBar uses for both the title and titleView. In
+ right-to-left the titleInset.left will be used for the right side and the titleInset.right will be
+ used for the left side.
+
+ Defaults to UIEdgeInsets(0, 16, 0, 16).
+ */
+@property(nonatomic, assign) UIEdgeInsets titleInsets;
+
+/**
  The font applied to the title of navigation bar.
  Font size is enforced to 20.
  Both Default and null_resettable value is MDCTypography's titleFont.
  Note that the font attribute of titleTextAttributes will take precedence over this property.
  */
 @property(nonatomic, strong, null_resettable) UIFont *titleFont;
+
+/**
+ A behavioral flag that affects whether titleFont can be set to a font of any size or not.
+
+ If enabled, titleFont can be set to a font of any size.
+
+ If disabled, titleFont's size will be adjusted to 20 regardless of the provided font size.
+
+ We intend to enable this property by default in the future and to remote this flag entirely.
+ Consider enabling this flag on your navigation bar instances.
+
+ Default is NO.
+ */
+@property(nonatomic) BOOL allowAnyTitleFontSize;
 
 /**
  The title label's text color.
@@ -139,11 +160,32 @@ IB_DESIGNABLE
 @property(nonatomic, strong, nullable) UIColor *titleTextColor;
 
 /**
- The inkColor that is used for all buttons in trailing and leading button bars.
+ The rippleColor that is used for all buttons in trailing and leading button bars.
 
- If set to nil, button bar buttons use default ink color.
+ If set to nil, button bar buttons use default ripple color.
  */
-@property(nonatomic, strong, nullable) UIColor *inkColor;
+@property(nonatomic, strong, nullable) UIColor *rippleColor;
+
+/**
+ By setting this property to @c YES, the Ripple component will be used instead of Ink
+ to display visual feedback to the user.
+
+ @note This property will eventually be enabled by default, deprecated, and then deleted as part
+ of our migration to Ripple. Learn more at
+ https://github.com/material-components/material-components-ios/tree/develop/components/Ink#migration-guide-ink-to-ripple
+
+ Defaults to NO.
+ */
+@property(nonatomic, assign) BOOL enableRippleBehavior;
+
+/**
+ If true, all button titles will be converted to uppercase.
+
+ Changing this property to NO will update the current title string for all buttons.
+
+ Default is YES.
+ */
+@property(nonatomic) BOOL uppercasesButtonTitles;
 
 /**
  Sets the title font for the given state for all buttons.
@@ -171,6 +213,18 @@ IB_DESIGNABLE
  @param state The state for which the color should be used.
  */
 - (void)setButtonsTitleColor:(nullable UIColor *)color forState:(UIControlState)state;
+
+/**
+ The tint color applied to the bar items on the leading side of the BottomAppBar. If unset, then
+ defaults to using this Navigation Bar's @c tintColor.
+ */
+@property(nullable, nonatomic, strong) UIColor *leadingBarItemsTintColor;
+
+/**
+ The tint color applied to the bar items on the trailing side of the BottomAppBar. If unset, then
+ defaults to using this NavigationBar's @c tintColor.
+ */
+@property(nullable, nonatomic, strong) UIColor *trailingBarItemsTintColor;
 
 /**
  Returns the color set for @c state that was set by setButtonsTitleColor:forState:.
@@ -218,6 +272,30 @@ IB_DESIGNABLE
  */
 @property(nonatomic, strong, nullable) UIBarButtonItem *leadingBarButtonItem;
 @property(nonatomic, strong, nullable) UIBarButtonItem *trailingBarButtonItem;
+
+/**
+ Returns the rect of the leading item's view within the given @c coordinateSpace.
+
+ If the provided item is not contained in @c leadingBarButtonItems, then the behavior is undefined.
+
+ @param item The item within @c leadingBarButtonItems whose rect should be computed.
+ @param coordinateSpace The coordinate space the returned rect should be in relation to.
+ */
+- (CGRect)rectForLeadingBarButtonItem:(nonnull UIBarButtonItem *)item
+                    inCoordinateSpace:(nonnull id<UICoordinateSpace>)coordinateSpace
+    NS_SWIFT_NAME(rect(forLeading:in:));
+
+/**
+ Returns the rect of the trailing item's view within the given @c coordinateSpace.
+
+ If the provided item is not contained in @c trailingBarButtonItems, then the behavior is undefined.
+
+ @param item The item within @c trailingBarButtonItems whose rect should be computed.
+ @param coordinateSpace The coordinate space the returned rect should be in relation to.
+ */
+- (CGRect)rectForTrailingBarButtonItem:(nonnull UIBarButtonItem *)item
+                     inCoordinateSpace:(nonnull id<UICoordinateSpace>)coordinateSpace
+    NS_SWIFT_NAME(rect(forTrailing:in:));
 
 /**
  The horizontal text alignment of the navigation bar title. Defaults to
@@ -275,17 +353,26 @@ IB_DESIGNABLE
 
  Note: this property will be deprecated in future, please use titleFont and titleTextColor instead.
  */
-#if defined(__IPHONE_11_0) && (__IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_11_0)
 @property(nonatomic, copy, nullable)
     NSDictionary<NSAttributedStringKey, id> *titleTextAttributes UI_APPEARANCE_SELECTOR;
-#else
-@property(nonatomic, copy, nullable)
-    NSDictionary<NSString *, id> *titleTextAttributes UI_APPEARANCE_SELECTOR;
-#endif
 
 #pragma mark - Deprecated
 
 /** The text alignment of the navigation bar title. Defaults to NSTextAlignmentLeft. */
 @property(nonatomic) NSTextAlignment textAlignment __deprecated_msg("Use titleAlignment instead.");
+
+@end
+
+@interface MDCNavigationBar (ToBeDeprecated)
+
+/**
+ The inkColor that is used for all buttons in trailing and leading button bars.
+
+ If set to nil, button bar buttons use default ink color.
+ @warning This method will eventually be deprecated. Opt-in to Ripple by setting
+ enableRippleBehavior to YES, and then use rippleColor instead. Learn more at
+ https://github.com/material-components/material-components-ios/tree/develop/components/Ink#migration-guide-ink-to-ripple
+ */
+@property(nonatomic, strong, nullable) UIColor *inkColor;
 
 @end

@@ -1,18 +1,16 @@
-/*
- Copyright 2017-present the Material Components for iOS authors. All Rights Reserved.
-
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
- http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
- */
+// Copyright 2017-present the Material Components for iOS authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #import "MDCDraggableView.h"
 
@@ -25,7 +23,7 @@ static void CancelGestureRecognizer(UIGestureRecognizer *gesture) {
   }
 }
 
-@interface MDCDraggableView ()<UIGestureRecognizerDelegate>
+@interface MDCDraggableView () <UIGestureRecognizerDelegate>
 @property(nonatomic) UIPanGestureRecognizer *dragRecognizer;
 @property(nonatomic, strong) UIScrollView *scrollView;
 @end
@@ -56,7 +54,7 @@ static void CancelGestureRecognizer(UIGestureRecognizer *gesture) {
   // translation. This gives the same effect as when you overscroll a scrollview.
   CGFloat newHeight = CGRectGetMaxY(self.superview.bounds) - CGRectGetMinY(self.frame);
   if (newHeight > [self.delegate maximumHeightForDraggableView:self]) {
-    point.y -= point.y / 1.2;
+    point.y -= point.y / (CGFloat)1.2;
   }
 
   self.center = CGPointMake(self.center.x, self.center.y + point.y);
@@ -69,6 +67,10 @@ static void CancelGestureRecognizer(UIGestureRecognizer *gesture) {
     [self.delegate draggableViewBeganDragging:self];
   } else if (recognizer.state == UIGestureRecognizerStateEnded) {
     [self.delegate draggableView:self draggingEndedWithVelocity:velocity];
+  }
+  if (recognizer.state == UIGestureRecognizerStateBegan ||
+      recognizer.state == UIGestureRecognizerStateChanged) {
+    [self.delegate draggableView:self didPanToOffset:CGRectGetMinY(self.frame)];
   }
 }
 

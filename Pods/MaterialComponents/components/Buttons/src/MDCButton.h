@@ -1,18 +1,16 @@
-/*
- Copyright 2016-present the Material Components for iOS authors. All Rights Reserved.
-
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
- http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
- */
+// Copyright 2016-present the Material Components for iOS authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #import <CoreGraphics/CoreGraphics.h>
 #import <UIKit/UIKit.h>
@@ -48,6 +46,16 @@
  self.bounds is used. This value is ignored if button's @c inkStyle is set to |MDCInkStyleBounded|.
  */
 @property(nonatomic, assign) CGFloat inkMaxRippleRadius UI_APPEARANCE_SELECTOR;
+
+/**
+ This property determines if an @c MDCButton should use the @c MDCInkView behavior or not.
+
+ By setting this property to @c YES, @c MDCStatefulRippleView is used to provide the user visual
+ touch feedback, instead of the legacy @c MDCInkView.
+
+ @note Defaults to @c NO.
+ */
+@property(nonatomic, assign) BOOL enableRippleBehavior;
 
 /**
  The alpha value that will be applied when the button is disabled. Most clients can leave this as
@@ -90,7 +98,6 @@
  */
 @property(nonatomic, assign) CGSize maximumSize UI_APPEARANCE_SELECTOR;
 
-
 /**
  The apparent background color as seen by the user, i.e. the color of the view behind the button.
 
@@ -112,7 +119,7 @@
  UIContentSizeCategory is changed.
 
  This property is modeled after the adjustsFontForContentSizeCategory property in the
- UIConnectSizeCategoryAdjusting protocol added by Apple in iOS 10.0.
+ UIContentSizeCategoryAdjusting protocol added by Apple in iOS 10.0.
 
  If set to YES, this button will base its text font on MDCFontTextStyleButton.
 
@@ -120,6 +127,20 @@
  */
 @property(nonatomic, readwrite, setter=mdc_setAdjustsFontForContentSizeCategory:)
     BOOL mdc_adjustsFontForContentSizeCategory UI_APPEARANCE_SELECTOR;
+
+/**
+ Affects the fallback behavior for when a scaled font is not provided.
+
+ If @c YES, the font size will adjust even if a scaled font has not been provided for
+ a given @c UIFont property on this component.
+
+ If @c NO, the font size will only be adjusted if a scaled font has been provided.
+
+ Default value is @c YES.
+ */
+@property(nonatomic, assign) BOOL adjustsFontForContentSizeCategoryWhenScaledFontIsUnavailable;
+@property(nonatomic, readwrite, setter=mdc_setLegacyFontScaling:)
+    BOOL mdc_legacyFontScaling __deprecated;
 
 /**
  The shape generator used to define the button's shape.
@@ -133,6 +154,13 @@
  Default value for shapeGenerator is nil.
  */
 @property(nullable, nonatomic, strong) id<MDCShapeGenerating> shapeGenerator;
+
+/**
+ If true, @c accessiblityTraits will always include @c UIAccessibilityTraitButton.
+
+ @note Defaults to true.
+ */
+@property(nonatomic, assign) BOOL accessibilityTraitsIncludesButton;
 
 /**
  A color used as the button's @c backgroundColor for @c state.
@@ -150,8 +178,8 @@
  @param backgroundColor The background color.
  @param state The state.
  */
-- (void)setBackgroundColor:(nullable UIColor *)backgroundColor forState:(UIControlState)state
-    UI_APPEARANCE_SELECTOR;
+- (void)setBackgroundColor:(nullable UIColor *)backgroundColor
+                  forState:(UIControlState)state UI_APPEARANCE_SELECTOR;
 
 /* Convenience for `setBackgroundColor:backgroundColor forState:UIControlStateNormal`. */
 - (void)setBackgroundColor:(nullable UIColor *)backgroundColor;
@@ -172,8 +200,7 @@
  @param font The font.
  @param state The state.
  */
-- (void)setTitleFont:(nullable UIFont *)font forState:(UIControlState)state
-    UI_APPEARANCE_SELECTOR;
+- (void)setTitleFont:(nullable UIFont *)font forState:(UIControlState)state UI_APPEARANCE_SELECTOR;
 
 /** Sets the enabled state with optional animation. */
 - (void)setEnabled:(BOOL)enabled animated:(BOOL)animated;
@@ -211,8 +238,8 @@
  @param borderColor The border color to set.
  @param state The state to set.
  */
-- (void)setBorderColor:(nullable UIColor *)borderColor forState:(UIControlState)state
-    UI_APPEARANCE_SELECTOR;
+- (void)setBorderColor:(nullable UIColor *)borderColor
+              forState:(UIControlState)state UI_APPEARANCE_SELECTOR;
 
 /**
  A color used as the button's imageView tint color @c imageTintColor for @c state.
@@ -234,7 +261,6 @@
  @param state The state to set.
  */
 - (void)setImageTintColor:(nullable UIColor *)imageTintColor forState:(UIControlState)state;
-
 
 /**
  The value set for the button's @c borderWidth for @c state.
@@ -304,8 +330,9 @@
 /**
  This property sets/gets the title color for UIControlStateNormal.
  */
-@property(nonatomic, strong, nullable) UIColor *customTitleColor UI_APPEARANCE_SELECTOR
-    __deprecated_msg("Use setTitleColor:forState: instead");
+@property(nonatomic, strong, nullable)
+    UIColor *customTitleColor UI_APPEARANCE_SELECTOR __deprecated_msg(
+        "Use setTitleColor:forState: instead");
 
 @property(nonatomic)
     BOOL shouldRaiseOnTouch __deprecated_msg("Use MDCFlatButton instead of shouldRaiseOnTouch = NO")

@@ -14,7 +14,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "DAB99737C46CD11DC9C629191AC94EBB"
+               BlueprintIdentifier = "3B11ED6249D5BD6896C7F4D714692096"
                BuildableName = "InstantSearch.framework"
                BlueprintName = "InstantSearch"
                ReferencedContainer = "container:Pods.xcodeproj">
@@ -45,7 +45,7 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "DAB99737C46CD11DC9C629191AC94EBB"
+            BlueprintIdentifier = "3B11ED6249D5BD6896C7F4D714692096"
             BuildableName = "InstantSearch.framework"
             BlueprintName = "InstantSearch"
             ReferencedContainer = "container:Pods.xcodeproj">

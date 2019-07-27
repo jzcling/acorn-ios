@@ -1,30 +1,29 @@
-/*
- Copyright 2015-present the Material Components for iOS authors. All Rights Reserved.
-
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
- http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
- */
+// Copyright 2015-present the Material Components for iOS authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #import "MDCFlexibleHeaderViewController.h"
 
+#import <MDFTextAccessibility/MDFTextAccessibility.h>
+#import "MDCFlexibleHeaderContainerViewController.h"
+#import "MDCFlexibleHeaderView+ShiftBehavior.h"
+#import "MDCFlexibleHeaderView.h"
 #import "MaterialApplication.h"
 #import "MaterialUIMetrics.h"
-#import "MDCFlexibleHeaderContainerViewController.h"
-#import "MDCFlexibleHeaderView.h"
 #import "private/MDCFlexibleHeaderView+Private.h"
-#import <MDFTextAccessibility/MDFTextAccessibility.h>
 
 @interface UIView ()
-- (UIEdgeInsets)safeAreaInsets; // For pre-iOS 11 SDK targets.
+- (UIEdgeInsets)safeAreaInsets;  // For pre-iOS 11 SDK targets.
 @end
 
 static inline BOOL ShouldUseLightStatusBarOnBackgroundColor(UIColor *color) {
@@ -38,11 +37,6 @@ static inline BOOL ShouldUseLightStatusBarOnBackgroundColor(UIColor *color) {
                  passesOnBackgroundColor:color
                                  options:MDFTextAccessibilityOptionsNone];
 }
-
-static NSString *const MDCFlexibleHeaderViewControllerHeaderViewKey =
-    @"MDCFlexibleHeaderViewControllerHeaderViewKey";
-static NSString *const MDCFlexibleHeaderViewControllerLayoutDelegateKey =
-    @"MDCFlexibleHeaderViewControllerLayoutDelegateKey";
 
 // KVO contexts
 static char *const kKVOContextMDCFlexibleHeaderViewController =
@@ -89,6 +83,8 @@ static char *const kKVOContextMDCFlexibleHeaderViewController =
 
 @implementation MDCFlexibleHeaderViewController
 
+@synthesize preferredStatusBarStyle = _preferredStatusBarStyle;
+
 - (void)dealloc {
   // Clear KVO observers
   self.topLayoutGuideConstraint = nil;
@@ -107,29 +103,14 @@ static char *const kKVOContextMDCFlexibleHeaderViewController =
 - (instancetype)initWithCoder:(NSCoder *)aDecoder {
   self = [super initWithCoder:aDecoder];
   if (self) {
-    if ([aDecoder containsValueForKey:MDCFlexibleHeaderViewControllerHeaderViewKey]) {
-      _headerView = [aDecoder decodeObjectOfClass:[MDCFlexibleHeaderView class]
-                                           forKey:MDCFlexibleHeaderViewControllerHeaderViewKey];
-    }
-
-    if ([aDecoder containsValueForKey:MDCFlexibleHeaderViewControllerLayoutDelegateKey]) {
-      _layoutDelegate =
-          [aDecoder decodeObjectForKey:MDCFlexibleHeaderViewControllerLayoutDelegateKey];
-    }
+    [self commonMDCFlexibleHeaderViewControllerInit];
   }
   return self;
 }
 
-- (void)encodeWithCoder:(NSCoder *)aCoder {
-  [super encodeWithCoder:aCoder];
-  [aCoder encodeObject:self.headerView forKey:MDCFlexibleHeaderViewControllerHeaderViewKey];
-  if (_layoutDelegate) {
-    [aCoder encodeConditionalObject:self.layoutDelegate
-                             forKey:MDCFlexibleHeaderViewControllerLayoutDelegateKey];
-  }
-}
-
 - (void)commonMDCFlexibleHeaderViewControllerInit {
+  _inferPreferredStatusBarStyle = YES;
+
   MDCFlexibleHeaderView *headerView =
       [[MDCFlexibleHeaderView alloc] initWithFrame:[UIScreen mainScreen].bounds];
   headerView.autoresizingMask = UIViewAutoresizingFlexibleWidth;
@@ -145,7 +126,6 @@ static char *const kKVOContextMDCFlexibleHeaderViewController =
   [super willMoveToParentViewController:parent];
 
   BOOL shouldDisableAutomaticInsetting = YES;
-#if defined(__IPHONE_11_0) && (__IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_11_0)
   // Prior to iOS 11 there was no way to know whether UIKit had injected insets into our
   // UIScrollView, so we disable automatic insetting on these devices. iOS 11 provides
   // the adjustedContentInset API which allows us to respond to changes in the safe area
@@ -153,7 +133,6 @@ static char *const kKVOContextMDCFlexibleHeaderViewController =
   if (@available(iOS 11.0, *)) {
     shouldDisableAutomaticInsetting = NO;
   }
-#endif
   if (shouldDisableAutomaticInsetting) {
     parent.automaticallyAdjustsScrollViewInsets = NO;
   }
@@ -166,7 +145,7 @@ static char *const kKVOContextMDCFlexibleHeaderViewController =
   // If there is no tracking scroll view then we have to poke the header into sizing itself.
   if (!_headerView.trackingScrollView) {
     [_headerView sizeToFit];
-  } else {
+  } else if (!_headerView.observesTrackingScrollViewScrollEvents) {
     [_headerView trackingScrollViewDidScroll];
   }
 
@@ -220,18 +199,29 @@ static char *const kKVOContextMDCFlexibleHeaderViewController =
 }
 
 - (UIStatusBarStyle)preferredStatusBarStyle {
-  UIColor *backgroundColor =
-      [MDCFlexibleHeaderView appearance].backgroundColor ?: _headerView.backgroundColor;
-  return (ShouldUseLightStatusBarOnBackgroundColor(backgroundColor)
-              ? UIStatusBarStyleLightContent
-              : UIStatusBarStyleDefault);
+  if (self.inferPreferredStatusBarStyle) {
+    UIColor *backgroundColor =
+        [MDCFlexibleHeaderView appearance].backgroundColor ?: _headerView.backgroundColor;
+    return (ShouldUseLightStatusBarOnBackgroundColor(backgroundColor) ? UIStatusBarStyleLightContent
+                                                                      : UIStatusBarStyleDefault);
+  } else {
+    return _preferredStatusBarStyle;
+  }
+}
+
+- (void)setPreferredStatusBarStyle:(UIStatusBarStyle)preferredStatusBarStyle {
+  NSAssert(!self.inferPreferredStatusBarStyle,
+           @"You must disable inferPreferredStatusBarStyle prior to setting a status bar style.");
+
+  _preferredStatusBarStyle = preferredStatusBarStyle;
 }
 
 - (BOOL)prefersStatusBarHidden {
   return _headerView.prefersStatusBarHidden;
 }
 
-- (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator {
+- (void)viewWillTransitionToSize:(CGSize)size
+       withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator {
   [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
 
   [_headerView viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
@@ -282,13 +272,12 @@ static char *const kKVOContextMDCFlexibleHeaderViewController =
                        context:(void *)context {
   if (context == kKVOContextMDCFlexibleHeaderViewController) {
     void (^mainThreadWork)(void) = ^{
-      if (object == self->_topLayoutGuideConstraint
-          && self.topLayoutGuideAdjustmentEnabled) {
+      if (object == self->_topLayoutGuideConstraint && self.topLayoutGuideAdjustmentEnabled) {
         [self updateTopLayoutGuide];
       }
-      if (self.inferTopSafeAreaInsetFromViewController
-          && (object == self->_topSafeAreaConstraint || object == self->_topSafeAreaView)) {
-        [self->_headerView extractTopSafeAreaInset];
+      if (self.inferTopSafeAreaInsetFromViewController &&
+          (object == self->_topSafeAreaConstraint || object == self->_topSafeAreaView)) {
+        [self->_headerView topSafeAreaInsetDidChange];
       }
     };
 
@@ -331,15 +320,15 @@ static char *const kKVOContextMDCFlexibleHeaderViewController =
     self.topLayoutGuideConstraint = nil;
     return;
   }
-  if (self.topLayoutGuideAdjustmentEnabled
-      || [topLayoutGuideViewController.view.constraints count] > 0) {
+  if (self.topLayoutGuideAdjustmentEnabled ||
+      [topLayoutGuideViewController.view.constraints count] > 0) {
     self.topLayoutGuideConstraint =
         [self fhv_topLayoutGuideConstraintForViewController:topLayoutGuideViewController];
   }
 }
 
-- (NSLayoutConstraint *)
-      fhv_topLayoutGuideConstraintForViewController:(UIViewController *)viewController {
+- (NSLayoutConstraint *)fhv_topLayoutGuideConstraintForViewController:
+    (UIViewController *)viewController {
   // Note: accessing topLayoutGuide has the side effect of setting up all of the view controller
   // constraints. We need to access this property before we enter the for loop, otherwise
   // view.constraints will be empty.
@@ -369,11 +358,9 @@ static char *const kKVOContextMDCFlexibleHeaderViewController =
    the top layout guide constant (and clients should be relying on additionalSafeAreaInsets anyway).
    */
   BOOL shouldObserveLayoutGuideConstant = YES;
-#if defined(__IPHONE_11_0) && (__IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_11_0)
   if (@available(iOS 11.0, *)) {
     shouldObserveLayoutGuideConstant = NO;
   }
-#endif
 
   if (shouldObserveLayoutGuideConstant) {
     [_topLayoutGuideConstraint removeObserver:self
@@ -440,8 +427,11 @@ static char *const kKVOContextMDCFlexibleHeaderViewController =
 }
 
 - (void)updateTopLayoutGuide {
-  NSAssert([NSThread isMainThread],
-           @"updateTopLayoutGuide must be called from the main thread.");
+  NSAssert([NSThread isMainThread], @"updateTopLayoutGuide must be called from the main thread.");
+  NSAssert(!self.useAdditionalSafeAreaInsetsForWebKitScrollViews ||
+               (self.topLayoutGuideViewController != nil),
+           @"If useAdditionalSafeAreaInsetsForWebKitScrollViews is enabled you must also set a"
+           @"topLayoutGuideViewController.");
   // We observe (using KVO) the top layout guide's constant and re-invoke updateTopLayoutGuide
   // whenever it changes. We also change the constant in this method. So, to avoid a recursive
   // infinite loop we bail out early here if we're the ones that initiated the top layout guide
@@ -468,14 +458,20 @@ static char *const kKVOContextMDCFlexibleHeaderViewController =
     [self fhv_setTopLayoutGuideConstraintConstant:topInset];
   }
 
-#if defined(__IPHONE_11_0) && (__IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_11_0)
   if (@available(iOS 11.0, *)) {
-    UIViewController *topLayoutGuideViewController = [self fhv_topLayoutGuideViewControllerWithFallback];
+    BOOL alwaysUseAdditionalSafeAreaInsets = NO;
+    if (self.useAdditionalSafeAreaInsetsForWebKitScrollViews &&
+        [self.headerView trackingScrollViewIsWebKit]) {
+      alwaysUseAdditionalSafeAreaInsets = YES;
+    }
+
+    UIViewController *topLayoutGuideViewController =
+        [self fhv_topLayoutGuideViewControllerWithFallback];
     // If there is a tracking scroll view then the flexible header will manage safe area insets via
     // the tracking scroll view's contentInsets. Some day - in the long distant future when we only
     // support iOS 11 and up - we can probably drop the content inset adjustment behavior in favor
     // of modifying additionalSafeAreaInsets instead.
-    if (self.headerView.trackingScrollView != nil) {
+    if (self.headerView.trackingScrollView != nil && !alwaysUseAdditionalSafeAreaInsets) {
       // Reset the additional safe area insets if we are now tracking a scroll view.
       if (topLayoutGuideViewController != nil) {
         UIEdgeInsets additionalSafeAreaInsets =
@@ -486,28 +482,26 @@ static char *const kKVOContextMDCFlexibleHeaderViewController =
 
     } else if (topLayoutGuideViewController != nil) {
       UIEdgeInsets additionalSafeAreaInsets = topLayoutGuideViewController.additionalSafeAreaInsets;
-      if (self.headerView.statusBarHintCanOverlapHeader) {
-        // safe area insets will likely already take into account the top safe area inset, so let's
-        // avoid double-counting that here.
-        additionalSafeAreaInsets.top = topInset - MDCDeviceTopSafeAreaInset();
-
+      // We need to avoid double-counting any top safe area amount because this will already be
+      // taken into account as part of additionalSafeAreaInsets.
+      topInset -= self.headerView.topSafeAreaGuideHeight;
+      if (self.headerView.minMaxHeightIncludesSafeArea) {
+        topInset = MIN(self.headerView.maximumHeight - MDCDeviceTopSafeAreaInset(), topInset);
       } else {
-        additionalSafeAreaInsets.top = topInset;
+        topInset = MIN(self.headerView.maximumHeight, topInset);
       }
+      additionalSafeAreaInsets.top = topInset;
       topLayoutGuideViewController.additionalSafeAreaInsets = additionalSafeAreaInsets;
     }
   }
-#endif
 }
 
 - (CGFloat)headerViewControllerHeight {
   BOOL shiftEnabledForStatusBar =
       _headerView.shiftBehavior == MDCFlexibleHeaderShiftBehaviorEnabledWithStatusBar;
-  CGFloat statusBarHeight =
-      [UIApplication mdc_safeSharedApplication].statusBarFrame.size.height;
-  CGFloat height =
-      MAX(_headerView.frame.origin.y + _headerView.frame.size.height,
-          shiftEnabledForStatusBar ? 0 : statusBarHeight);
+  CGFloat statusBarHeight = [UIApplication mdc_safeSharedApplication].statusBarFrame.size.height;
+  CGFloat height = MAX(_headerView.frame.origin.y + _headerView.frame.size.height,
+                       shiftEnabledForStatusBar ? 0 : statusBarHeight);
   return height;
 }
 
@@ -538,6 +532,16 @@ static char *const kKVOContextMDCFlexibleHeaderViewController =
 
 - (BOOL)inferTopSafeAreaInsetFromViewController {
   return _headerView.inferTopSafeAreaInsetFromViewController;
+}
+
+- (void)setUseAdditionalSafeAreaInsetsForWebKitScrollViews:
+    (BOOL)useAdditionalSafeAreaInsetsForWebKitScrollViews {
+  _headerView.useAdditionalSafeAreaInsetsForWebKitScrollViews =
+      useAdditionalSafeAreaInsetsForWebKitScrollViews;
+}
+
+- (BOOL)useAdditionalSafeAreaInsetsForWebKitScrollViews {
+  return _headerView.useAdditionalSafeAreaInsetsForWebKitScrollViews;
 }
 
 #pragma mark - Top safe area inset extraction
@@ -578,21 +582,27 @@ static char *const kKVOContextMDCFlexibleHeaderViewController =
     return;
   }
 
-  UIViewController *ancestor = [self fhv_rootAncestorOfViewController:parent];
+  UIViewController *ancestor =
+      [self.safeAreaDelegate flexibleHeaderViewControllerTopSafeAreaInsetViewController:self];
+  if (ancestor == nil) {
+    ancestor = [self fhv_rootAncestorOfViewController:parent];
 
-  // Are we attempting to extract the top safe area inset from our top layout guide view controller?
-  if (self.topLayoutGuideAdjustmentEnabled && ancestor == self.topLayoutGuideViewController) {
-    // We can't use the provided ancestor because it's a child of the top layout guide view
-    // controller. Doing so would result in the top layout guide being infinitely increased.
-    // Let's use the top layout guide view controller's ancestor instead.
-    ancestor = [self fhv_rootAncestorOfViewController:
-                    self.topLayoutGuideViewController.parentViewController];
+    // Are we attempting to extract the top safe area inset from our top layout guide view
+    // controller?
+    if (self.topLayoutGuideAdjustmentEnabled && ancestor == self.topLayoutGuideViewController) {
+      // We can't use the provided ancestor because it's a child of the top layout guide view
+      // controller. Doing so would result in the top layout guide being infinitely increased.
+      // Let's use the top layout guide view controller's ancestor instead.
+      ancestor = [self
+          fhv_rootAncestorOfViewController:self.topLayoutGuideViewController.parentViewController];
+    }
   }
 
   // if ancestor == nil at this point, then we're in a bad spot because there's nowhere for us to
   // extract a top safe area inset from. Should we throw an assert?
   NSAssert(ancestor != nil,
-           @"inferTopSafeAreaInsetFromViewController is true but we were unable to infer a view controller"
+           @"inferTopSafeAreaInsetFromViewController is true but we were unable to infer a view "
+           @"controller"
            @" from which we could extract a safe area. Consider placing your view controller inside"
            @" a container view controller.");
 
@@ -600,11 +610,9 @@ static char *const kKVOContextMDCFlexibleHeaderViewController =
     _headerView.topSafeAreaSourceViewController = ancestor;
 
     BOOL shouldObserveLayoutGuide = YES;
-#if defined(__IPHONE_11_0) && (__IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_11_0)
     if (@available(iOS 11.0, *)) {
       shouldObserveLayoutGuide = NO;
     }
-#endif
     if (shouldObserveLayoutGuide) {
       self.topSafeAreaConstraint = [self fhv_topLayoutGuideConstraintForViewController:ancestor];
     } else {

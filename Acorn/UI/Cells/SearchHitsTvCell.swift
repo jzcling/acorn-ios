@@ -9,6 +9,7 @@
 import UIKit
 import InstantSearch
 import SDWebImage
+import Firebase
 
 class SearchHitsTvCell: UITableViewCell {
     
@@ -74,18 +75,26 @@ class SearchHitsTvCell: UITableViewCell {
             commCntLabel.textColor = defaultTextColor
             
             var imageUrl: String?
+            var ref: StorageReference?
             if let url = hit["imageUrl"] as? String {
                 imageUrl = url
             }
             if imageUrl == nil || imageUrl == "" {
                 if let url = hit["postImageUrl"] as? String {
-                    imageUrl = url
+                    if url.starts(with: "gs://") {
+                        ref = Storage.storage().reference(forURL: url)
+                        mainImageView.sd_setImage(with: ref!)
+                    } else {
+                        imageUrl = url
+                    }
                 }
             }
             if imageUrl != nil && imageUrl != "" {
                 mainImageView.sd_setImage(with: URL(string: imageUrl!))
             } else {
-                mainImageView.isHidden = true
+                if ref == nil {
+                    mainImageView.isHidden = true
+                }
             }
         }
     }
@@ -95,6 +104,8 @@ class SearchHitsTvCell: UITableViewCell {
         
         self.layer.borderWidth = 0.5
         self.layer.borderColor = UIColor.lightGray.cgColor
+        
+        mainImageView.layer.cornerRadius = 10
     }
 
     override func prepareForReuse() {

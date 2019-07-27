@@ -20,6 +20,8 @@ class SearchViewController: HitsTableViewController {
     
     let mainStoryboard = UIStoryboard(name: "Main", bundle: nil)
     
+    let dataSource = DataSource.instance
+    
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -50,6 +52,7 @@ class SearchViewController: HitsTableViewController {
     
     func enableNightMode() {
         nightModeOn = true
+        self.view.backgroundColor = ResourcesNight.COLOR_BG
         self.tableView.backgroundColor = ResourcesNight.COLOR_BG
         
         cardBackgroundColor = ResourcesNight.CARD_BG_COLOR
@@ -58,6 +61,7 @@ class SearchViewController: HitsTableViewController {
     
     func disableNightMode() {
         nightModeOn = false
+        self.view.backgroundColor = ResourcesDay.COLOR_BG
         self.tableView.backgroundColor = ResourcesDay.COLOR_BG
         
         cardBackgroundColor = ResourcesDay.CARD_BG_COLOR
@@ -83,11 +87,10 @@ class SearchViewController: HitsTableViewController {
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath, containing hit: [String : Any]) {
         let article = Article(json: hit)
         
+        dataSource.recordOpenArticleDetails(articleId: article.objectID, mainTheme: article.mainTheme ?? "General")
         if article.link != nil && article.link != "" {
-            
             openArticle(article: article)
         } else {
-            
             openComments(article: article)
         }
     }

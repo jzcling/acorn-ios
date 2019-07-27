@@ -7,3 +7,9 @@
 //
 
 import Foundation
+
+class SelectedFeedController {
+    var selectedFeed: String? = "Subscriptions"
+    var masterFeed: String? = nil
+    var specificFeed: String? = nil
+}

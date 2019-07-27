@@ -9,7 +9,11 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if os(watchOS)
+import WatchKit
+#else
 import UIKit
+#endif
 
 // MARK: - Device
 
@@ -18,7 +22,7 @@ import UIKit
 ///
 /// Usage:
 ///
-///     let device = Device()
+///     let device = Device.current
 ///
 ///     print(device)     // prints, for example, "iPhone 6 Plus"
 ///
@@ -112,6 +116,18 @@ public enum Device {
     ///
     /// ![Image](https://support.apple.com/library/APPLE/APPLECARE_ALLGEOS/SP770/iphonex.png)
     case iPhoneX
+    /// Device is an [iPhone Xs](https://support.apple.com/kb/SP779)
+    ///
+    /// ![Image](https://support.apple.com/library/APPLE/APPLECARE_ALLGEOS/SP779/SP779-iphone-xs.jpg)
+    case iPhoneXS
+    /// Device is an [iPhone Xs Max](https://support.apple.com/kb/SP780)
+    ///
+    /// ![Image](https://support.apple.com/library/APPLE/APPLECARE_ALLGEOS/SP780/SP780-iPhone-Xs-Max.jpg)
+    case iPhoneXSMax
+    /// Device is an [iPhone Xʀ](https://support.apple.com/kb/SP781)
+    ///
+    /// ![Image](https://support.apple.com/library/APPLE/APPLECARE_ALLGEOS/SP781/SP781-iPhone-xr.jpg)
+    case iPhoneXR
     /// Device is an [iPad 2](https://support.apple.com/kb/SP622)
     ///
     /// ![Image](https://support.apple.com/library/APPLE/APPLECARE_ALLGEOS/SP622/SP622_01-ipad2-mul.png)
@@ -132,14 +148,18 @@ public enum Device {
     ///
     /// ![Image](https://support.apple.com/library/APPLE/APPLECARE_ALLGEOS/SP708/SP708-space_gray.jpeg)
     case iPadAir2
-    /// Device is an [iPad 5](https://support.apple.com/kb/SP751)
+    /// Device is an [iPad (5th generation)](https://support.apple.com/kb/SP751)
     ///
     /// ![Image](https://support.apple.com/library/APPLE/APPLECARE_ALLGEOS/SP751/ipad_5th_generation.png)
     case iPad5
-    /// Device is an [iPad 6](https://support.apple.com/kb/NotYetAvailable)
+    /// Device is an [iPad (6th generation)](https://support.apple.com/kb/SP774)
     ///
     /// ![Image](https://support.apple.com/library/APPLE/APPLECARE_ALLGEOS/SP751/ipad_5th_generation.png)
     case iPad6
+    /// Device is an [iPad Air (3rd generation)](https://support.apple.com/kb/SP787)
+    ///
+    /// ![Image](https://support.apple.com/library/APPLE/APPLECARE_ALLGEOS/SP787/ipad-air-2019.jpg)
+    case iPadAir3
     /// Device is an [iPad Mini](https://support.apple.com/kb/SP661)
     ///
     /// ![Image](https://support.apple.com/library/APPLE/APPLECARE_ALLGEOS/SP661/sp661_ipad_mini_color.jpg)
@@ -156,25 +176,37 @@ public enum Device {
     ///
     /// ![Image](https://support.apple.com/library/APPLE/APPLECARE_ALLGEOS/SP725/SP725ipad-mini-4.png)
     case iPadMini4
-    /// Device is an [iPad Pro](https://support.apple.com/kb/SP739)
+    /// Device is an [iPad Mini (5th generation)](https://support.apple.com/kb/SP788)
+    ///
+    /// ![Image](https://support.apple.com/library/APPLE/APPLECARE_ALLGEOS/SP788/ipad-mini-2019.jpg)
+    case iPadMini5
+    /// Device is an [iPad Pro 9.7-inch](https://support.apple.com/kb/SP739)
     ///
     /// ![Image](https://support.apple.com/library/APPLE/APPLECARE_ALLGEOS/SP739/SP739.png)
     case iPadPro9Inch
-    /// Device is an [iPad Pro](https://support.apple.com/kb/sp723)
+    /// Device is an [iPad Pro 12-inch](https://support.apple.com/kb/SP723)
     ///
-    /// ![Image](http://images.apple.com/v/ipad-pro/c/images/shared/buystrip/ipad_pro_large_2x.png)
+    /// ![Image](https://support.apple.com/library/APPLE/APPLECARE_ALLGEOS/SP723/SP723-iPad_Pro_2x.png)
     case iPadPro12Inch
-    /// Device is an [iPad Pro](https://support.apple.com/kb/SP761)
+    /// Device is an [iPad Pro 12-inch (2nd generation)](https://support.apple.com/kb/SP761)
     ///
     /// ![Image](https://support.apple.com/library/APPLE/APPLECARE_ALLGEOS/SP761/ipad-pro-12in-hero-201706.png)
     case iPadPro12Inch2
-    /// Device is an [iPad Pro 10.5](https://support.apple.com/kb/SP762)
+    /// Device is an [iPad Pro 10.5-inch](https://support.apple.com/kb/SP762)
     ///
     /// ![Image](https://support.apple.com/library/APPLE/APPLECARE_ALLGEOS/SP761/ipad-pro-10in-hero-201706.png)
     case iPadPro10Inch
-    /// Device is a [HomePod](https://www.apple.com/homepod/)
+    /// Device is an [iPad Pro 11-inch](https://support.apple.com/kb/SP784)
     ///
-    /// ![Image](https://images.apple.com/v/homepod/d/images/overview/homepod_side_dark_large_2x.jpg)
+    /// ![Image](https://support.apple.com/library/APPLE/APPLECARE_ALLGEOS/SP784/ipad-pro-11-2018_2x.png)
+    case iPadPro11Inch
+    /// Device is an [iPad Pro 12.9-inch (3rd generation)](https://support.apple.com/kb/SP785)
+    ///
+    /// ![Image](https://support.apple.com/library/APPLE/APPLECARE_ALLGEOS/SP785/ipad-pro-12-2018_2x.png)
+    case iPadPro12Inch3
+    /// Device is a [HomePod](https://support.apple.com/kb/SP773)
+    ///
+    /// ![Image](https://support.apple.com/library/APPLE/APPLECARE_ALLGEOS/SP773/homepod_space_gray_large_2x.jpg)
     case homePod
   #elseif os(tvOS)
     /// Device is an [Apple TV 4](https://support.apple.com/kb/SP724)
@@ -185,6 +217,47 @@ public enum Device {
     ///
     /// ![Image](https://support.apple.com/library/APPLE/APPLECARE_ALLGEOS/SP769/appletv4k.png)
     case appleTV4K
+  #elseif os(watchOS)
+    /// Device is an [Apple Watch (1st generation)](https://support.apple.com/kb/SP735)
+    ///
+    /// ![Image](https://km.support.apple.com/resources/sites/APPLE/content/live/IMAGES/0/IM784/en_US/apple_watch_sport-240.png)
+    case appleWatchSeries0_38mm
+    /// Device is an [Apple Watch (1st generation)](https://support.apple.com/kb/SP735)
+    ///
+    /// ![Image](https://km.support.apple.com/resources/sites/APPLE/content/live/IMAGES/0/IM784/en_US/apple_watch_sport-240.png)
+    case appleWatchSeries0_42mm
+    /// Device is an [Apple Watch Series 1](https://support.apple.com/kb/SP745)
+    ///
+    /// ![Image](https://km.support.apple.com/resources/sites/APPLE/content/live/IMAGES/0/IM848/en_US/applewatch-series2-aluminum-temp-240.png)
+    case appleWatchSeries1_38mm
+    /// Device is an [Apple Watch Series 1](https://support.apple.com/kb/SP745)
+    ///
+    /// ![Image](https://km.support.apple.com/resources/sites/APPLE/content/live/IMAGES/0/IM848/en_US/applewatch-series2-aluminum-temp-240.png)
+    case appleWatchSeries1_42mm
+    /// Device is an [Apple Watch Series 2](https://support.apple.com/kb/SP746)
+    ///
+    /// ![Image](https://km.support.apple.com/resources/sites/APPLE/content/live/IMAGES/0/IM852/en_US/applewatch-series2-hermes-240.png)
+    case appleWatchSeries2_38mm
+    /// Device is an [Apple Watch Series 2](https://support.apple.com/kb/SP746)
+    ///
+    /// ![Image](https://km.support.apple.com/resources/sites/APPLE/content/live/IMAGES/0/IM852/en_US/applewatch-series2-hermes-240.png)
+    case appleWatchSeries2_42mm
+    /// Device is an [Apple Watch Series 3](https://support.apple.com/kb/SP766)
+    ///
+    /// ![Image](https://km.support.apple.com/resources/sites/APPLE/content/live/IMAGES/0/IM893/en_US/apple-watch-s3-nikeplus-240.png)
+    case appleWatchSeries3_38mm
+    /// Device is an [Apple Watch Series 3](https://support.apple.com/kb/SP766)
+    ///
+    /// ![Image](https://km.support.apple.com/resources/sites/APPLE/content/live/IMAGES/0/IM893/en_US/apple-watch-s3-nikeplus-240.png)
+    case appleWatchSeries3_42mm
+    /// Device is an [Apple Watch Series 4](https://support.apple.com/kb/SP778)
+    ///
+    /// ![Image](https://km.support.apple.com/resources/sites/APPLE/content/live/IMAGES/0/IM911/en_US/aw-series4-nike-240.png)
+    case appleWatchSeries4_40mm
+    /// Device is an [Apple Watch Series 4](https://support.apple.com/kb/SP778)
+    ///
+    /// ![Image](https://km.support.apple.com/resources/sites/APPLE/content/live/IMAGES/0/IM911/en_US/aw-series4-nike-240.png)
+    case appleWatchSeries4_44mm
   #endif
 
   /// Device is [Simulator](https://developer.apple.com/library/ios/documentation/IDEs/Conceptual/iOS_Simulator_Guide/Introduction/Introduction.html)
@@ -197,13 +270,13 @@ public enum Device {
   /// (e.g. "iPhone6,1" or "iPhone 6,2" do both mean "iPhone 5s"))
   case unknown(String)
 
-  /// Initializes a `Device` representing the current device this software runs on.
-  public init() {
-    self = Device.mapToDevice(identifier: Device.identifier)
+  /// Returns a `Device` representing the current device this software runs on.
+  public static var current: Device {
+    return Device.mapToDevice(identifier: Device.identifier)
   }
 
   /// Gets the identifier from the system, such as "iPhone7,1".
-  public static var identifier: String {
+  public static var identifier: String = {
     var systemInfo = utsname()
     uname(&systemInfo)
     let mirror = Mirror(reflecting: systemInfo.machine)
@@ -213,14 +286,14 @@ public enum Device {
       return identifier + String(UnicodeScalar(UInt8(value)))
     }
     return identifier
-  }
+  }()
 
   /// Maps an identifier to a Device. If the identifier can not be mapped to an existing device, `UnknownDevice(identifier)` is returned.
   ///
   /// - parameter identifier: The device identifier, e.g. "iPhone7,1". Can be obtained from `Device.identifier`.
   ///
   /// - returns: An initialized `Device`.
-  public static func mapToDevice(identifier: String) -> Device { // swiftlint:disable:this cyclomatic_complexity
+  public static func mapToDevice(identifier: String) -> Device { // swiftlint:disable:this cyclomatic_complexity function_body_length
     #if os(iOS)
       switch identifier {
       case "iPod5,1": return iPodTouch5
@@ -240,6 +313,9 @@ public enum Device {
       case "iPhone10,1", "iPhone10,4": return iPhone8
       case "iPhone10,2", "iPhone10,5": return iPhone8Plus
       case "iPhone10,3", "iPhone10,6": return iPhoneX
+      case "iPhone11,2": return iPhoneXS
+      case "iPhone11,4", "iPhone11,6": return iPhoneXSMax
+      case "iPhone11,8": return iPhoneXR
       case "iPad2,1", "iPad2,2", "iPad2,3", "iPad2,4": return iPad2
       case "iPad3,1", "iPad3,2", "iPad3,3": return iPad3
       case "iPad3,4", "iPad3,5", "iPad3,6": return iPad4
@@ -247,14 +323,18 @@ public enum Device {
       case "iPad5,3", "iPad5,4": return iPadAir2
       case "iPad6,11", "iPad6,12": return iPad5
       case "iPad7,5", "iPad7,6": return iPad6
+      case "iPad11,3", "iPad11,4": return iPadAir3
       case "iPad2,5", "iPad2,6", "iPad2,7": return iPadMini
       case "iPad4,4", "iPad4,5", "iPad4,6": return iPadMini2
       case "iPad4,7", "iPad4,8", "iPad4,9": return iPadMini3
       case "iPad5,1", "iPad5,2": return iPadMini4
+      case "iPad11,1", "iPad11,2": return iPadMini5
       case "iPad6,3", "iPad6,4": return iPadPro9Inch
       case "iPad6,7", "iPad6,8": return iPadPro12Inch
       case "iPad7,1", "iPad7,2": return iPadPro12Inch2
       case "iPad7,3", "iPad7,4": return iPadPro10Inch
+      case "iPad8,1", "iPad8,2", "iPad8,3", "iPad8,4": return iPadPro11Inch
+      case "iPad8,5", "iPad8,6", "iPad8,7", "iPad8,8": return iPadPro12Inch3
       case "AudioAccessory1,1": return homePod
       case "i386", "x86_64": return simulator(mapToDevice(identifier: ProcessInfo().environment["SIMULATOR_MODEL_IDENTIFIER"] ?? "iOS"))
       default: return unknown(identifier)
@@ -266,135 +346,109 @@ public enum Device {
       case "i386", "x86_64": return simulator(mapToDevice(identifier: ProcessInfo().environment["SIMULATOR_MODEL_IDENTIFIER"] ?? "tvOS"))
       default: return unknown(identifier)
       }
+    #elseif os(watchOS)
+    switch identifier {
+      case "Watch1,1": return appleWatchSeries0_38mm
+      case "Watch1,2": return appleWatchSeries0_42mm
+      case "Watch2,6": return appleWatchSeries1_38mm
+      case "Watch2,7": return appleWatchSeries1_42mm
+      case "Watch2,3": return appleWatchSeries2_38mm
+      case "Watch2,4": return appleWatchSeries2_42mm
+      case "Watch3,1", "Watch3,3": return appleWatchSeries3_38mm
+      case "Watch3,2", "Watch3,4": return appleWatchSeries3_42mm
+      case "Watch4,1", "Watch4,3": return appleWatchSeries4_40mm
+      case "Watch4,2", "Watch4,4": return appleWatchSeries4_44mm
+      case "i386", "x86_64": return simulator(mapToDevice(identifier: ProcessInfo().environment["SIMULATOR_MODEL_IDENTIFIER"] ?? "watchOS"))
+      default: return unknown(identifier)
+      }
     #endif
   }
 
-  #if os(iOS)
-    /// All iPods
-    public static var allPods: [Device] {
-      return [.iPodTouch5, .iPodTouch6]
+  /// Get the real device from a device.
+  /// If the device is a an iPhone8Plus simulator this function returns .iPhone8Plus (the real device).
+  /// If the parameter is a real device, this function returns just that passed parameter.
+  ///
+  /// - parameter device: A device.
+  ///
+  /// - returns: the underlying device If the `device` is a `simulator`,
+  /// otherwise return the `device`.
+  public static func realDevice(from device: Device) -> Device {
+    if case let .simulator(model) = device {
+      return model
     }
+    return device
+  }
 
-    /// All iPhones
-    public static var allPhones: [Device] {
-       return [.iPhone4, .iPhone4s, .iPhone5, .iPhone5c, .iPhone5s, .iPhone6, .iPhone6Plus, .iPhone6s, .iPhone6sPlus, .iPhone7, .iPhone7Plus, .iPhoneSE, .iPhone8, .iPhone8Plus, .iPhoneX]
-    }
-
-    /// All iPads
-    public static var allPads: [Device] {
-       return [.iPad2, .iPad3, .iPad4, .iPadAir, .iPadAir2, .iPad5, .iPad6, .iPadMini, .iPadMini2, .iPadMini3, .iPadMini4, .iPadPro9Inch, .iPadPro12Inch, .iPadPro12Inch2, .iPadPro10Inch]
-    }
-
-    /// All Plus-Sized Devices
-    public static var allPlusSizedDevices: [Device] {
-      return [.iPhone6Plus, .iPhone6sPlus, .iPhone7Plus, .iPhone8Plus]
-    }
-
-    /// All Pro Devices
-    public static var allProDevices: [Device] {
-      return [.iPadPro9Inch, .iPadPro12Inch, .iPadPro12Inch2, .iPadPro10Inch]
-    }
-
-    /// All simulator iPods
-    public static var allSimulatorPods: [Device] {
-      return allPods.map(Device.simulator)
-    }
-
-    /// All simulator iPhones
-    public static var allSimulatorPhones: [Device] {
-      return allPhones.map(Device.simulator)
-    }
-
-    /// All simulator iPads
-    public static var allSimulatorPads: [Device] {
-      return allPads.map(Device.simulator)
-    }
-
-   /// All simulator Plus-Sized Devices
-   public static var allSimulatorPlusSizedDevices: [Device] {
-     return allPlusSizedDevices.map(Device.simulator)
-   }
-
-   /// All simulator Pro Devices
-   public static var allSimulatorProDevices: [Device] {
-     return allProDevices.map(Device.simulator)
-   }
-
-   /// Returns whether the device is an iPod (real or simulator)
-    public var isPod: Bool {
-      return isOneOf(Device.allPods) || isOneOf(Device.allSimulatorPods)
-    }
-
-    /// Returns whether the device is an iPhone (real or simulator)
-    public var isPhone: Bool {
-      return (isOneOf(Device.allPhones) || isOneOf(Device.allSimulatorPhones) || UIDevice.current.userInterfaceIdiom == .phone) && !isPod
-    }
-
-    /// Returns whether the device is an iPad (real or simulator)
-    public var isPad: Bool {
-      return isOneOf(Device.allPads) || isOneOf(Device.allSimulatorPads) || UIDevice.current.userInterfaceIdiom == .pad
-    }
-
-    /// Returns whether the device is any of the simulator
-    /// Useful when there is a need to check and skip running a portion of code (location request or others)
-    public var isSimulator: Bool {
-      return isOneOf(Device.allSimulators)
-    }
-
-    public var isZoomed: Bool {
-      // TODO: Longterm we need a better solution for this!
-      guard self != .iPhoneX else { return false }
-      if Int(UIScreen.main.scale.rounded()) == 3 {
-        // Plus-sized
-        return UIScreen.main.nativeScale > 2.7
-      } else {
-        return UIScreen.main.nativeScale > UIScreen.main.scale
+  #if os(iOS) || os(watchOS)
+  /// Returns diagonal screen length in inches
+  public var diagonal: Double {
+    #if os(iOS)
+      switch self {
+        case .iPodTouch5: return 4
+        case .iPodTouch6: return 4
+        case .iPhone4: return 3.5
+        case .iPhone4s: return 3.5
+        case .iPhone5: return 4
+        case .iPhone5c: return 4
+        case .iPhone5s: return 4
+        case .iPhone6: return 4.7
+        case .iPhone6Plus: return 5.5
+        case .iPhone6s: return 4.7
+        case .iPhone6sPlus: return 5.5
+        case .iPhone7: return 4.7
+        case .iPhone7Plus: return 5.5
+        case .iPhoneSE: return 4
+        case .iPhone8: return 4.7
+        case .iPhone8Plus: return 5.5
+        case .iPhoneX: return 5.8
+        case .iPhoneXS: return 5.8
+        case .iPhoneXSMax: return 6.5
+        case .iPhoneXR: return 6.1
+        case .iPad2: return 9.7
+        case .iPad3: return 9.7
+        case .iPad4: return 9.7
+        case .iPadAir: return 9.7
+        case .iPadAir2: return 9.7
+        case .iPad5: return 9.7
+        case .iPad6: return 9.7
+        case .iPadAir3: return 10.5
+        case .iPadMini: return 7.9
+        case .iPadMini2: return 7.9
+        case .iPadMini3: return 7.9
+        case .iPadMini4: return 7.9
+        case .iPadMini5: return 7.9
+        case .iPadPro9Inch: return 9.7
+        case .iPadPro12Inch: return 12.9
+        case .iPadPro12Inch2: return 12.9
+        case .iPadPro10Inch: return 10.5
+        case .iPadPro11Inch: return 11.0
+        case .iPadPro12Inch3: return 12.9
+        case .homePod: return -1
+        case .simulator(let model): return model.diagonal
+        case .unknown: return -1
       }
-    }
-
-    /// Returns diagonal screen length in inches
-    public var diagonal: Double {
-       switch self {
-      case .iPodTouch5: return 4
-      case .iPodTouch6: return 4
-      case .iPhone4: return 3.5
-      case .iPhone4s: return 3.5
-      case .iPhone5: return 4
-      case .iPhone5c: return 4
-      case .iPhone5s: return 4
-      case .iPhone6: return 4.7
-      case .iPhone6Plus: return 5.5
-      case .iPhone6s: return 4.7
-      case .iPhone6sPlus: return 5.5
-      case .iPhone7: return 4.7
-      case .iPhone7Plus: return 5.5
-      case .iPhoneSE: return 4
-      case .iPhone8: return 4.7
-      case .iPhone8Plus: return 5.5
-      case .iPhoneX: return 5.8
-      case .iPad2: return 9.7
-      case .iPad3: return 9.7
-      case .iPad4: return 9.7
-      case .iPadAir: return 9.7
-      case .iPadAir2: return 9.7
-      case .iPad5: return 9.7
-      case .iPad6: return 9.7
-      case .iPadMini: return 7.9
-      case .iPadMini2: return 7.9
-      case .iPadMini3: return 7.9
-      case .iPadMini4: return 7.9
-      case .iPadPro9Inch: return 9.7
-      case .iPadPro12Inch: return 12.9
-      case .iPadPro12Inch2: return 12.9
-      case .iPadPro10Inch: return 10.5
-      case .homePod: return -1
+    #elseif os(watchOS)
+      switch self {
+      case .appleWatchSeries0_38mm: return 1.5
+      case .appleWatchSeries0_42mm: return 1.6
+      case .appleWatchSeries1_38mm: return 1.5
+      case .appleWatchSeries1_42mm: return 1.6
+      case .appleWatchSeries2_38mm: return 1.5
+      case .appleWatchSeries2_42mm: return 1.6
+      case .appleWatchSeries3_38mm: return 1.5
+      case .appleWatchSeries3_42mm: return 1.6
+      case .appleWatchSeries4_40mm: return 1.8
+      case .appleWatchSeries4_44mm: return 2.0
       case .simulator(let model): return model.diagonal
       case .unknown: return -1
       }
-    }
+    #endif
+  }
+  #endif
 
-    /// Returns screen ratio as a tuple
-    public var screenRatio: (width: Double, height: Double) {
+  /// Returns screen ratio as a tuple
+  public var screenRatio: (width: Double, height: Double) {
+    #if os(iOS)
       switch self {
       case .iPodTouch5: return (width: 9, height: 16)
       case .iPodTouch6: return (width: 9, height: 16)
@@ -413,6 +467,9 @@ public enum Device {
       case .iPhone8: return (width: 9, height: 16)
       case .iPhone8Plus: return (width: 9, height: 16)
       case .iPhoneX: return (width: 9, height: 19.5)
+      case .iPhoneXS: return (width: 9, height: 19.5)
+      case .iPhoneXSMax: return (width: 9, height: 19.5)
+      case .iPhoneXR: return (width: 9, height: 19.5)
       case .iPad2: return (width: 3, height: 4)
       case .iPad3: return (width: 3, height: 4)
       case .iPad4: return (width: 3, height: 4)
@@ -420,19 +477,201 @@ public enum Device {
       case .iPadAir2: return (width: 3, height: 4)
       case .iPad5: return (width: 3, height: 4)
       case .iPad6: return (width: 3, height: 4)
+      case .iPadAir3: return (width: 3, height: 4)
       case .iPadMini: return (width: 3, height: 4)
       case .iPadMini2: return (width: 3, height: 4)
       case .iPadMini3: return (width: 3, height: 4)
       case .iPadMini4: return (width: 3, height: 4)
+      case .iPadMini5: return (width: 3, height: 4)
       case .iPadPro9Inch: return (width: 3, height: 4)
       case .iPadPro12Inch: return (width: 3, height: 4)
       case .iPadPro12Inch2: return (width: 3, height: 4)
       case .iPadPro10Inch: return (width: 3, height: 4)
+      case .iPadPro11Inch: return (width: 139, height: 199)
+      case .iPadPro12Inch3: return (width: 512, height: 683)
       case .homePod: return (width: 4, height: 5)
       case .simulator(let model): return model.screenRatio
       case .unknown: return (width: -1, height: -1)
       }
+    #elseif os(watchOS)
+      switch self {
+      case .appleWatchSeries0_38mm: return (width: 4, height: 5)
+      case .appleWatchSeries0_42mm: return (width: 4, height: 5)
+      case .appleWatchSeries1_38mm: return (width: 4, height: 5)
+      case .appleWatchSeries1_42mm: return (width: 4, height: 5)
+      case .appleWatchSeries2_38mm: return (width: 4, height: 5)
+      case .appleWatchSeries2_42mm: return (width: 4, height: 5)
+      case .appleWatchSeries3_38mm: return (width: 4, height: 5)
+      case .appleWatchSeries3_42mm: return (width: 4, height: 5)
+      case .appleWatchSeries4_40mm: return (width: 4, height: 5)
+      case .appleWatchSeries4_44mm: return (width: 4, height: 5)
+      case .simulator(let model): return model.screenRatio
+      case .unknown: return (width: -1, height: -1)
+      }
+    #elseif os(tvOS)
+      return (width: -1, height: -1)
+    #endif
+  }
+
+  #if os(iOS)
+    /// All iPods
+    public static var allPods: [Device] {
+      return [.iPodTouch5, .iPodTouch6]
     }
+
+    /// All iPhones
+    public static var allPhones: [Device] {
+      return [.iPhone4, .iPhone4s, .iPhone5, .iPhone5c, .iPhone5s, .iPhone6, .iPhone6Plus, .iPhone6s, .iPhone6sPlus, .iPhone7, .iPhone7Plus, .iPhoneSE, .iPhone8, .iPhone8Plus, .iPhoneX, .iPhoneXS, .iPhoneXSMax, .iPhoneXR]
+    }
+
+    /// All iPads
+    public static var allPads: [Device] {
+      return [.iPad2, .iPad3, .iPad4, .iPadAir, .iPadAir2, .iPad5, .iPad6, .iPadAir3, .iPadMini, .iPadMini2, .iPadMini3, .iPadMini4, .iPadMini5, .iPadPro9Inch, .iPadPro12Inch, .iPadPro12Inch2, .iPadPro10Inch, .iPadPro11Inch, .iPadPro12Inch3]
+    }
+
+    /// All X-Series Devices
+    public static var allXSeriesDevices: [Device] {
+      return [.iPhoneX, .iPhoneXS, .iPhoneXSMax, .iPhoneXR]
+    }
+
+    /// All Plus-Sized Devices
+    public static var allPlusSizedDevices: [Device] {
+      return [.iPhone6Plus, .iPhone6sPlus, .iPhone7Plus, .iPhone8Plus]
+    }
+
+    /// All Pro Devices
+    public static var allProDevices: [Device] {
+      return [.iPadPro9Inch, .iPadPro12Inch, .iPadPro12Inch2, .iPadPro10Inch, .iPadPro11Inch, .iPadPro12Inch3]
+    }
+
+    /// All mini Devices
+    public static var allMiniDevices: [Device] {
+      return [.iPadMini, .iPadMini2, .iPadMini3, .iPadMini4, .iPadMini5]
+    }
+
+    /// All simulator iPods
+    public static var allSimulatorPods: [Device] {
+      return allPods.map(Device.simulator)
+    }
+
+    /// All simulator iPhones
+    public static var allSimulatorPhones: [Device] {
+      return allPhones.map(Device.simulator)
+    }
+
+    /// All simulator iPads
+    public static var allSimulatorPads: [Device] {
+      return allPads.map(Device.simulator)
+    }
+
+    /// All simulator iPad mini
+    public static var allSimulatorMiniDevices: [Device] {
+      return allMiniDevices.map(Device.simulator)
+    }
+
+    /// All simulator Plus-Sized Devices
+    public static var allSimulatorXSeriesDevices: [Device] {
+      return allXSeriesDevices.map(Device.simulator)
+    }
+
+    /// All simulator Plus-Sized Devices
+    public static var allSimulatorPlusSizedDevices: [Device] {
+      return allPlusSizedDevices.map(Device.simulator)
+    }
+
+    /// All simulator Pro Devices
+    public static var allSimulatorProDevices: [Device] {
+      return allProDevices.map(Device.simulator)
+    }
+
+    /// Returns whether the device is an iPod (real or simulator)
+    public var isPod: Bool {
+      return isOneOf(Device.allPods) || isOneOf(Device.allSimulatorPods)
+    }
+
+    /// Returns whether the device is an iPhone (real or simulator)
+    public var isPhone: Bool {
+      return (isOneOf(Device.allPhones)
+              || isOneOf(Device.allSimulatorPhones)
+              || (UIDevice.current.userInterfaceIdiom == .phone && isCurrent)) && !isPod
+    }
+
+    /// Returns whether the device is an iPad (real or simulator)
+    public var isPad: Bool {
+      return isOneOf(Device.allPads)
+              || isOneOf(Device.allSimulatorPads)
+              || (UIDevice.current.userInterfaceIdiom == .pad && isCurrent)
+    }
+
+    /// Returns whether the device is any of the simulator
+    /// Useful when there is a need to check and skip running a portion of code (location request or others)
+    public var isSimulator: Bool {
+      return isOneOf(Device.allSimulators)
+    }
+
+    /// If this device is a simulator return the underlying device,
+    /// otherwise return `self`.
+    public var realDevice: Device {
+      return Device.realDevice(from: self)
+    }
+
+    public var isZoomed: Bool? {
+      guard isCurrent else { return nil }
+      // TODO: Longterm we need a better solution for this!
+      guard self != .iPhoneX && self != .iPhoneXS else { return false }
+      if Int(UIScreen.main.scale.rounded()) == 3 {
+        // Plus-sized
+        return UIScreen.main.nativeScale > 2.7
+      } else {
+        return UIScreen.main.nativeScale > UIScreen.main.scale
+      }
+    }
+
+    /// All Touch ID Capable Devices
+    public static var allTouchIDCapableDevices: [Device] {
+      return [.iPhone5s, .iPhone6, .iPhone6Plus, .iPhone6s, .iPhone6sPlus, .iPhone7, .iPhone7Plus, .iPhoneSE, .iPhone8, .iPhone8Plus, .iPadAir2, .iPad5, .iPad6, .iPadAir3, .iPadMini3, .iPadMini4, .iPadMini5, .iPadPro9Inch, .iPadPro12Inch, .iPadPro12Inch2, .iPadPro10Inch]
+    }
+
+    /// All Face ID Capable Devices
+    public static var allFaceIDCapableDevices: [Device] {
+      return [.iPhoneX, .iPhoneXS, .iPhoneXSMax, .iPhoneXR, .iPadPro11Inch, .iPadPro12Inch3]
+    }
+
+    /// Returns whether or not the device has Touch ID
+    public var isTouchIDCapable: Bool {
+      return isOneOf(Device.allTouchIDCapableDevices)
+    }
+
+    /// Returns whether or not the device has Face ID
+    public var isFaceIDCapable: Bool {
+      return isOneOf(Device.allFaceIDCapableDevices)
+    }
+
+    /// Returns whether or not the device has any biometric sensor (i.e. Touch ID or Face ID)
+    public var hasBiometricSensor: Bool {
+      return isTouchIDCapable || isFaceIDCapable
+    }
+
+    /// All devices that feature a sensor housing in the screen
+    public static var allDevicesWithSensorHousing: [Device] {
+      return [.iPhoneX, .iPhoneXS, .iPhoneXSMax, .iPhoneXR]
+    }
+
+    /// Returns whether or not the device has a sensor housing
+    public var hasSensorHousing: Bool {
+      return isOneOf(Device.allDevicesWithSensorHousing)
+    }
+
+    /// All devices that feature a screen with rounded corners.
+    public static var allDevicesWithRoundedDisplayCorners: [Device] {
+      return [.iPhoneX, .iPhoneXS, .iPhoneXSMax, .iPhoneXR, .iPadPro11Inch, .iPadPro12Inch3]
+    }
+
+    /// Returns whether or not the device has a screen with rounded corners.
+    public var hasRoundedDisplayCorners: Bool {
+      return isOneOf(Device.allDevicesWithRoundedDisplayCorners)
+    }
+
   #elseif os(tvOS)
     /// All TVs
     public static var allTVs: [Device] {
@@ -443,6 +682,16 @@ public enum Device {
     public static var allSimulatorTVs: [Device] {
       return allTVs.map(Device.simulator)
     }
+  #elseif os(watchOS)
+    /// All Watches
+    public static var allWatches: [Device] {
+       return [.appleWatchSeries0_38mm, .appleWatchSeries0_42mm, .appleWatchSeries1_38mm, .appleWatchSeries1_42mm, .appleWatchSeries2_38mm, .appleWatchSeries2_42mm, .appleWatchSeries3_38mm, .appleWatchSeries3_42mm, .appleWatchSeries4_40mm, .appleWatchSeries4_44mm]
+    }
+
+    /// All simulator Watches
+    public static var allSimulatorWatches: [Device] {
+      return allWatches.map(Device.simulator)
+    }
   #endif
 
   /// All real devices (i.e. all devices except for all simulators)
@@ -451,6 +700,8 @@ public enum Device {
       return allPods + allPhones + allPads
     #elseif os(tvOS)
       return allTVs
+    #elseif os(watchOS)
+      return allWatches
     #endif
   }
 
@@ -464,7 +715,7 @@ public enum Device {
    Most uses for an enum like this are the following:
 
    ```
-   switch Device() {
+   switch Device.current {
    case .iPodTouch5, .iPodTouch6: callMethodOnIPods()
    case .iPhone4, iPhone4s, .iPhone5, .iPhone5s, .iPhone6, .iPhone6Plus, .iPhone6s, .iPhone6sPlus, .iPhone7, .iPhone7Plus, .iPhoneSE, .iPhone8, .iPhone8Plus, .iPhoneX: callMethodOnIPhones()
    case .iPad2, .iPad3, .iPad4, .iPadAir, .iPadAir2, .iPadMini, .iPadMini2, .iPadMini3, .iPadMini4, .iPadPro: callMethodOnIPads()
@@ -474,7 +725,7 @@ public enum Device {
    This code can now be replaced with
 
    ```
-   let device = Device()
+   let device = Device.current
    if device.isOneOf(Device.allPods) {
      callMethodOnIPods()
    } else if device.isOneOf(Device.allPhones) {
@@ -492,29 +743,59 @@ public enum Device {
     return devices.contains(self)
   }
 
+  /// Whether or not the current device is the current device.
+  private var isCurrent: Bool {
+    return self == Device.current
+  }
+
   /// The name identifying the device (e.g. "Dennis' iPhone").
-  public var name: String {
+  public var name: String? {
+    guard isCurrent else { return nil }
+    #if os(watchOS)
+    return WKInterfaceDevice.current().name
+    #else
     return UIDevice.current.name
+    #endif
   }
 
   /// The name of the operating system running on the device represented by the receiver (e.g. "iOS" or "tvOS").
-  public var systemName: String {
+  public var systemName: String? {
+    guard isCurrent else { return nil }
+    #if os(watchOS)
+    return WKInterfaceDevice.current().systemName
+    #else
     return UIDevice.current.systemName
+    #endif
   }
 
   /// The current version of the operating system (e.g. 8.4 or 9.2).
-  public var systemVersion: String {
+  public var systemVersion: String? {
+    guard isCurrent else { return nil }
+    #if os(watchOS)
+    return WKInterfaceDevice.current().systemVersion
+    #else
     return UIDevice.current.systemVersion
+    #endif
   }
 
   /// The model of the device (e.g. "iPhone" or "iPod Touch").
-  public var model: String {
+  public var model: String? {
+    guard isCurrent else { return nil }
+    #if os(watchOS)
+    return WKInterfaceDevice.current().model
+    #else
     return UIDevice.current.model
+    #endif
   }
 
   /// The model of the device as a localized string.
-  public var localizedModel: String {
+  public var localizedModel: String? {
+    guard isCurrent else { return nil }
+    #if os(watchOS)
+    return WKInterfaceDevice.current().localizedModel
+    #else
     return UIDevice.current.localizedModel
+    #endif
   }
 
   /// PPI (Pixels per Inch) on the current device's screen (if applicable). When the device is not applicable this property returns nil.
@@ -538,6 +819,9 @@ public enum Device {
       case .iPhone8: return 326
       case .iPhone8Plus: return 401
       case .iPhoneX: return 458
+      case .iPhoneXS: return 458
+      case .iPhoneXSMax: return 458
+      case .iPhoneXR: return 326
       case .iPad2: return 132
       case .iPad3: return 264
       case .iPad4: return 264
@@ -545,17 +829,36 @@ public enum Device {
       case .iPadAir2: return 264
       case .iPad5: return 264
       case .iPad6: return 264
+      case .iPadAir3: return 264
       case .iPadMini: return 163
       case .iPadMini2: return 326
       case .iPadMini3: return 326
       case .iPadMini4: return 326
+      case .iPadMini5: return 326
       case .iPadPro9Inch: return 264
       case .iPadPro12Inch: return 264
       case .iPadPro12Inch2: return 264
       case .iPadPro10Inch: return 264
+      case .iPadPro11Inch: return 264
+      case .iPadPro12Inch3: return 264
       case .homePod: return -1
       case .simulator(let model): return model.ppi
       case .unknown: return nil
+    }
+    #elseif os(watchOS)
+    switch self {
+    case .appleWatchSeries0_38mm: return 290
+    case .appleWatchSeries0_42mm: return 303
+    case .appleWatchSeries1_38mm: return 290
+    case .appleWatchSeries1_42mm: return 303
+    case .appleWatchSeries2_38mm: return 290
+    case .appleWatchSeries2_42mm: return 303
+    case .appleWatchSeries3_38mm: return 290
+    case .appleWatchSeries3_42mm: return 303
+    case .appleWatchSeries4_40mm: return 326
+    case .appleWatchSeries4_44mm: return 326
+    case .simulator(let model): return model.ppi
+    case .unknown: return nil
     }
     #elseif os(tvOS)
     return nil
@@ -565,9 +868,13 @@ public enum Device {
   /// True when a Guided Access session is currently active; otherwise, false.
   public var isGuidedAccessSessionActive: Bool {
     #if os(iOS)
-    return UIAccessibilityIsGuidedAccessEnabled()
+      #if swift(>=4.2)
+        return UIAccessibility.isGuidedAccessEnabled
+      #else
+        return UIAccessibilityIsGuidedAccessEnabled()
+      #endif
     #else
-    return false
+      return false
     #endif
   }
 
@@ -605,22 +912,44 @@ extension Device: CustomStringConvertible {
       case .iPhone8: return "iPhone 8"
       case .iPhone8Plus: return "iPhone 8 Plus"
       case .iPhoneX: return "iPhone X"
+      case .iPhoneXS: return "iPhone Xs"
+      case .iPhoneXSMax: return "iPhone Xs Max"
+      case .iPhoneXR: return "iPhone Xʀ"
       case .iPad2: return "iPad 2"
-      case .iPad3: return "iPad 3"
-      case .iPad4: return "iPad 4"
+      case .iPad3: return "iPad (3rd generation)"
+      case .iPad4: return "iPad (4th generation)"
       case .iPadAir: return "iPad Air"
       case .iPadAir2: return "iPad Air 2"
-      case .iPad5: return "iPad 5"
-      case .iPad6: return "iPad 6"
+      case .iPad5: return "iPad (5th generation)"
+      case .iPad6: return "iPad (6th generation)"
+      case .iPadAir3: return "iPad Air (3rd generation)"
       case .iPadMini: return "iPad Mini"
       case .iPadMini2: return "iPad Mini 2"
       case .iPadMini3: return "iPad Mini 3"
       case .iPadMini4: return "iPad Mini 4"
+      case .iPadMini5: return "iPad Mini (5th generation)"
       case .iPadPro9Inch: return "iPad Pro (9.7-inch)"
       case .iPadPro12Inch: return "iPad Pro (12.9-inch)"
-      case .iPadPro12Inch2: return "iPad Pro (12.9-inch) 2"
+      case .iPadPro12Inch2: return "iPad Pro (12.9-inch) (2nd generation)"
       case .iPadPro10Inch: return "iPad Pro (10.5-inch)"
+      case .iPadPro11Inch: return "iPad Pro (11-inch)"
+      case .iPadPro12Inch3: return "iPad Pro (12.9-inch) (3rd generation)"
       case .homePod: return "HomePod"
+      case .simulator(let model): return "Simulator (\(model))"
+      case .unknown(let identifier): return identifier
+      }
+    #elseif os(watchOS)
+      switch self {
+      case .appleWatchSeries0_38mm: return "Apple Watch (1st generation) 38mm"
+      case .appleWatchSeries0_42mm: return "Apple Watch (1st generation) 42mm"
+      case .appleWatchSeries1_38mm: return "Apple Watch Series 1 38mm"
+      case .appleWatchSeries1_42mm: return "Apple Watch Series 1 42mm"
+      case .appleWatchSeries2_38mm: return "Apple Watch Series 2 38mm"
+      case .appleWatchSeries2_42mm: return "Apple Watch Series 2 42mm"
+      case .appleWatchSeries3_38mm: return "Apple Watch Series 3 38mm"
+      case .appleWatchSeries3_42mm: return "Apple Watch Series 3 42mm"
+      case .appleWatchSeries4_40mm: return "Apple Watch Series 4 40mm"
+      case .appleWatchSeries4_44mm: return "Apple Watch Series 4 44mm"
       case .simulator(let model): return "Simulator (\(model))"
       case .unknown(let identifier): return identifier
       }
@@ -650,26 +979,28 @@ extension Device: Equatable {
 
 }
 
-#if os(iOS)
-  // MARK: - Battery
-  extension Device {
-    /**
-     This enum describes the state of the battery.
+// MARK: - Battery
+#if os(iOS) || os(watchOS)
+@available(iOS 8.0, watchOS 4.0, *)
+extension Device {
+  /**
+   This enum describes the state of the battery.
 
-     - Full:      The device is plugged into power and the battery is 100% charged or the device is the iOS Simulator.
-     - Charging:  The device is plugged into power and the battery is less than 100% charged.
-     - Unplugged: The device is not plugged into power; the battery is discharging.
-     */
-    public enum BatteryState: CustomStringConvertible, Equatable {
-      /// The device is plugged into power and the battery is 100% charged or the device is the iOS Simulator.
-      case full
-      /// The device is plugged into power and the battery is less than 100% charged.
-      /// The associated value is in percent (0-100).
-      case charging(Int)
-      /// The device is not plugged into power; the battery is discharging.
-      /// The associated value is in percent (0-100).
-      case unplugged(Int)
+   - Full:      The device is plugged into power and the battery is 100% charged or the device is the iOS Simulator.
+   - Charging:  The device is plugged into power and the battery is less than 100% charged.
+   - Unplugged: The device is not plugged into power; the battery is discharging.
+   */
+  public enum BatteryState: CustomStringConvertible, Equatable {
+    /// The device is plugged into power and the battery is 100% charged or the device is the iOS Simulator.
+    case full
+    /// The device is plugged into power and the battery is less than 100% charged.
+    /// The associated value is in percent (0-100).
+    case charging(Int)
+    /// The device is not plugged into power; the battery is discharging.
+    /// The associated value is in percent (0-100).
+    case unplugged(Int)
 
+    #if os(iOS)
       fileprivate init() {
         let wasBatteryMonitoringEnabled = UIDevice.current.isBatteryMonitoringEnabled
         UIDevice.current.isBatteryMonitoringEnabled = true
@@ -678,85 +1009,108 @@ extension Device: Equatable {
         switch UIDevice.current.batteryState {
         case .charging: self = .charging(batteryLevel)
         case .full: self = .full
-        case .unplugged:self = .unplugged(batteryLevel)
+        case .unplugged: self = .unplugged(batteryLevel)
         case .unknown: self = .full // Should never happen since `batteryMonitoring` is enabled.
+        @unknown default:
+          self = .full // To cover any future additions for which DeviceKit might not have updated yet.
         }
         UIDevice.current.isBatteryMonitoringEnabled = wasBatteryMonitoringEnabled
       }
-
-      /// The user enabled Low Power mode
-      public var lowPowerMode: Bool {
-        if #available(iOS 9.0, *) {
-          return ProcessInfo.processInfo.isLowPowerModeEnabled
-        } else {
-          return false
+    #elseif os(watchOS)
+      fileprivate init() {
+        let wasBatteryMonitoringEnabled = WKInterfaceDevice.current().isBatteryMonitoringEnabled
+        WKInterfaceDevice.current().isBatteryMonitoringEnabled = true
+        let batteryLevel = Int(round(WKInterfaceDevice.current().batteryLevel * 100)) // round() is actually not needed anymore since -[batteryLevel] seems to always return a two-digit precision number
+        // but maybe that changes in the future.
+        switch WKInterfaceDevice.current().batteryState {
+        case .charging: self = .charging(batteryLevel)
+        case .full: self = .full
+        case .unplugged: self = .unplugged(batteryLevel)
+        case .unknown: self = .full // Should never happen since `batteryMonitoring` is enabled.
+        @unknown default:
+          self = .full // To cover any future additions for which DeviceKit might not have updated yet.
         }
+        WKInterfaceDevice.current().isBatteryMonitoringEnabled = wasBatteryMonitoringEnabled
       }
+    #endif
 
-      /// Provides a textual representation of the battery state.
-      /// Examples:
-      /// ```
-      /// Battery level: 90%, device is plugged in.
-      /// Battery level: 100 % (Full), device is plugged in.
-      /// Battery level: \(batteryLevel)%, device is unplugged.
-      /// ```
-      public var description: String {
-        switch self {
-        case .charging(let batteryLevel): return "Battery level: \(batteryLevel)%, device is plugged in."
-        case .full: return "Battery level: 100 % (Full), device is plugged in."
-        case .unplugged(let batteryLevel): return "Battery level: \(batteryLevel)%, device is unplugged."
-        }
+    /// The user enabled Low Power mode
+    public var lowPowerMode: Bool {
+      if #available(iOS 9.0, *) {
+        return ProcessInfo.processInfo.isLowPowerModeEnabled
+      } else {
+        return false
       }
-
     }
 
-    /// The state of the battery
-    public var batteryState: BatteryState {
-      return BatteryState()
-    }
-
-    /// Battery level ranges from 0 (fully discharged) to 100 (100% charged).
-    public var batteryLevel: Int {
-      switch BatteryState() {
-      case .charging(let value): return value
-      case .full: return 100
-      case .unplugged(let value): return value
+    /// Provides a textual representation of the battery state.
+    /// Examples:
+    /// ```
+    /// Battery level: 90%, device is plugged in.
+    /// Battery level: 100 % (Full), device is plugged in.
+    /// Battery level: \(batteryLevel)%, device is unplugged.
+    /// ```
+    public var description: String {
+      switch self {
+      case .charging(let batteryLevel): return "Battery level: \(batteryLevel)%, device is plugged in."
+      case .full: return "Battery level: 100 % (Full), device is plugged in."
+      case .unplugged(let batteryLevel): return "Battery level: \(batteryLevel)%, device is unplugged."
       }
     }
 
   }
 
-  // MARK: - Device.Batterystate: Comparable
-  extension Device.BatteryState: Comparable {
-    /// Tells if two battery states are equal.
-    ///
-    /// - parameter lhs: A battery state.
-    /// - parameter rhs: Another battery state.
-    ///
-    /// - returns: `true` iff they are equal, otherwise `false`
-    public static func == (lhs: Device.BatteryState, rhs: Device.BatteryState) -> Bool {
-      return lhs.description == rhs.description
-    }
+  /// The state of the battery
+  public var batteryState: BatteryState? {
+    guard isCurrent else { return nil }
+    return BatteryState()
+  }
 
-    /// Compares two battery states.
-    ///
-    /// - parameter lhs: A battery state.
-    /// - parameter rhs: Another battery state.
-    ///
-    /// - returns: `true` if rhs is `.Full`, `false` when lhs is `.Full` otherwise their battery level is compared.
-    public static func < (lhs: Device.BatteryState, rhs: Device.BatteryState) -> Bool {
-      switch (lhs, rhs) {
-      case (.full, _): return false // return false (even if both are `.Full` -> they are equal)
-      case (_, .full): return true // lhs is *not* `.Full`, rhs is
-      case (.charging(let lhsLevel), .charging(let rhsLevel)): return lhsLevel < rhsLevel
-      case (.charging(let lhsLevel), .unplugged(let rhsLevel)): return lhsLevel < rhsLevel
-      case (.unplugged(let lhsLevel), .charging(let rhsLevel)): return lhsLevel < rhsLevel
-      case (.unplugged(let lhsLevel), .unplugged(let rhsLevel)): return lhsLevel < rhsLevel
-      default: return false // compiler won't compile without it, though it cannot happen
-      }
+  /// Battery level ranges from 0 (fully discharged) to 100 (100% charged).
+  public var batteryLevel: Int? {
+    guard isCurrent else { return nil }
+    switch BatteryState() {
+    case .charging(let value): return value
+    case .full: return 100
+    case .unplugged(let value): return value
     }
   }
 
+}
+#endif
+
+// MARK: - Device.Batterystate: Comparable
+#if os(iOS) || os(watchOS)
+@available(iOS 8.0, watchOS 4.0, *)
+extension Device.BatteryState: Comparable {
+  /// Tells if two battery states are equal.
+  ///
+  /// - parameter lhs: A battery state.
+  /// - parameter rhs: Another battery state.
+  ///
+  /// - returns: `true` iff they are equal, otherwise `false`
+  public static func == (lhs: Device.BatteryState, rhs: Device.BatteryState) -> Bool {
+    return lhs.description == rhs.description
+  }
+
+  /// Compares two battery states.
+  ///
+  /// - parameter lhs: A battery state.
+  /// - parameter rhs: Another battery state.
+  ///
+  /// - returns: `true` if rhs is `.Full`, `false` when lhs is `.Full` otherwise their battery level is compared.
+  public static func < (lhs: Device.BatteryState, rhs: Device.BatteryState) -> Bool {
+    switch (lhs, rhs) {
+    case (.full, _): return false // return false (even if both are `.Full` -> they are equal)
+    case (_, .full): return true // lhs is *not* `.Full`, rhs is
+    case let (.charging(lhsLevel), .charging(rhsLevel)): return lhsLevel < rhsLevel
+    case let (.charging(lhsLevel), .unplugged(rhsLevel)): return lhsLevel < rhsLevel
+    case let (.unplugged(lhsLevel), .charging(rhsLevel)): return lhsLevel < rhsLevel
+    case let (.unplugged(lhsLevel), .unplugged(rhsLevel)): return lhsLevel < rhsLevel
+    default: return false // compiler won't compile without it, though it cannot happen
+    }
+  }
+}
 #endif
 
 #if os(iOS)
@@ -780,70 +1134,48 @@ extension Device {
       }
     }
 }
-
 #endif
 
 #if os(iOS)
 // MARK: - DiskSpace
-@available(iOS 11.0, *)
 extension Device {
 
   /// Return the root url
   ///
-  /// - returns: the "/" url
-  private static var rootURL = {
-    return URL(fileURLWithPath: "/")
-  }()
+  /// - returns: the NSHomeDirectory() url
+  private static let rootURL = URL(fileURLWithPath: NSHomeDirectory())
 
   /// The volume’s total capacity in bytes.
   public static var volumeTotalCapacity: Int? {
-    do {
-      let values = try Device.rootURL.resourceValues(forKeys: [.volumeTotalCapacityKey])
-      return values.volumeTotalCapacity
-    } catch {
-      return nil
-    }
+    return (try? Device.rootURL.resourceValues(forKeys: [.volumeTotalCapacityKey]))?.volumeTotalCapacity
   }
 
   /// The volume’s available capacity in bytes.
   public static var volumeAvailableCapacity: Int? {
-    do {
-      let values = try rootURL.resourceValues(forKeys: [.volumeAvailableCapacityKey])
-      return values.volumeAvailableCapacity
-    } catch {
-      return nil
-    }
+    return (try? rootURL.resourceValues(forKeys: [.volumeAvailableCapacityKey]))?.volumeAvailableCapacity
   }
 
   /// The volume’s available capacity in bytes for storing important resources.
+  @available(iOS 11.0, *)
   public static var volumeAvailableCapacityForImportantUsage: Int64? {
-    do {
-      let values = try rootURL.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
-      return values.volumeAvailableCapacityForImportantUsage
-    } catch {
-      return nil
-    }
+    return (try? rootURL.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey]))?.volumeAvailableCapacityForImportantUsage
   }
 
   /// The volume’s available capacity in bytes for storing nonessential resources.
+  @available(iOS 11.0, *)
   public static var volumeAvailableCapacityForOpportunisticUsage: Int64? { //swiftlint:disable:this identifier_name
-    do {
-      let values = try rootURL.resourceValues(forKeys: [.volumeAvailableCapacityForOpportunisticUsageKey])
-      return values.volumeAvailableCapacityForOpportunisticUsage
-    } catch {
-      return nil
-    }
+    return (try? rootURL.resourceValues(forKeys: [.volumeAvailableCapacityForOpportunisticUsageKey]))?.volumeAvailableCapacityForOpportunisticUsage
   }
 
   /// All volumes capacity information in bytes.
+  @available(iOS 11.0, *)
   public static var volumes: [URLResourceKey: Int64]? {
     do {
-      let values = try rootURL.resourceValues(forKeys: [
-        .volumeAvailableCapacityForImportantUsageKey,
-        .volumeAvailableCapacityKey,
-        .volumeAvailableCapacityForOpportunisticUsageKey,
-        .volumeTotalCapacityKey
-        ])
+      let values = try rootURL.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey,
+                                                        .volumeAvailableCapacityKey,
+                                                        .volumeAvailableCapacityForOpportunisticUsageKey,
+                                                        .volumeTotalCapacityKey
+                                                       ])
       return values.allValues.mapValues {
         if let int = $0 as? Int64 {
           return int
@@ -857,6 +1189,5 @@ extension Device {
       return nil
     }
   }
-
 }
 #endif

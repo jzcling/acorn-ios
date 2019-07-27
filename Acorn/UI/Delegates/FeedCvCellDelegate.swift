@@ -13,8 +13,11 @@ protocol FeedCvCellDelegate: class {
     func openArticle(_ articleId: String)
     func openComments(_ articleId: String)
     func openImage(_ urlLink: String?)
-    func openShareActivity(_ urlLink: String?)
-    func isUserEmailVerified(user: User) -> (Bool)
+    func openShareActivity(_ urlLink: String?, _ article: Article)
+    func isUserEmailVerified() -> (Bool)
     func showEmailVerificationAlert(user: User)
     func openOptions(anchor: UIView, post: Article)
+    func upvoteActionTapped(article: Article, upvoteButton: UIButton, downvoteButton: UIButton)
+    func downvoteActionTapped(article: Article, upvoteButton: UIButton, downvoteButton: UIButton)
+    func saveActionTapped(article: Article, saveButton: UIButton)
 }

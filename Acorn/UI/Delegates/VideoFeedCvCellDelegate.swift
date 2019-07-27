@@ -7,3 +7,16 @@
 //
 
 import Foundation
+import FirebaseUI
+
+protocol VideoFeedCvCellDelegate: class {
+    func openVideo(_ video: Video)
+    func openComments(_ videoId: String)
+    func openShareActivity(_ urlLink: String?, _ video: Video?)
+    func isUserEmailVerified() -> (Bool)
+    func showEmailVerificationAlert(user: User)
+    func openOptions(anchor: UIView, video: Video)
+    func upvoteActionTapped(video: Video, upvoteButton: UIButton, downvoteButton: UIButton)
+    func downvoteActionTapped(video: Video, upvoteButton: UIButton, downvoteButton: UIButton)
+    func saveActionTapped(video: Video, saveButton: UIButton)
+}

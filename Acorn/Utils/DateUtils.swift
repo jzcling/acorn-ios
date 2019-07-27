@@ -49,10 +49,7 @@ class DateUtils {
     }
     
     static func parseCommentDate(unixTimestamp: Double) -> String {
-        var calendar = NSCalendar.current
-        calendar.locale = Locale(identifier: "en_SG")
-        calendar.timeZone = TimeZone(identifier: TimeZone.current.identifier)!
-        let dateAtMidnight = calendar.startOfDay(for: Date()).timeIntervalSince1970 * 1000.0
+        let dateAtMidnight = getThisMidnight()
         
         let dateFormat = DateFormatter()
         dateFormat.locale = Locale(identifier: "en_SG")
@@ -70,5 +67,45 @@ class DateUtils {
         } else {
             return dateFormat.string(from: date)
         }
+    }
+    
+    static func getThisMidnight() -> Double {
+        var calendar = NSCalendar.current
+        calendar.locale = Locale(identifier: "en_SG")
+        calendar.timeZone = TimeZone(identifier: TimeZone.current.identifier)!
+        let dateAtMidnight = calendar.startOfDay(for: Date()).timeIntervalSince1970 * 1000.0
+        return dateAtMidnight
+    }
+    
+    static func getNextMidnight() -> Double {
+        return getThisMidnight() + (24.0 * 60.0 * 60.0 * 1000.0)
+    }
+    
+    static func getFollowingMidnight() -> Double {
+        return getNextMidnight() + (24.0 * 60.0 * 60.0 * 1000.0)
+    }
+    
+    static func getThreeDaysAgoMidnight() -> Double {
+        return getThisMidnight() - (3.0 * 24.0 * 60.0 * 60.0 * 1000.0)
+    }
+    
+    static func getThirtyDaysLaterMidnight() -> Double {
+        return getThisMidnight() + (30.0 * 24.0 * 60.0 * 60.0 * 1000.0)
+    }
+    
+    static func getThirtyDaysAgoMidnight() -> Double {
+        return getThisMidnight() - (30.0 * 24.0 * 60.0 * 60.0 * 1000.0)
+    }
+    
+    static func getFourteenDaysAgoMidnight() -> Double {
+        return getThisMidnight() - (14.0 * 24.0 * 60.0 * 60.0 * 1000.0)
+    }
+    
+    static func getWeekAgoMidnight() -> Double {
+        return getThisMidnight() - (7.0 * 24.0 * 60.0 * 60.0 * 1000.0)
+    }
+    
+    static func getWeekLaterMidnight() -> Double {
+        return getThisMidnight() + (7.0 * 24.0 * 60.0 * 60.0 * 1000.0)
     }
 }

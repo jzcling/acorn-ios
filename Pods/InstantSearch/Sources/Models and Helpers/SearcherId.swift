@@ -10,12 +10,12 @@ import Foundation
 @objcMembers public class SearcherId: NSObject {
     
     /// The name of the index.
-    var index: String
+    public var index: String
     
     /// A unique id of your choice.
     ///
     /// + NOTE: Only useful to fill when different widgets are targeting the same index but with different configurations.
-    var variant: String
+    public var variant: String
     
     public convenience init(index: String) {
         self.init(index: index, variant: "")
@@ -26,7 +26,7 @@ import Foundation
         self.variant = variant
     }
     
-    override public var hashValue: Int {
+    override public var hash: Int {
         return "\(index)\(variant)".hashValue
     }
     

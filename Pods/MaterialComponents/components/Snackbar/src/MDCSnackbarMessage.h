@@ -1,18 +1,16 @@
-/*
- Copyright 2016-present the Material Components for iOS authors. All Rights Reserved.
-
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
- http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
- */
+// Copyright 2016-present the Material Components for iOS authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #import <UIKit/UIKit.h>
 
@@ -42,7 +40,7 @@ extern const NSTimeInterval MDCSnackbarMessageDurationMax;
  This attribute can be set over any range of @c attributedText and that text will have the proper
  font applied.
  */
-extern NSString * __nonnull const MDCSnackbarMessageBoldAttributeName;
+extern NSString *__nonnull const MDCSnackbarMessageBoldAttributeName;
 
 /**
  Represents a message to unobtrusively show to the user.
@@ -102,11 +100,11 @@ extern NSString * __nonnull const MDCSnackbarMessageBoldAttributeName;
 /**
   The color used for button text on the Snackbar in normal state.
 
-  Default is nil, but MDCRGBAColor(0xFF, 0xFF, 0xFF, 0.6f) will be set as the default color
+  Default is nil, but MDCRGBAColor(0xFF, 0xFF, 0xFF, (CGFloat)0.6) will be set as the default color
   and is taken from MDCSnackbarMessageView's buttonTitleColorForState:
   */
-@property(nonatomic, strong, nullable) UIColor *buttonTextColor
-    __deprecated_msg("Use MDCSnackbarMessageView's buttonTitleColorForState: instead.");
+@property(nonatomic, strong, nullable) UIColor *buttonTextColor __deprecated_msg(
+    "Use MDCSnackbarMessageView's buttonTitleColorForState: instead.");
 
 /**
  How long the message should be displayed.
@@ -139,9 +137,26 @@ extern NSString * __nonnull const MDCSnackbarMessageBoldAttributeName;
 @property(nonatomic, copy, nullable) NSString *accessibilityLabel;
 
 /**
+ Redeclaration from UIAccessibility to make clear that this class supports accessibility hints.
+ */
+@property(nonatomic, copy, nullable) NSString *accessibilityHint;
+
+/**
  Text that should be read when the message appears on screen and VoiceOver is enabled.
  */
 @property(nonatomic, readonly, nullable) NSString *voiceNotificationText;
+
+/**
+ By setting this property to @c YES, the Ripple component will be used instead of Ink
+ to display visual feedback to the user.
+
+ @note This property will eventually be enabled by default, deprecated, and then deleted as part
+ of our migration to Ripple. Learn more at
+ https://github.com/material-components/material-components-ios/tree/develop/components/Ink#migration-guide-ink-to-ripple
+
+ Defaults to NO.
+ */
+@property(nonatomic, assign) BOOL enableRippleBehavior;
 
 @end
 

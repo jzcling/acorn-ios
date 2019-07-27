@@ -39,13 +39,14 @@ struct ResourcesDay {
     static let WEBVIEW_BG_COLOR_HEX = "f6f6f6"
     static let WEBVIEW_TEXT_COLOR_HEX = "231f20"
     static let WEBVIEW_SUBTITLE_COLOR_HEX = "666666"
+    static let WEBVIEW_QUOTE_BG_COLOR_HEX = "e6e6e6"
     
     // more options
     static let OPTIONS_BG_COLOR = UIColor(hex: "1e2d3e")
     static let OPTIONS_TEXT_COLOR = UIColor(hex: "c0ccda")
     
     // theme
-    static let THEME_LIST = ["Lifestyle", "Food", "Travel", "Deals", "Credit Cards", "Housing", "Savings and Loans", "Insurance", "Parenting", "Beauty and Fashion", "Investing", "Innovation"]
+    static let THEME_LIST = ["News and Current Affairs", "Lifestyle", "Food", "Travel", "Deals", "Personal Finance", "Housing", "Parenting", "Beauty and Fashion", "Investing", "Innovation"]
     static let COLOR_LIST = [
         UIColor(hex: "c88691"),
         UIColor(hex: "ad85ba"),
@@ -71,4 +72,9 @@ struct ResourcesDay {
     // search
     static let SEARCH_HIT_BG_COLOR = UIColor(hex: "b5c6ff")
     static let SEARCH_HIT_TEXT_COLOR = UIColor.black
+    
+    // user
+    static let USER_BG_COLOR = UIColor(hex: "dcdcdc")
+    static let USER_SEC_BG_COLOR = UIColor(hex: "eaeaea")
+    static let USER_TEXT_COLOR = UIColor(hex: "231f20")
 }

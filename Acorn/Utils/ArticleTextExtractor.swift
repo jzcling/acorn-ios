@@ -13,17 +13,13 @@ class ArticleTextExtractor {
     let TAG = "TextExtractor"
     
     // Interesting nodes
-    let NODES = try? NSRegularExpression(pattern:"p|div|td|h1|h2|article|section", options: .caseInsensitive)
+    let NODES = try? NSRegularExpression(pattern:"p|div|td|h1|h2|article|section|span", options: .caseInsensitive)
     
     // Unlikely candidates
-    let UNLIKELY = try? NSRegularExpression(pattern:"com(bx|ment|munity)|dis(qus|cuss)|e(xtra|[-]?mail)|foot|"
-    + "header|menu|re(mark|ply)|rss|sh(are|outbox)|social|twitter|facebook|sponsor"
-    + "a(d|ll|gegate|rchive|ttachment)|(pag(er|ination))|popup|print|"
-    + "login|si(debar|gn|ngle)|hinweis|expla(in|nation)?|metablock", options: .caseInsensitive)
+    let UNLIKELY = try? NSRegularExpression(pattern:"com(bx|ment|munity)|dis(qus|cuss)|e(xtra|[-]?mail)|foot|header|menu|re(mark|ply)|rss|sh(are|outbox)|social|twitter|facebook|pinterest|sponsor|a(d|ll|gegate|rchive|ttachment)|(pag(er|ination))|popup|print|login|si(debar|gn|ngle)|hinweis|expla(in|nation)?|metablock", options: .caseInsensitive)
     
     // Most likely positive candidates
-    let POSITIVE = try? NSRegularExpression(pattern:"(^(body|content|h?entry|main|page|post|text|blog|story|haupt))"
-    + "|arti(cle|kel)|instapaper_body", options: .caseInsensitive)
+    let POSITIVE = try? NSRegularExpression(pattern:"(^(body|content|h?entry|cb-(entry-itemprop)|main|page|post|text|blog|story|haupt))|arti(cle|kel)|instapaper_body", options: .caseInsensitive)
     
     // Very most likely positive candidates, used by Joomla CMS
     let ITSJOOMLA = try? NSRegularExpression(pattern:"articleBody", options: .caseInsensitive)
@@ -42,46 +38,55 @@ class ArticleTextExtractor {
      *                         with improper HTML, although jSoup should be able to handle minor stuff.
      * @return extracted article, all HTML tags stripped
      */
-    func extractContent(input: String) -> String? {
+    func extractContent(input: String, selector: String?, baseUrl: String) -> String? {
         do {
-            return extractContent(doc: try SwiftSoup.parse(input))!
+            if let content = extractContent(doc: try SwiftSoup.parse(input), selector: selector, baseUrl: baseUrl) {
+                return content
+            }
         } catch Exception.Error(_, let message) {
-            
+            print(message)
         } catch let error {
-            
+            print(error)
         }
         return nil
     }
     
-    func extractContent(doc: Document?) -> String? {
+    func extractContent(doc: Document?, selector: String?, baseUrl: String) -> String? {
         do {
             if (doc == nil) {
-                
                 return nil
             }
         
             // now remove the clutter
-            prepareDocument(doc!)
+            prepareDocument(doc!, baseUrl)
             
             // init elements
-            let nodes = getNodes(doc!)
+            let nodes = getNodes(doc!, selector: selector)
             var maxWeight = 0
             var bestMatchElement: Element?
             
             for entry in nodes! {
-                let currentWeight = getWeight(entry)
-                
-                let html = try entry.html()
+                //var currentWeight = 0
+//                let html = try entry.outerHtml()
+//                if html.contains("content") {
+//                    currentWeight = getWeight(entry, true)
+//                    print("weight: \(try entry.outerHtml().prefix(20)): \(currentWeight)")
+//                } else {
+//                    currentWeight = getWeight(entry, false)
+//                }
+                let currentWeight = getWeight(entry, false)
                 
                 if (currentWeight > maxWeight) {
                     maxWeight = currentWeight
                     bestMatchElement = entry
                     
                     if (maxWeight > 300) {
-                    break
+                        break
                     }
                 }
             }
+            
+            //print("bestMatchWeight: \(try bestMatchElement?.outerHtml().prefix(20)): \(maxWeight)")
             
             let metas = getMetas(doc!)
             var ogImage: String?
@@ -104,9 +109,43 @@ class ArticleTextExtractor {
             
             return nil
         } catch Exception.Error(_, let message) {
-            
+            print(message)
         } catch let error {
+            print(error)
+        }
+        return nil
+    }
+    
+    /**
+     * @param input            cleans article text from given html string.
+     * @return cleaned article, all unwanted HTML tags stripped
+     */
+    func cleanContent(input: String, baseUrl: String) -> String? {
+        do {
+            if let content = cleanContent(doc: try SwiftSoup.parse(input), baseUrl: baseUrl) {
+                return content
+            }
+        } catch Exception.Error(_, let message) {
+            print(message)
+        } catch let error {
+            print(error)
+        }
+        return nil
+    }
+    
+    func cleanContent(doc: Document?, baseUrl: String) -> String? {
+        do {
+            if (doc == nil) {
+                return nil
+            }
             
+            // now remove the clutter
+            prepareDocument(doc!, baseUrl)
+            return try doc?.text()
+        } catch Exception.Error(_, let message) {
+            print(message)
+        } catch let error {
+            print(error)
         }
         return nil
     }
@@ -119,10 +158,11 @@ class ArticleTextExtractor {
      *
      * @param e                Element to weight, along with child nodes
      */
-    func getWeight(_ e: Element) -> Int {
-        var weight = calcWeight(e)
+    func getWeight(_ e: Element, _ debugIndicator: Bool) -> Int {
+        var weight = calcWeight(e, debugIndicator)
+        if debugIndicator { print("textLength: \(e.ownText().count / 10)") }
         weight += e.ownText().count / 10
-        weight += weightChildNodes(rootEl: e)
+        weight += weightChildNodes(rootEl: e, debugIndicator)
         return weight
     }
     
@@ -138,7 +178,7 @@ class ArticleTextExtractor {
      *
      * @param rootEl           Element, who's child nodes will be weighted
      */
-    func weightChildNodes(rootEl: Element) -> Int {
+    func weightChildNodes(rootEl: Element, _ debugIndicator: Bool) -> Int {
         var weight = 0
         var pEls = [Element]()
         
@@ -152,21 +192,27 @@ class ArticleTextExtractor {
                 let ownTextLength = ownText.count
                 if (ownTextLength > 200) {
                     weight += max(50, ownTextLength / 10)
+                    if debugIndicator { print("childTextLength: \(max(50, ownTextLength / 10))") }
                 }
             
                 if (child.tagName() == "h1" || child.tagName() == "h2") {
+                    if debugIndicator { print("\(child.tagName()): h1/h2 +30") }
                     weight += 30
-                } else if (child.tagName() == "div" || child.tagName() == "p") {
-                    weight += calcWeightForChild(ownText)
+                } else if (child.tagName() == "div" || child.tagName() == "p" || child.tagName() == "span") {
+                    weight += calcWeightForChild(ownText, debugIndicator)
                     if (child.tagName() == "p" && textLength > 50) { pEls.append(child) }
                     
-                    if try! child.className().lowercased() == "caption" { weight += 30 }
+                    if try child.className().lowercased() == "caption" {
+                        if debugIndicator { print("\(try child.className().lowercased()): caption +30") }
+                        weight += 30
+                    }
                 }
             }
             
             if (pEls.count >= 2) {
                 for subEl in rootEl.children() {
                     if "h1;h2;h3;h4;h5;h6".contains(subEl.tagName()) {
+                        if debugIndicator { print("\(subEl.tagName()): h1-h6 +20") }
                         weight += 20
                     }
                 }
@@ -174,42 +220,64 @@ class ArticleTextExtractor {
             
             return weight
         } catch Exception.Error(_, let message) {
-            
+            print(message)
         } catch let error {
-            
+            print(error)
         }
         return 0
     }
     
-    func calcWeightForChild(_ text: String) -> Int {
+    func calcWeightForChild(_ text: String, _ debugIndicator: Bool) -> Int {
+        if debugIndicator { print("childWeight: text length \(text.count/25)") }
         return text.count / 25
     }
     
-    func calcWeight(_ e: Element) -> Int {
+    func calcWeight(_ e: Element, _ debugIndicator: Bool) -> Int {
         var weight = 0
         do {
-            if (POSITIVE?.matches(in: try e.className(), options: [], range: NSMakeRange(0, try e.className().count)).count)! > 0 { weight += 35 }
+            if (POSITIVE?.matches(in: try e.className(), options: [], range: NSMakeRange(0, try e.className().count)).count)! > 0 {
+                if debugIndicator { print("\(try e.className()) : class positive +35") }
+                weight += 35
+            }
             
-            if (POSITIVE?.matches(in: e.id(), options: [], range: NSMakeRange(0, e.id().count)).count)! > 0 { weight += 40 }
+            if (POSITIVE?.matches(in: e.id(), options: [], range: NSMakeRange(0, e.id().count)).count)! > 0 {
+                if debugIndicator { print("\(e.id()): id positive +40") }
+                weight += 40
+            }
             
 //            if ITSJOOMLA?.matches(in: e.attr().toString(), options: [], range: NSMakeRange(0, e.attr().toString().count)).count > 0 { weight += 200 }
             
-            if (UNLIKELY?.matches(in: try e.className(), options: [], range: NSMakeRange(0, try e.className().count)).count)! > 0 { weight -= 20 }
+            if (UNLIKELY?.matches(in: try e.className(), options: [], range: NSMakeRange(0, try e.className().count)).count)! > 0 {
+                if debugIndicator { print("\(try e.className()): class unlikely -20") }
+                weight -= 20
+            }
             
-            if (UNLIKELY?.matches(in: e.id(), options: [], range: NSMakeRange(0, e.id().count)).count)! > 0 { weight -= 20 }
+            if (UNLIKELY?.matches(in: e.id(), options: [], range: NSMakeRange(0, e.id().count)).count)! > 0 {
+                if debugIndicator { print("\(e.id()): id unlikely -20") }
+                weight -= 20
+            }
             
-            if (NEGATIVE?.matches(in: try e.className(), options: [], range: NSMakeRange(0, try e.className().count)).count)! > 0 { weight -= 50 }
+            if (NEGATIVE?.matches(in: try e.className(), options: [], range: NSMakeRange(0, try e.className().count)).count)! > 0 {
+                if debugIndicator { print("\(try e.className()): class negative -50") }
+                weight -= 50
+            }
             
-            if (NEGATIVE?.matches(in: e.id(), options: [], range: NSMakeRange(0, e.id().count)).count)! > 0 { weight -= 50 }
+            if (NEGATIVE?.matches(in: e.id(), options: [], range: NSMakeRange(0, e.id().count)).count)! > 0 {
+                if debugIndicator { print("\(e.id()): id negative -50") }
+                weight -= 50
+            }
             
             let style = try e.attr("style")
-            if (!style.isEmpty && (NEGATIVE_STYLE?.matches(in: style, options: [], range: NSMakeRange(0, style.count)).count)! > 0) { weight -= 50 }
+            if (!style.isEmpty && (NEGATIVE_STYLE?.matches(in: style, options: [], range: NSMakeRange(0, style.count)).count)! > 0) {
+                if debugIndicator { print("\(style): style negative -50") }
+                weight -= 50
+            }
             
             return weight
         } catch Exception.Error(_, let message) {
-            
+            print(message)
         } catch let error {
-            
+            print(error)
         }
         return 0
     }
@@ -222,7 +290,7 @@ class ArticleTextExtractor {
      * @param doc document to prepare. Passed as reference, and changed inside
      *            of function
      */
-    func prepareDocument(_ doc: Document) {
+    func prepareDocument(_ doc: Document, _ baseUrl: String) {
         // stripUnlikelyCandidates(doc)
         removeNav(doc)
         removeSelectsAndOptions(doc)
@@ -232,6 +300,7 @@ class ArticleTextExtractor {
         removeAuthor(doc)
         removeTitle(doc)
         removeMisc(doc)
+        handleImages(doc, baseUrl)
     }
     
     /**
@@ -247,9 +316,9 @@ class ArticleTextExtractor {
                 try item.remove()
             }
         } catch Exception.Error(_, let message) {
-            
+            print(message)
         } catch let error {
-            
+            print(error)
         }
     }
     
@@ -270,9 +339,9 @@ class ArticleTextExtractor {
                 try style.remove()
             }
         } catch Exception.Error(_, let message) {
-            
+            print(message)
         } catch let error {
-            
+            print(error)
         }
     }
     
@@ -288,9 +357,9 @@ class ArticleTextExtractor {
                 try item.remove()
             }
         } catch Exception.Error(_, let message) {
-            
+            print(message)
         } catch let error {
-            
+            print(error)
         }
     }
     
@@ -311,9 +380,9 @@ class ArticleTextExtractor {
                 try item.remove()
             }
         } catch Exception.Error(_, let message) {
-            
+            print(message)
         } catch let error {
-            
+            print(error)
         }
     }
     
@@ -333,10 +402,20 @@ class ArticleTextExtractor {
             for item in ads {
                 try item.remove()
             }
+            
+            ads = try doc.select("ins[class~=adsbygoogle]")
+            for item in ads {
+                try item.remove()
+            }
+            
+            ads = try doc.select("div[id~=div-gpt-ad]")
+            for item in ads {
+                try item.remove()
+            }
         } catch Exception.Error(_, let message) {
-            
+            print(message)
         } catch let error {
-            
+            print(error)
         }
     }
     
@@ -347,9 +426,9 @@ class ArticleTextExtractor {
                 try item.remove()
             }
         } catch Exception.Error(_, let message) {
-            
+            print(message)
         } catch let error {
-            
+            print(error)
         }
     }
     
@@ -360,16 +439,22 @@ class ArticleTextExtractor {
                 try item.remove()
             }
         } catch Exception.Error(_, let message) {
-            
+            print(message)
         } catch let error {
-            
+            print(error)
         }
     }
     
     func removeMisc(_ doc: Document) {
         do {
+            // The Independent specific
+            var misc = try doc.select("iframe[security~=restricted]")
+            for item in misc {
+                try item.remove()
+            }
+            
             // Seedly specific
-            var misc = try doc.select("a:contains(back to main blog)")
+            misc = try doc.select("a:contains(back to main blog)")
             for item in misc {
                 try item.remove()
             }
@@ -443,9 +528,44 @@ class ArticleTextExtractor {
                 try item.remove()
             }
         } catch Exception.Error(_, let message) {
-            
+            print(message)
         } catch let error {
+            print(error)
+        }
+    }
+    
+    func handleImages(_ doc: Document, _ baseUrl: String) {
+        do {
+            // ChannelNews Asia specific
+            let pictures = try doc.getElementsByTag("picture")
+            for picture in pictures {
+                let source = picture.child(0)
+                let srcset = try source.attr("srcset")
+                
+                let image = picture.child(1)
+                try image.attr("srcset", srcset)
+            }
             
+            // Handle relative links
+            var base: String?
+            if baseUrl.suffix(1) == "/"{
+                base = String(baseUrl.prefix(baseUrl.count-1))
+            } else {
+                base = baseUrl
+            }
+            let images = try doc.getElementsByTag("img")
+            for image in images {
+                let src = try image.attr("src")
+                if src.starts(with: "//") {
+                    try image.attr("src", "http://\(src)")
+                } else if src.starts(with: "/") {
+                    try image.attr("src", base! + src)
+                }
+            }
+        } catch Exception.Error(_, let message) {
+            print(message)
+        } catch let error {
+            print(error)
         }
     }
     
@@ -458,9 +578,9 @@ class ArticleTextExtractor {
             nodes.append(contentsOf: try doc.select("head").select("meta"))
             return nodes
         } catch Exception.Error(_, let message) {
-            
+            print(message)
         } catch let error {
-            
+            print(error)
         }
         return nil
     }
@@ -468,19 +588,20 @@ class ArticleTextExtractor {
     /**
      * @return a set of all important nodes
      */
-    func getNodes(_ doc: Document) -> [Element]? {
+    func getNodes(_ doc: Document, selector: String?) -> [Element]? {
+        let selector = selector ?? "body"
         do {
             var nodes = [Element]()
-            for el in try doc.select("body").select("*") {
+            for el in try doc.select(selector).select("*") {
                 if (NODES?.matches(in: el.tagName(), options: [], range: NSMakeRange(0, el.tagName().count)).count)! > 0 {
                     nodes.append(el)
                 }
             }
             return nodes
         } catch Exception.Error(_, let message) {
-            
+            print(message)
         } catch let error {
-            
+            print(error)
         }
         return nil
     }

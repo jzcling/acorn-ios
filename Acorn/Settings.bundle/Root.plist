@@ -24,14 +24,6 @@
 		</dict>
 		<dict>
 			<key>Type</key>
-			<string>PSChildPaneSpecifier</string>
-			<key>Title</key>
-			<string></string>
-			<key>File</key>
-			<string></string>
-		</dict>
-		<dict>
-			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 			<key>Title</key>
 			<string>Notifications</string>
@@ -40,7 +32,7 @@
 			<key>Type</key>
 			<string>PSToggleSwitchSpecifier</string>
 			<key>Title</key>
-			<string>Comment Notifications</string>
+			<string>Comment notifications</string>
 			<key>Key</key>
 			<string>commentNotifPref</string>
 			<key>DefaultValue</key>
@@ -50,9 +42,55 @@
 			<key>Type</key>
 			<string>PSToggleSwitchSpecifier</string>
 			<key>Title</key>
-			<string>Recommended Articles</string>
+			<string>Recommended articles</string>
 			<key>Key</key>
 			<string>recArticlesNotifPref</string>
+			<key>DefaultValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>Recommended deals</string>
+			<key>Key</key>
+			<string>recDealsNotifPref</string>
+			<key>DefaultValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>Saved articles reminder</string>
+			<key>Key</key>
+			<string>savedArticlesReminderNotifPref</string>
+			<key>DefaultValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>Location based notifications</string>
+			<key>Key</key>
+			<string>locationNotifPref</string>
+			<key>DefaultValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>Title</key>
+			<string>Feed</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>Show videos in feed</string>
+			<key>Key</key>
+			<string>videosInFeedPref</string>
 			<key>DefaultValue</key>
 			<true/>
 		</dict>

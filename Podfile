@@ -1,5 +1,5 @@
 # Uncomment the next line to define a global platform for your project
- platform :ios, '9.0'
+ platform :ios, '11.4'
 
 target 'Acorn' do
   # Comment the next line if you're not using Swift and don't want to use dynamic frameworks
@@ -14,19 +14,31 @@ target 'Acorn' do
   pod 'Firebase/Functions'
   pod 'Firebase/Messaging'
   pod 'Firebase/Performance'
-  pod 'Firebase/Crash'
-  pod 'FirebaseUI'
+  pod 'Firebase/DynamicLinks'
+  pod 'FirebaseUI', '8.0.2'
   pod 'MaterialComponents' 
-  pod 'SDWebImage'
+  pod 'SDWebImage', '5.0'	
   pod 'AlgoliaSearch-Client-Swift'
   pod 'DropDown'
   pod 'SwiftSoup'
   pod 'ImagePicker'
   pod 'Lightbox'
-  pod 'Crashlytics'
   pod 'Toast-Swift'
   pod 'InstantSearch'
   pod 'DeviceKit'
+  pod 'Fabric'
+  pod 'Crashlytics'
+  pod 'UICircularProgressRing'
+  pod 'RSSelectionMenu'
+  pod 'YoutubeKit'
+  pod 'youtube-ios-player-helper'
+  pod 'SQLite.swift'
+  pod 'ReachabilitySwift', '5.0.0-beta1'
+  pod 'S2GeometrySwift'
+  pod 'SearchTextField'
+  pod 'MaterialShowcase'
+  pod 'PIPKit'
+  pod 'YoutubePlayer-in-WKWebView'
 
   target 'AcornTests' do
     inherit! :search_paths

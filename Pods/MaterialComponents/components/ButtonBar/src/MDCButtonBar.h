@@ -1,18 +1,16 @@
-/*
- Copyright 2016-present the Material Components for iOS authors. All Rights Reserved.
-
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
- http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
- */
+// Copyright 2016-present the Material Components for iOS authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #import <UIKit/UIKit.h>
 
@@ -56,6 +54,13 @@ typedef NS_OPTIONS(NSUInteger, MDCButtonBarLayoutPosition) {
 IB_DESIGNABLE
 @interface MDCButtonBar : UIView
 
+#pragma mark Delegating
+
+/**
+ The delegate will be informed of events related to the layout of the button bar.
+ */
+@property(nonatomic, weak, nullable) id<MDCButtonBarDelegate> delegate;
+
 #pragma mark Button Items
 
 /**
@@ -94,6 +99,17 @@ IB_DESIGNABLE
 @property(nonatomic, copy, nullable) NSArray<UIBarButtonItem *> *items;
 
 /**
+ Returns the rect of the item's view within the given @c coordinateSpace.
+
+ If the provided item is not contained in @c items, then the behavior is undefined.
+
+ @param item The item within @c items whose rect should be computed.
+ @param coordinateSpace The coordinate space the returned rect should be in relation to.
+ */
+- (CGRect)rectForItem:(nonnull UIBarButtonItem *)item
+    inCoordinateSpace:(nonnull id<UICoordinateSpace>)coordinateSpace;
+
+/**
  If greater than zero, will ensure that any UIButton with a title is aligned to the provided
  baseline.
 
@@ -103,6 +119,15 @@ IB_DESIGNABLE
  Default: 0
  */
 @property(nonatomic) CGFloat buttonTitleBaseline;
+
+/**
+ If true, all button titles will be converted to uppercase.
+
+ Changing this property to NO will update the current title string for all buttons.
+
+ Default is YES.
+ */
+@property(nonatomic) BOOL uppercasesButtonTitles;
 
 /**
  Sets the title font for the given state for all buttons.
@@ -150,17 +175,43 @@ IB_DESIGNABLE
 @property(nonatomic) MDCButtonBarLayoutPosition layoutPosition;
 
 /**
- The inkColor that is used for all buttons in the button bar.
+ The rippleColor that is used for all buttons in the button bar.
 
- If set to nil, button bar buttons use default ink color.
+ If set to nil, button bar buttons use default ripple color.
  */
-@property(nonatomic, strong, nullable) UIColor *inkColor;
+@property(nonatomic, strong, nullable) UIColor *rippleColor;
+
+/**
+ By setting this property to @c YES, the Ripple component will be used instead of Ink
+ to display visual feedback to the user.
+
+ @note This property will eventually be enabled by default, deprecated, and then deleted as part
+ of our migration to Ripple. Learn more at
+ https://github.com/material-components/material-components-ios/tree/develop/components/Ink#migration-guide-ink-to-ripple
+
+ Defaults to NO.
+ */
+@property(nonatomic, assign) BOOL enableRippleBehavior;
 
 /**
  Returns a height adhering to the Material spec for Bars and a width that is able to accommodate
  every item present in the `items` property. The provided size is ignored.
  */
 - (CGSize)sizeThatFits:(CGSize)size;
+
+@end
+
+@interface MDCButtonBar (ToBeDeprecated)
+
+/**
+ The inkColor that is used for all buttons in the button bar.
+
+ If set to nil, button bar buttons use default ink color.
+ @warning This method will eventually be deprecated. Opt-in to Ripple by setting
+ enableRippleBehavior to YES, and then use rippleColor instead. Learn more at
+ https://github.com/material-components/material-components-ios/tree/develop/components/Ink#migration-guide-ink-to-ripple
+ */
+@property(nonatomic, strong, nullable) UIColor *inkColor;
 
 @end
 
@@ -188,11 +239,23 @@ typedef NS_OPTIONS(NSUInteger, MDCBarButtonItemLayoutHints) {
  @seealso MDCBarButtonItemLayoutHints
  */
 @protocol MDCButtonBarDelegate <NSObject>
-@required
+@optional
+
+/**
+ Informs the receiver that the button bar requires a layout pass.
+
+ The receiver is expected to call propagate this setNeedsLayout call to the view responsible for
+ setting the frame of the button bar so that the button bar can expand or contract as necessary.
+
+ This method is typically called as a result of a UIBarButtonItem property changing or as a result
+ of the items property being changed.
+ */
+- (void)buttonBarDidInvalidateIntrinsicContentSize:(nonnull MDCButtonBar *)buttonBar;
 
 /** Asks the receiver to return a view that represents the given bar button item. */
 - (nonnull UIView *)buttonBar:(nonnull MDCButtonBar *)buttonBar
                   viewForItem:(nonnull UIBarButtonItem *)barButtonItem
-                  layoutHints:(MDCBarButtonItemLayoutHints)layoutHints;
+                  layoutHints:(MDCBarButtonItemLayoutHints)layoutHints
+    __deprecated_msg("There will be no replacement for this API.");
 
 @end

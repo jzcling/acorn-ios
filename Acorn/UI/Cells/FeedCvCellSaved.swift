@@ -29,6 +29,8 @@ class FeedCvCellSaved: UICollectionViewCell {
     
     var delegate: FeedCvCellDelegate?
     
+    let dataSource = DataSource.instance
+    
     var article: Article?
     var textColor: UIColor?
     var textColorFaint: UIColor?
@@ -96,9 +98,11 @@ class FeedCvCellSaved: UICollectionViewCell {
         let inkTouchController = MDCInkTouchController(view: self)
         inkTouchController.addInkView()
         
-        self.layer.cornerRadius = 6
+        self.layer.cornerRadius = 10
         self.layer.shouldRasterize = true
         self.layer.rasterizationScale = UIScreen.main.scale
+        
+        mainImageView.layer.cornerRadius = 10
         
         titleLabel.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(cellTapped)))
         
@@ -106,18 +110,12 @@ class FeedCvCellSaved: UICollectionViewCell {
     }
     
     override func prepareForReuse() {
-        titleLabel.text = nil
-        sourceLabel.text = nil
-        dateLabel.text = nil
-        voteCntImageView.image = #imageLiteral(resourceName: "ic_arrow_up_18")
-        voteCntImageView.tintColor = upvoteTint
-        voteCntLabel.text = nil
-        commCntLabel.text = nil
         mainImageView.isHidden = false
         mainImageView.sd_cancelCurrentImageLoad()
     }
     
     @objc func cellTapped() {
+        dataSource.recordOpenArticleDetails(articleId: (self.article?.objectID)!, mainTheme: self.article?.mainTheme ?? "General")
         if article?.link != nil && article?.link != "" {
             delegate?.openArticle((self.article?.objectID)!)
         } else {

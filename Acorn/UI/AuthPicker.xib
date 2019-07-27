@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="14313.18" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES">
-    <device id="retina4_0" orientation="portrait">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="14490.70" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES">
+    <device id="retina5_5" orientation="portrait">
         <adaptation id="fullscreen"/>
     </device>
     <dependencies>
         <deployment identifier="iOS"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="14283.14"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="14490.49"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
@@ -20,33 +20,42 @@
         </placeholder>
         <placeholder placeholderIdentifier="IBFirstResponder" id="-2" customClass="UIResponder"/>
         <view clearsContextBeforeDrawing="NO" contentMode="scaleToFill" id="i5M-Pr-FkT">
-            <rect key="frame" x="0.0" y="0.0" width="320" height="568"/>
+            <rect key="frame" x="0.0" y="0.0" width="414" height="736"/>
             <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
             <subviews>
-                <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" spacing="24" translatesAutoresizingMaskIntoConstraints="NO" id="lBc-vu-lMt">
-                    <rect key="frame" x="24" y="70" width="272" height="214.5"/>
+                <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="3dE-2I-Hm6">
+                    <rect key="frame" x="50" y="20" width="314" height="492"/>
                     <subviews>
-                        <imageView userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="ic_acorn" translatesAutoresizingMaskIntoConstraints="NO" id="TSp-rr-cfc">
-                            <rect key="frame" x="0.0" y="0.0" width="272" height="128"/>
-                        </imageView>
-                        <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" textAlignment="center" lineBreakMode="tailTruncation" numberOfLines="2" baselineAdjustment="alignBaselines" minimumFontSize="13" translatesAutoresizingMaskIntoConstraints="NO" id="sd1-eV-lBH">
-                            <rect key="frame" x="0.0" y="152" width="272" height="62.5"/>
-                            <string key="text">Your favourite blogs 
-in a nutshell</string>
-                            <fontDescription key="fontDescription" type="system" pointSize="26"/>
-                            <nil key="textColor"/>
-                            <nil key="highlightedColor"/>
-                        </label>
+                        <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" spacing="24" translatesAutoresizingMaskIntoConstraints="NO" id="lBc-vu-lMt">
+                            <rect key="frame" x="40.666666666666671" y="139" width="232.66666666666663" height="214.33333333333337"/>
+                            <subviews>
+                                <imageView userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="ic_acorn" translatesAutoresizingMaskIntoConstraints="NO" id="TSp-rr-cfc">
+                                    <rect key="frame" x="0.0" y="0.0" width="232.66666666666666" height="128"/>
+                                </imageView>
+                                <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" textAlignment="center" lineBreakMode="tailTruncation" numberOfLines="2" baselineAdjustment="alignBaselines" minimumFontSize="13" translatesAutoresizingMaskIntoConstraints="NO" id="sd1-eV-lBH">
+                                    <rect key="frame" x="0.0" y="152" width="232.66666666666666" height="62.333333333333343"/>
+                                    <string key="text">Acorn: Your favourite
+blogs in a nutshell</string>
+                                    <fontDescription key="fontDescription" type="system" pointSize="26"/>
+                                    <nil key="textColor"/>
+                                    <nil key="highlightedColor"/>
+                                </label>
+                            </subviews>
+                        </stackView>
                     </subviews>
-                </stackView>
+                    <constraints>
+                        <constraint firstItem="lBc-vu-lMt" firstAttribute="centerX" secondItem="3dE-2I-Hm6" secondAttribute="centerX" id="6DF-3D-oqE"/>
+                        <constraint firstItem="lBc-vu-lMt" firstAttribute="centerY" secondItem="3dE-2I-Hm6" secondAttribute="centerY" id="gAf-pC-2DM"/>
+                    </constraints>
+                </view>
                 <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="By signing in, you agree to be bound by our " textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="ell-Vx-UFQ">
-                    <rect key="frame" x="12" y="516" width="296" height="14.5"/>
+                    <rect key="frame" x="12" y="696" width="390" height="14.333333333333371"/>
                     <fontDescription key="fontDescription" type="system" pointSize="12"/>
                     <nil key="textColor"/>
                     <nil key="highlightedColor"/>
                 </label>
                 <label opaque="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" usesAttributedText="YES" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="sqU-A1-fQu">
-                    <rect key="frame" x="12" y="533.5" width="296" height="14.5"/>
+                    <rect key="frame" x="12" y="713.33333333333337" width="390" height="14.333333333333371"/>
                     <attributedString key="attributedText">
                         <fragment content="End User License Agreement">
                             <attributes>
@@ -58,20 +67,29 @@ in a nutshell</string>
                     </attributedString>
                     <nil key="highlightedColor"/>
                 </label>
+                <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="wV6-nA-OH6">
+                    <rect key="frame" x="50" y="512" width="314" height="168"/>
+                    <constraints>
+                        <constraint firstAttribute="height" constant="168" id="ENC-Ln-Mda"/>
+                    </constraints>
+                </view>
             </subviews>
             <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
             <color key="tintColor" red="0.83137254900000002" green="0.68627450980000004" blue="0.2156862745" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
             <constraints>
-                <constraint firstItem="lBc-vu-lMt" firstAttribute="top" secondItem="fnl-2z-Ty3" secondAttribute="top" constant="50" id="3xc-Ql-Hnv"/>
-                <constraint firstItem="lBc-vu-lMt" firstAttribute="leading" secondItem="fnl-2z-Ty3" secondAttribute="leading" constant="24" id="5ab-RY-CF3"/>
+                <constraint firstItem="ell-Vx-UFQ" firstAttribute="top" secondItem="wV6-nA-OH6" secondAttribute="bottom" constant="16" id="3no-9U-vT9"/>
+                <constraint firstItem="wV6-nA-OH6" firstAttribute="top" secondItem="3dE-2I-Hm6" secondAttribute="bottom" id="4g4-Jp-C9A"/>
+                <constraint firstItem="fnl-2z-Ty3" firstAttribute="bottom" secondItem="wV6-nA-OH6" secondAttribute="bottom" constant="56" id="4ge-uF-yFK"/>
+                <constraint firstItem="fnl-2z-Ty3" firstAttribute="trailing" secondItem="3dE-2I-Hm6" secondAttribute="trailing" constant="50" id="82g-0Q-z53"/>
                 <constraint firstItem="sqU-A1-fQu" firstAttribute="leading" secondItem="fnl-2z-Ty3" secondAttribute="leading" constant="12" id="8sa-CF-38G"/>
+                <constraint firstItem="3dE-2I-Hm6" firstAttribute="leading" secondItem="fnl-2z-Ty3" secondAttribute="leading" constant="50" id="97M-iR-xw3"/>
+                <constraint firstItem="wV6-nA-OH6" firstAttribute="leading" secondItem="fnl-2z-Ty3" secondAttribute="leading" constant="50" id="Fwg-0h-o6N"/>
                 <constraint firstAttribute="trailing" secondItem="ell-Vx-UFQ" secondAttribute="trailing" constant="12" id="Hqs-Rd-2Xw"/>
-                <constraint firstItem="fnl-2z-Ty3" firstAttribute="trailing" secondItem="lBc-vu-lMt" secondAttribute="trailing" constant="24" id="X8J-kO-g9B"/>
+                <constraint firstItem="fnl-2z-Ty3" firstAttribute="trailing" secondItem="wV6-nA-OH6" secondAttribute="trailing" constant="50" id="KUV-lT-sg1"/>
                 <constraint firstAttribute="trailing" secondItem="sqU-A1-fQu" secondAttribute="trailing" constant="12" id="f5Z-4y-zST"/>
-                <constraint firstItem="fnl-2z-Ty3" firstAttribute="bottom" secondItem="sqU-A1-fQu" secondAttribute="bottom" constant="20" id="ji4-yu-RbL"/>
                 <constraint firstItem="sqU-A1-fQu" firstAttribute="top" secondItem="ell-Vx-UFQ" secondAttribute="bottom" constant="3" id="vEi-7c-AGP"/>
-                <constraint firstItem="lBc-vu-lMt" firstAttribute="centerX" secondItem="i5M-Pr-FkT" secondAttribute="centerX" id="wgN-Z6-WCO"/>
                 <constraint firstItem="ell-Vx-UFQ" firstAttribute="leading" secondItem="fnl-2z-Ty3" secondAttribute="leading" constant="12" id="yVP-ey-1hz"/>
+                <constraint firstItem="3dE-2I-Hm6" firstAttribute="top" secondItem="fnl-2z-Ty3" secondAttribute="top" id="yvE-ez-SdF"/>
             </constraints>
             <viewLayoutGuide key="safeArea" id="fnl-2z-Ty3"/>
             <point key="canvasLocation" x="32.5" y="89.5"/>

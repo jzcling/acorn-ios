@@ -104,14 +104,19 @@ class CommentViewController: UIViewController, UICollectionViewDataSource, UICol
         articleStackView.isHidden = true
         cardView.isHidden = true
         
+        let backSwipeGesture = UIScreenEdgePanGestureRecognizer(target: self, action: #selector(didSwipeBack(_:)))
+        backSwipeGesture.edges = .left
+        backSwipeGesture.delegate = self
+        self.view.addGestureRecognizer(backSwipeGesture)
+        
         if nightModeOn {
             enableNightMode()
         } else {
             disableNightMode()
         }
         
-        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow(_:)), name: NSNotification.Name.UIKeyboardWillShow, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide(_:)), name: NSNotification.Name.UIKeyboardWillHide, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow(_:)), name: UIResponder.keyboardWillShowNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide(_:)), name: UIResponder.keyboardWillHideNotification, object: nil)
 
         NotificationCenter.default.addObserver(self, selector: #selector(nightModeEnabled), name: .nightModeOn, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(nightModeDisabled), name: .nightModeOff, object: nil)
@@ -137,7 +142,11 @@ class CommentViewController: UIViewController, UICollectionViewDataSource, UICol
         self.view.backgroundColor = ResourcesNight.CARD_BG_COLOR
         
         inputBarView.backgroundColor = ResourcesNight.CARD_BG_COLOR
-        inputTextView.textColor = ResourcesNight.COLOR_DEFAULT_TEXT
+        if inputTextView.text == "Write something..." {
+            inputTextView.textColor = .lightGray
+        } else {
+            inputTextView.textColor = ResourcesNight.COLOR_DEFAULT_TEXT
+        }
         inputAddButton.tintColor = .lightGray
         inputSendButton.tintColor = .lightGray
         
@@ -162,7 +171,11 @@ class CommentViewController: UIViewController, UICollectionViewDataSource, UICol
         self.view.backgroundColor = ResourcesDay.CARD_BG_COLOR
         
         inputBarView.backgroundColor = ResourcesDay.CARD_BG_COLOR
-        inputTextView.textColor = ResourcesDay.COLOR_DEFAULT_TEXT
+        if inputTextView.text == "Write something..." {
+            inputTextView.textColor = .lightGray
+        } else {
+            inputTextView.textColor = ResourcesDay.COLOR_DEFAULT_TEXT
+        }
         inputAddButton.tintColor = .darkGray
         inputSendButton.tintColor = .darkGray
         
@@ -181,8 +194,18 @@ class CommentViewController: UIViewController, UICollectionViewDataSource, UICol
         cardView.backgroundColor = ResourcesDay.CARD_BG_COLOR
     }
     
+    @objc func didSwipeBack(_ sender: UIScreenEdgePanGestureRecognizer) {
+        let dX = sender.translation(in: self.view).x
+        if sender.state == .ended {
+            let fraction = abs(dX/self.view.bounds.width)
+            if fraction > 0.3 {
+                dismiss(animated: true, completion: nil)
+            }
+        }
+    }
+    
     @objc func handleGesture(gesture: UISwipeGestureRecognizer) {
-        if gesture.direction == UISwipeGestureRecognizerDirection.up {
+        if gesture.direction == UISwipeGestureRecognizer.Direction.up {
             UIView.animate(withDuration: 0.3, animations: {
                 self.articleStackView.isHidden = true
             }, completion: { (bool) in
@@ -469,7 +492,7 @@ class CommentViewController: UIViewController, UICollectionViewDataSource, UICol
     }
     
     @IBAction func didTapInputSendButton(_ sender: Any) {
-        if !isUserEmailVerified(user: user) {
+        if !isUserEmailVerified() {
             showEmailVerificationAlert(user: user)
             return
         }
@@ -484,7 +507,10 @@ class CommentViewController: UIViewController, UICollectionViewDataSource, UICol
             return
         }
         
-        dataSource.sendComment(articleId: articleId!, commentText: inputTextView.text, commentImageData: nil, onComplete: {
+        dataSource.sendComment(articleId: articleId!, commentText: inputTextView.text, commentImageData: nil, onComplete: { (userStatus) in
+            if let userStatus = userStatus {
+                self.view.makeToast("Congratulations! You have grown into a \(userStatus)")
+            }
             if self.inputTextHasLink {
                 self.dataSource.sendUrlComment(articleId: self.articleId!, urlLink: self.urlLink!, urlTitle: self.urlTitle!, urlImageUrl: self.urlImageUrl, urlSource: self.urlSource)
             }
@@ -493,6 +519,14 @@ class CommentViewController: UIViewController, UICollectionViewDataSource, UICol
             }
             self.clearCard()
             self.inputTextView.text = nil
+            
+            Analytics.logEvent("send_comment", parameters: [
+                AnalyticsParameterItemID: self.article?.objectID ?? "",
+                AnalyticsParameterItemName: self.article?.title ?? "",
+                AnalyticsParameterItemCategory: self.article?.mainTheme ?? "",
+                "item_source": self.article?.source ?? "",
+                AnalyticsParameterContentType: self.article?.type ?? ""
+            ])
         }, onError: { (error) in
             self.view.makeToast(error)
         })
@@ -500,7 +534,7 @@ class CommentViewController: UIViewController, UICollectionViewDataSource, UICol
     
     func adjustLayoutForKeyboardShow(_ show: Bool, notification: Notification) {
         let userInfo = notification.userInfo ?? [:]
-        let keyboardFrame = (userInfo[UIKeyboardFrameEndUserInfoKey] as! NSValue).cgRectValue
+        let keyboardFrame = (userInfo[UIResponder.keyboardFrameEndUserInfoKey] as! NSValue).cgRectValue
         self.adjustmentHeight = keyboardFrame.height * (show ? 1 : -1)
         
         if show {
@@ -591,6 +625,29 @@ extension CommentViewController: ImagePickerDelegate {
 
 extension CommentViewController: UITextViewDelegate {
     
+    func textViewDidBeginEditing(_ textView: UITextView) {
+        if nightModeOn {
+            textView.textColor = ResourcesNight.COLOR_DEFAULT_TEXT
+        } else {
+            textView.textColor = ResourcesDay.COLOR_DEFAULT_TEXT
+        }
+        if textView.text == "Write something..." {
+            textView.text = nil
+        }
+    }
+    
+    func textViewDidEndEditing(_ textView: UITextView) {
+        if nightModeOn {
+            textView.textColor = ResourcesNight.COLOR_DEFAULT_TEXT
+        } else {
+            textView.textColor = ResourcesDay.COLOR_DEFAULT_TEXT
+        }
+        if textView.text.isEmpty {
+            textView.text = "Write something..."
+            textView.textColor = .lightGray
+        }
+    }
+    
     func textViewDidChange(_ textView: UITextView) {
         if !cardView.isHidden { return }
         
@@ -656,10 +713,12 @@ extension CommentViewController: UITextViewDelegate {
                 self.getArticleMetadataIsPending = false
                 
             } catch Exception.Error(_, let message) {
+                print(message)
                 self.clearCard()
                 self.getArticleMetadataIsPending = false
                 
             } catch let error {
+                print(error)
                 self.clearCard()
                 self.getArticleMetadataIsPending = false
                 
@@ -726,5 +785,11 @@ extension CommentViewController: CommentCvCellDelegate {
             self.dataSource.reportComment(articleId: self.articleId!, comment: comment)
         }))
         self.present(ac, animated: true, completion: nil)
+    }
+}
+
+extension CommentViewController: UIGestureRecognizerDelegate {
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        return true
     }
 }

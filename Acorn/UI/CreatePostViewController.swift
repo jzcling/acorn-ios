@@ -71,13 +71,13 @@ class CreatePostViewController: UIViewController {
         
         InstanceID.instanceID().instanceID { (result, error) in
             if let error = error {
-                
+                print(error.localizedDescription)
             } else if let result = result {
                 self.token = result.token
             }
         }
         
-        cardView.layer.cornerRadius = 6
+        cardView.layer.cornerRadius = 10
         cardView.layer.masksToBounds = true
         cardView.layer.shadowOffset = CGSize(width: 0, height: 1.0)
         cardView.layer.shadowRadius = 4
@@ -96,14 +96,19 @@ class CreatePostViewController: UIViewController {
         postTextView.textColor = .lightGray
         themeSelectionMenu.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(openThemeDropdown)))
         
+        let backSwipeGesture = UIScreenEdgePanGestureRecognizer(target: self, action: #selector(didSwipeBack(_:)))
+        backSwipeGesture.edges = .left
+        backSwipeGesture.delegate = self
+        mainView.addGestureRecognizer(backSwipeGesture)
+        
         if nightModeOn {
             enableNightMode()
         } else {
             disableNightMode()
         }
         
-        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow(_:)), name: NSNotification.Name.UIKeyboardWillChangeFrame, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide(_:)), name: NSNotification.Name.UIKeyboardWillHide, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow(_:)), name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide(_:)), name: UIResponder.keyboardWillHideNotification, object: nil)
         
         NotificationCenter.default.addObserver(self, selector: #selector(nightModeEnabled), name: .nightModeOn, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(nightModeDisabled), name: .nightModeOff, object: nil)
@@ -139,7 +144,7 @@ class CreatePostViewController: UIViewController {
     
     
     @IBAction func didTapPostButton(_ sender: Any) {
-        if !isUserEmailVerified(user: user) {
+        if !isUserEmailVerified() {
             showEmailVerificationAlert(user: user)
             return
         }
@@ -175,7 +180,7 @@ class CreatePostViewController: UIViewController {
             "pubDate": postDate,
             "imageUrl": self.cardImageUrl,
             "link": self.cardLink,
-            "trendingIndex": String(format: "%.0f", round((5000000000000000 + postDate)/10000000)),
+            "trendingIndex": String((5000000000000000.0 + postDate)/10000000.0),
             "category": [mainTheme ?? ""],
             "theme": [mainTheme ?? ""],
             "mainTheme": mainTheme ?? "",
@@ -184,9 +189,12 @@ class CreatePostViewController: UIViewController {
         ]
         
         if let image = postImageView.image {
-            let compressedImageData = UIImageJPEGRepresentation(image, 0.3)
+            let compressedImageData = image.jpegData(compressionQuality: 0.3)
             
-            dataSource.createPost(post: postAsDict, postImageData: compressedImageData, onComplete: {
+            dataSource.createPost(post: postAsDict, postImageData: compressedImageData, onComplete: { (userStatus) in
+                if let userStatus = userStatus {
+                    self.view.makeToast("Congratulations! You have grown into a \(userStatus)")
+                }
                 self.dataSource.follow(articleId: postAsDict["objectID"] as! String)
                 self.delegate?.postCreated()
             }) { (error) in
@@ -199,9 +207,20 @@ class CreatePostViewController: UIViewController {
                 }
             }
         } else {
-            dataSource.createPost(post: postAsDict, postImageData: nil, onComplete: {
+            dataSource.createPost(post: postAsDict, postImageData: nil, onComplete: { (userStatus) in
+                if let userStatus = userStatus {
+                    self.view.makeToast("Congratulations! You have grown into a \(userStatus)")
+                }
                 self.dataSource.follow(articleId: postAsDict["objectID"] as! String)
                 self.delegate?.postCreated()
+                
+                Analytics.logEvent("create_post", parameters: [
+                    AnalyticsParameterItemID: postAsDict["objectID"] as Any,
+                    AnalyticsParameterItemName: postAsDict["title"] as Any,
+                    AnalyticsParameterItemCategory: postAsDict["mainTheme"] as Any,
+                    "item_source": postAsDict["source"] as Any,
+                    AnalyticsParameterContentType: postAsDict["type"] as Any
+                ])
             }) { (error) in
                 
                 if let spinner = self.spinner {
@@ -285,7 +304,7 @@ class CreatePostViewController: UIViewController {
     
     func adjustLayoutForKeyboardShow(_ show: Bool, notification: Notification) {
         let userInfo = notification.userInfo ?? [:]
-        let keyboardFrame = (userInfo[UIKeyboardFrameEndUserInfoKey] as! NSValue).cgRectValue
+        let keyboardFrame = (userInfo[UIResponder.keyboardFrameEndUserInfoKey] as! NSValue).cgRectValue
         self.adjustmentHeight = keyboardFrame.height * (show ? 1 : -1)
         
         if show {
@@ -447,11 +466,27 @@ extension CreatePostViewController: UITextViewDelegate {
                 
             } catch Exception.Error(_, let message) {
                 self.getArticleMetadataIsPending = false
-                
+                print(message)
             } catch let error {
                 self.getArticleMetadataIsPending = false
-                
+                print(error)
             }
         }
+    }
+}
+
+extension CreatePostViewController: UIGestureRecognizerDelegate {
+    @objc func didSwipeBack(_ sender: UIScreenEdgePanGestureRecognizer) {
+        let dX = sender.translation(in: mainView).x
+        if sender.state == .ended {
+            let fraction = abs(dX/mainView.bounds.width)
+            if fraction > 0.3 {
+                dismiss(animated: true, completion: nil)
+            }
+        }
+    }
+    
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        return true
     }
 }

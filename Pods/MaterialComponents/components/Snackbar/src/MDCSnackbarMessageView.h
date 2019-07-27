@@ -1,18 +1,16 @@
-/*
- Copyright 2016-present the Material Components for iOS authors. All Rights Reserved.
-
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
- http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
- */
+// Copyright 2016-present the Material Components for iOS authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #import <UIKit/UIKit.h>
 #import "MaterialButtons.h"
@@ -61,9 +59,19 @@
 @property(nonatomic, strong, nullable) NSMutableArray<MDCButton *> *actionButtons;
 
 /**
+ The @c accessibilityLabel to apply to the message of the Snackbar.
+ */
+@property(nullable, nonatomic, copy) NSString *accessibilityLabel;
+
+/**
+ The @c accessibilityHint to apply to the message of the Snackbar.
+ */
+@property(nullable, nonatomic, copy) NSString *accessibilityHint;
+
+/**
  Returns the button title color for a particular control state.
 
- Default for UIControlStateNormal is MDCRGBAColor(0xFF, 0xFF, 0xFF, 0.6f).
+ Default for UIControlStateNormal is MDCRGBAColor(0xFF, 0xFF, 0xFF, (CGFloat)0.6).
  Default for UIControlStatehighlighted is white.
 
  @param state The control state.
@@ -77,9 +85,8 @@
  @param titleColor The title color.
  @param state The control state.
  */
-- (void)setButtonTitleColor:(nullable UIColor *)titleColor forState:(UIControlState)state
-UI_APPEARANCE_SELECTOR;
-
+- (void)setButtonTitleColor:(nullable UIColor *)titleColor
+                   forState:(UIControlState)state UI_APPEARANCE_SELECTOR;
 
 /**
  Indicates whether the Snackbar should automatically update its font when the device’s
@@ -94,7 +101,7 @@ UI_APPEARANCE_SELECTOR;
  Default value is NO.
  */
 @property(nonatomic, readwrite, setter=mdc_setAdjustsFontForContentSizeCategory:)
-BOOL mdc_adjustsFontForContentSizeCategory UI_APPEARANCE_SELECTOR;
+    BOOL mdc_adjustsFontForContentSizeCategory UI_APPEARANCE_SELECTOR;
 
 @end
 

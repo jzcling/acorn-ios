@@ -1,5 +1,5 @@
 //
-//  SavedArticlesTvCell.swift
+//  SavedArticleTvCell.swift
 //  Acorn
 //
 //  Created by macOS on 11/10/18.
@@ -8,7 +8,7 @@
 
 import UIKit
 
-class SavedArticlesTvCell: UITableViewCell {
+class SavedArticleTvCell: UITableViewCell {
 
     @IBOutlet weak var cellView: UIView!
     @IBOutlet weak var titleLabel: UILabel!
@@ -25,11 +25,7 @@ class SavedArticlesTvCell: UITableViewCell {
     
     @IBOutlet weak var titleHeightConstraint: NSLayoutConstraint!
     
-    var delegate: FeedCvCellDelegate?
-    
-    var article: Article?
-    var textColor: UIColor?
-    var textColorFaint: UIColor?
+    var cellTextColor: UIColor?
     
     let nightModeOn = UserDefaults.standard.bool(forKey: "nightModePref")
     lazy var upvoteTint = nightModeOn ? ResourcesNight.UPVOTE_TINT_COLOR : ResourcesDay.UPVOTE_TINT_COLOR
@@ -37,8 +33,14 @@ class SavedArticlesTvCell: UITableViewCell {
     lazy var commentTint = nightModeOn ? ResourcesNight.COMMENT_TINT_COLOR : ResourcesDay.COMMENT_TINT_COLOR
     lazy var cardBackgroundColor = nightModeOn ? ResourcesNight.CARD_BG_COLOR : ResourcesDay.CARD_BG_COLOR
     
+    override func awakeFromNib() {
+        super.awakeFromNib()
+        mainImageView.layer.cornerRadius = 10
+    }
+    
     func populateCell(article: Article) {
         cellView.backgroundColor = cardBackgroundColor
+        self.contentView.backgroundColor = cardBackgroundColor
         
         if article.link != nil && article.link != "" {
             titleLabel.text = article.title
@@ -79,28 +81,13 @@ class SavedArticlesTvCell: UITableViewCell {
             mainImageView.isHidden = true
         }
         
-        titleLabel.textColor = textColor
-        sourceLabel.textColor = textColor
-        dateLabel.textColor = textColor
-        voteCntLabel.textColor = textColor
-        commCntLabel.textColor = textColor
-        sourceDateSeparator.textColor = textColor
-        voteCommSeparator.textColor = textColor
-    }
-    
-    override func awakeFromNib() {
-        super.awakeFromNib()
-        
-        let inkTouchController = MDCInkTouchController(view: self)
-        inkTouchController.addInkView()
-        
-        self.layer.cornerRadius = 6
-        self.layer.shouldRasterize = true
-        self.layer.rasterizationScale = UIScreen.main.scale
-        
-        titleLabel.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(cellTapped)))
-        
-        mainImageView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(cellTapped)))
+        titleLabel.textColor = cellTextColor
+        sourceLabel.textColor = cellTextColor
+        dateLabel.textColor = cellTextColor
+        voteCntLabel.textColor = cellTextColor
+        commCntLabel.textColor = cellTextColor
+        sourceDateSeparator.textColor = cellTextColor
+        voteCommSeparator.textColor = cellTextColor
     }
     
     override func prepareForReuse() {
@@ -113,13 +100,5 @@ class SavedArticlesTvCell: UITableViewCell {
         commCntLabel.text = nil
         mainImageView.isHidden = false
         mainImageView.sd_cancelCurrentImageLoad()
-    }
-    
-    @objc func cellTapped() {
-        if article?.link != nil && article?.link != "" {
-            delegate?.openArticle((self.article?.objectID)!)
-        } else {
-            delegate?.openComments((self.article?.objectID)!)
-        }
     }
 }

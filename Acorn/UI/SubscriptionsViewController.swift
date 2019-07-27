@@ -45,6 +45,11 @@ class SubscriptionsViewController: MDCCollectionViewController, SubscriptionsHea
             }
         }
         
+        let backSwipeGesture = UIScreenEdgePanGestureRecognizer(target: self, action: #selector(didSwipeBack(_:)))
+        backSwipeGesture.edges = .left
+        backSwipeGesture.delegate = self
+        self.view.addGestureRecognizer(backSwipeGesture)
+        
         if nightModeOn {
             nightModeEnabled()
         } else {
@@ -67,6 +72,7 @@ class SubscriptionsViewController: MDCCollectionViewController, SubscriptionsHea
     
     func enableNightMode() {
         nightModeOn = true
+        self.view.backgroundColor = ResourcesNight.COLOR_BG
         self.collectionView?.backgroundColor = ResourcesNight.COLOR_BG
         self.textColor = ResourcesNight.COLOR_DEFAULT_TEXT
         self.cellBackgroundColor = ResourcesNight.CARD_BG_COLOR
@@ -75,6 +81,7 @@ class SubscriptionsViewController: MDCCollectionViewController, SubscriptionsHea
     
     func disableNightMode() {
         nightModeOn = false
+        self.view.backgroundColor = ResourcesDay.COLOR_BG
         self.collectionView?.backgroundColor = ResourcesDay.COLOR_BG
         self.textColor = ResourcesDay.COLOR_DEFAULT_TEXT
         self.cellBackgroundColor = ResourcesDay.CARD_BG_COLOR
@@ -119,6 +126,7 @@ class SubscriptionsViewController: MDCCollectionViewController, SubscriptionsHea
         cell.checkbox.checkmarkColor = colorList[indexPath.row]
         
         cell.object = self.themeObjects[indexPath.row]
+        cell.checkbox.isChecked = cell.object!.isSelected
         
         cell.themeLabel.textColor = textColor
         cell.backgroundColor = cellBackgroundColor
@@ -138,7 +146,7 @@ class SubscriptionsViewController: MDCCollectionViewController, SubscriptionsHea
     }
     
     override func collectionView(_ collectionView: UICollectionView, viewForSupplementaryElementOfKind kind: String, at indexPath: IndexPath) -> UICollectionReusableView {
-        if kind == UICollectionElementKindSectionHeader {
+        if kind == UICollectionView.elementKindSectionHeader {
             let headerView = collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: "Header", for: indexPath) as! SubscriptionsHeaderView
             headerView.delegate = self
             headerView.allThemesButton.backgroundColor = cellBackgroundColor
@@ -172,7 +180,7 @@ class SubscriptionsViewController: MDCCollectionViewController, SubscriptionsHea
                 theme.isSelected = !isChecked
             }
             allThemesCheckbox?.isChecked = !isChecked
-            collectionView?.reloadData()
+            self.collectionView?.reloadData()
         }
     }
     
@@ -214,13 +222,27 @@ class SubscriptionsViewController: MDCCollectionViewController, SubscriptionsHea
         
         vc!.subscriptionsDidChange = true
         
-        if isFirstTimeLogin {
+//        if isFirstTimeLogin {
             dismiss(animated: true, completion: nil)
-        }
+//        }
     }
     
     func close() {
         dismiss(animated: true, completion: nil)
+    }
+    
+    @objc func didSwipeBack(_ sender: UIScreenEdgePanGestureRecognizer) {
+        let dX = sender.translation(in: self.view).x
+        if sender.state == .ended {
+            let fraction = abs(dX/self.view.bounds.width)
+            if fraction > 0.3 {
+                dismiss(animated: true, completion: nil)
+            }
+        }
+    }
+    
+    override func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        return true
     }
 
 }

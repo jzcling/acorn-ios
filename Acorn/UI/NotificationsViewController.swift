@@ -17,25 +17,35 @@ class NotificationsViewController: UIViewController, UITableViewDelegate, UITabl
     let defaults = UserDefaults.standard
     lazy var nightModeOn = defaults.bool(forKey: "nightModePref")
     lazy var notificationsDict = defaults.dictionary(forKey: "notifications")
-//    let notificationsDict = ["a_4998462239652000_6376": "article•4998462239652000_6376•Recommended based on your subscription to Deals•Jewel Coffee: 1-for-1 drinks at over 10 outlets from 3pm onwards daily! Ends 26 Sep 2018•SINGPromos.com•https://cdn.singpromos.com/wp-content/uploads/2018/03/Jewel-Coffee-feat-16-Mar-2018-200x200.jpg•Deals•-1537760348000•-1537760348000", "c_4998462239652000_6376": "comment•4998462239652000_6376•1 new comment on an article you follow•Jewel Coffee: 1-for-1 drinks at over 10 outlets from 3pm onwards daily! Ends 26 Sep 2018•SINGPromos.com•https://cdn.singpromos.com/wp-content/uploads/2018/03/Jewel-Coffee-feat-16-Mar-2018-200x200.jpg•Deals•Deals•-1537760348000"]
     var notificationsArray = [String]()
     
     let mainStoryboard = UIStoryboard(name: "Main", bundle: nil)
     
+    let dataSource = DataSource.instance
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        defaults.set(notificationsDict, forKey: "notifications")
         
         tableView.dataSource = self
         tableView.delegate = self
         
-        tableView.rowHeight = UITableViewAutomaticDimension
+        tableView.rowHeight = UITableView.automaticDimension
         tableView.estimatedRowHeight = 143
         
-        if let notificationsDict = notificationsDict {
-            for notification in notificationsDict.values {
-                notificationsArray.append(notification as! String)
+        if let notifications = notificationsDict {
+            var notificationsToRemove = [String]()
+            for notification in notifications {
+                if let value = notification.value as? String {
+                    if (value.components(separatedBy: "|•|").count == 10) {
+                        notificationsArray.append(value)
+                    } else {
+                        notificationsToRemove.append(notification.key)
+                    }
+                }
+            }
+            for key in notificationsToRemove {
+                self.notificationsDict?.removeValue(forKey: key)
+                defaults.setValue(notificationsDict, forKey: "notifications")
             }
         }
 
@@ -60,14 +70,16 @@ class NotificationsViewController: UIViewController, UITableViewDelegate, UITabl
     
     func enableNightMode() {
         nightModeOn = true
-        self.tableView.backgroundColor = ResourcesNight.COLOR_BG
+        self.view.backgroundColor = ResourcesNight.COLOR_BG_MAIN
+        self.tableView.backgroundColor = ResourcesNight.COLOR_BG_MAIN
         self.toolbar.backgroundColor = ResourcesNight.COLOR_BG
         self.clearAllButton.tintColor = ResourcesNight.COLOR_ACCENT
     }
     
     func disableNightMode() {
         nightModeOn = false
-        self.tableView.backgroundColor = ResourcesDay.COLOR_BG
+        self.view.backgroundColor = ResourcesDay.COLOR_BG_MAIN
+        self.tableView.backgroundColor = ResourcesDay.COLOR_BG_MAIN
         self.toolbar.backgroundColor = ResourcesDay.COLOR_BG
         self.clearAllButton.tintColor = ResourcesDay.COLOR_ACCENT
     }
@@ -91,30 +103,42 @@ class NotificationsViewController: UIViewController, UITableViewDelegate, UITabl
         let cell = tableView.dequeueReusableCell(withIdentifier: "NotificationTvCell", for: indexPath) as! NotificationTvCell
 
         cell.notification = notificationsArray[indexPath.row]
+        cell.populateCell()
 
         return cell
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        let type = notificationsArray[indexPath.row].components(separatedBy: "•")[0]
-        let articleId = notificationsArray[indexPath.row].components(separatedBy: "•")[1]
-        if type == "article" {
-            openArticle(articleId)
+        let type = notificationsArray[indexPath.row].components(separatedBy: "|•|")[0]
+        let articleId = notificationsArray[indexPath.row].components(separatedBy: "|•|")[1]
+        let mainTheme = notificationsArray[indexPath.row].components(separatedBy: "|•|")[6]
+        let link = notificationsArray[indexPath.row].components(separatedBy: "|•|")[9]
+        if (type == "article" || type == "deal" || type == "savedArticleReminder") {
+            dataSource.recordOpenArticleDetails(articleId: articleId, mainTheme: mainTheme)
+            if link != nil && link != "" {
+                openArticle(articleId)
+            } else {
+                openComments(articleId)
+            }
         } else if type == "comment" {
             openComments(articleId)
         }
     }
     
-    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCellEditingStyle, forRowAt indexPath: IndexPath) {
+    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         if editingStyle == .delete {
-            let type = notificationsArray[indexPath.row].components(separatedBy: "•")[0]
-            let articleId = notificationsArray[indexPath.row].components(separatedBy: "•")[1]
+            let type = notificationsArray[indexPath.row].components(separatedBy: "|•|")[0]
+            let articleId = notificationsArray[indexPath.row].components(separatedBy: "|•|")[1]
             
             var key: String?
             if type == "article" {
                 key = "a_\(articleId)"
             } else if type == "comment" {
                 key = "c_\(articleId)"
+            } else if type == "deal" {
+                key = "d_\(articleId)"
+            } else if type == "savedArticleReminder" {
+                key = "s_\(articleId)"
             }
             
             if let key = key {
@@ -122,17 +146,19 @@ class NotificationsViewController: UIViewController, UITableViewDelegate, UITabl
                 notificationsArray.remove(at: indexPath.row)
                 defaults.setValue(notificationsDict, forKey: "notifications")
                 tableView.deleteRows(at: [indexPath], with: .fade)
+                UIApplication.shared.applicationIconBadgeNumber = notificationsDict?.count ?? 0
             }
         }
     }
 
     
     @IBAction func didTapClearAllButton(_ sender: Any) {
+        let app = UIApplication.shared
         let ac = UIAlertController(title: nil, message: "Are you sure you want to clear all notifications?", preferredStyle: .alert)
         ac.addAction(UIAlertAction(title: "No", style: .cancel, handler: nil))
         ac.addAction(UIAlertAction(title: "Yes", style: .destructive, handler: { _ in
             self.defaults.removeObject(forKey: "notifications")
-            UIApplication.shared.applicationIconBadgeNumber = 0
+            app.applicationIconBadgeNumber = 0
             self.notificationsDict?.removeAll()
             self.notificationsArray.removeAll()
             self.tableView.reloadData()
@@ -141,7 +167,7 @@ class NotificationsViewController: UIViewController, UITableViewDelegate, UITabl
     }
 }
 
-extension NotificationsViewController: NotificationTvCellDelegate {
+extension NotificationsViewController: ArticleListTvCellDelegate {
 
     func openArticle(_ articleId: String) {
         let vc = mainStoryboard.instantiateViewController(withIdentifier: "WebView") as? WebViewViewController

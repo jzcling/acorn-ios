@@ -22,13 +22,14 @@ import UIKit
     @IBInspectable public var `operator`: String = Constants.Defaults.operatorRefinement
     @IBInspectable public var sortBy: String = Constants.Defaults.sortBy
     @IBInspectable public var limit: Int = Constants.Defaults.limit
+    @IBInspectable public var areMultipleSelectionsAllowed: Bool = Constants.Defaults.areMultipleSelectionsAllowed
     
     @IBInspectable public var index: String = Constants.Defaults.index
     @IBInspectable public var variant: String = Constants.Defaults.variant
     
     public var viewModel: RefinementMenuViewModelDelegate
     
-    public override init(frame: CGRect, style: UITableViewStyle) {
+  public override init(frame: CGRect, style: UITableView.Style) {
         viewModel = RefinementMenuViewModel()
         super.init(frame: frame, style: style)
         viewModel.view = self

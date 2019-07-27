@@ -70,19 +70,19 @@ extension UILabel {
             let textColor = highlightedTextColor ?? self.tintColor ?? UIColor.blue
             let backgroundColor = highlightedBackgroundColor ?? UIColor.clear
             
-            attributedText = Highlighter(highlightAttrs: [NSAttributedStringKey.foregroundColor: textColor,
-                                                          NSAttributedStringKey.backgroundColor: backgroundColor]).render(text: text)
+          attributedText = Highlighter(highlightAttrs: [NSAttributedString.Key.foregroundColor: textColor,
+                                                        NSAttributedString.Key.backgroundColor: backgroundColor]).render(text: text)
         }
     }
 }
 
 func print(_ item: @autoclosure () -> Any, separator: String = " ", terminator: String = "\n") {
     #if DEBUG
-        Swift.print(item(), separator:separator, terminator: terminator)
+        Swift.print(item(), separator: separator, terminator: terminator)
     #endif
 }
 
-internal struct WeakSet<T>: Sequence where T : AnyObject{
+internal struct WeakSet<T>: Sequence where T: AnyObject {
     
   private var _objects: NSHashTable<T>
   

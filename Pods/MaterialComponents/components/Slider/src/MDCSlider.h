@@ -1,21 +1,19 @@
-/*
- Copyright 2015-present the Material Components for iOS authors. All Rights Reserved.
+// Copyright 2015-present the Material Components for iOS authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
- http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
- */
-
-#import <UIKit/UIKit.h>
 #import <CoreGraphics/CoreGraphics.h>
+#import <UIKit/UIKit.h>
 
 #import "MaterialShadowElevations.h"
 
@@ -39,7 +37,7 @@
      making the slider a snap to discrete values via @c numberOfDiscreteValues.
  */
 IB_DESIGNABLE
-@interface MDCSlider : UIControl <NSSecureCoding>
+@interface MDCSlider : UIControl
 
 /** When @c YES, the forState: APIs are enabled. Defaults to @c NO. */
 @property(nonatomic, assign, getter=isStatefulAPIEnabled) BOOL statefulAPIEnabled;
@@ -162,11 +160,23 @@ IB_DESIGNABLE
 - (nullable UIColor *)backgroundTrackTickColorForState:(UIControlState)state;
 
 /**
- The color of the Ink ripple.
+ By setting this property to @c YES, the Ripple component will be used instead of Ink
+ to display visual feedback to the user.
+
+ @note This property will eventually be enabled by default, deprecated, and then deleted as part
+ of our migration to Ripple. Learn more at
+ https://github.com/material-components/material-components-ios/tree/develop/components/Ink#migration-guide-ink-to-ripple
+
+ Defaults to NO.
+ */
+@property(nonatomic, assign) BOOL enableRippleBehavior;
+
+/**
+ The color of the ripple.
 
  Defaults to transparent blue.
  */
-@property(nonatomic, strong, nullable) UIColor *inkColor;
+@property(nonatomic, strong, nullable) UIColor *rippleColor;
 
 /**
  The radius of the cursor (thumb).
@@ -324,6 +334,20 @@ IB_DESIGNABLE
  @note Has no effect if @c statefulAPIEnabled is @c YES.
  */
 @property(nonatomic, strong, null_resettable) UIColor *trackBackgroundColor UI_APPEARANCE_SELECTOR;
+
+@end
+
+@interface MDCSlider (ToBeDeprecated)
+
+/**
+ The color of the Ink ripple.
+
+ Defaults to transparent blue.
+ @warning This method will eventually be deprecated. Opt-in to Ripple by setting
+ enableRippleBehavior to YES, and then use rippleColor instead. Learn more at
+ https://github.com/material-components/material-components-ios/tree/develop/components/Ink#migration-guide-ink-to-ripple
+ */
+@property(nonatomic, strong, nullable) UIColor *inkColor;
 
 @end
 

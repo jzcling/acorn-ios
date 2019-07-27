@@ -1,4 +1,4 @@
-![InstantSearch iOS](./docgen/assets/img/InstantSearch-iOS-ReadMe.png)
+![InstantSearch iOS](./docgen/assets/img/instantsearch-banner.png)
 
 <p align="left">
 <img src="https://img.shields.io/badge/platform-iOS-blue.svg?style=flat" alt="Platform iOS" />
@@ -10,7 +10,7 @@
 
 By [Algolia](http://algolia.com).
 
-InstantSearch family: **InstantSearch iOS** | [InstantSearch Android][instantsearch-android-github] | [React InstantSearch][react-instantsearch-github] | [InstantSearch.js][instantsearch-js-github].
+InstantSearch family: **InstantSearch iOS** | [InstantSearch Android][instantsearch-android-github] | [React InstantSearch][react-instantsearch-github] | [InstantSearch.js][instantsearch-js-github] | [Angular InstantSearch][instantsearch-angular-github] | [Vue InstantSearch][instantsearch-vue-github].
 
 **InstantSearch iOS** is a framework providing widgets and helpers to help you build the best instant-search experience on iOS with Algolia. It is built on top of Algolia's [Swift API Client](https://github.com/algolia/algoliasearch-client-swift) library to provide you a high-level solution to quickly build various search interfaces.
 
@@ -21,19 +21,30 @@ InstantSearch family: **InstantSearch iOS** | [InstantSearch Android][instantsea
 You can see InstantSearch iOS in action in our [Examples repository][ecommerce-url], in which we published example apps built with InstantSearch and written in Swift:
 
 <p align="center">
-  <img src="./docgen/assets/img/ikea.gif"/>
+  <img src="./docgen/assets/img/ecommerce.png" width="300"/>
 </p>
 
-[ecommerce-gif]: ./docgen/assets/img/ikea.gif
+[ecommerce-gif]: ./docgen/assets/img/ecommerce.png
 [ecommerce-url]: https://github.com/algolia/instantsearch-swift-examples
 
 ## Installation
 
-#### CocoaPods
+### CocoaPods
 
 [CocoaPods](https://cocoapods.org/) is a dependency manager for Cocoa projects.
 
 To install InstantSearch, simply add the following line to your Podfile:
+
+#### Swift 4.2
+
+```ruby
+pod 'InstantSearch', '~> 3.0'
+# pod 'InstantSearch/Widgets' for access to everything
+# pod 'InstantSearch/Core' for access to everything except the UI widgets
+# pod 'InstantSearch/Client' for access only to the API Client
+```
+
+#### Swift 4.1
 
 ```ruby
 pod 'InstantSearch', '~> 2.0'
@@ -48,11 +59,21 @@ Then, run the following command:
 $ pod update
 ```
 
-#### Carthage
+### Carthage
 
 [Carthage](https://github.com/Carthage/Carthage) is a simple, decentralized dependency manager for Cocoa.
 
 To install InstantSearch, simply add the following line to your Cartfile:
+
+#### Swift 4.2
+
+```ruby
+github "algolia/instantsearch-ios" ~> 3.0 # for access to everything
+# github "algolia/instantsearch-core-swift" ~> 4.0 # for access to everything except the UI widgets
+# github "algolia/algoliasearch-client-swift" ~> 6.0 # for access only to the API Client
+```
+
+#### Swift 4.1
 
 ```ruby
 github "algolia/instantsearch-ios" ~> 2.0 # for access to everything
@@ -60,15 +81,22 @@ github "algolia/instantsearch-ios" ~> 2.0 # for access to everything
 # github "algolia/algoliasearch-client-swift" ~> 5.0 # for access only to the API Client
 ```
 
-#### SwiftPM 
+### SwiftPM 
 
 The API client is the only library of the framework available on SwiftPM.
+
+#### Swift 4.2
+
+To install the API Client, add `.package(url:"https://github.com/algolia/algoliasearch-client-swift", from: "6.0.0")` to your package dependencies array in Package.swift, then add `AlgoliaSearch` to your target dependencies.
+
+
+#### Swift 4.1
 
 To install the API Client, add `.package(url:"https://github.com/algolia/algoliasearch-client-swift", from: "5.0.0")` to your package dependencies array in Package.swift, then add `AlgoliaSearch` to your target dependencies.
 
 ## Documentation
 
-**You can start with the [Getting Started Guide](https://community.algolia.com/instantsearch-ios/getting-started.html).**
+**You can start with the [Getting Started Guide](https://www.algolia.com/doc/guides/building-search-ui/getting-started/ios/).**
 
 Learn more about instantSearch iOS in the [dedicated documentation website](https://community.algolia.com/instantsearch-ios).
 
@@ -105,7 +133,7 @@ override func viewDidLoad() {
 
 Run your app and you will the most basic search experience: a `UISearchBar` with the number of results each time you write a query.
 
-To get a more meaningful search experience, please follow our [Getting Started Guide](https://community.algolia.com/instantsearch-ios/getting-started.html).
+To get a more meaningful search experience, please follow our [Getting Started Guide](https://www.algolia.com/doc/guides/building-search-ui/getting-started/ios/).
 
 ## Getting Help
 
@@ -127,3 +155,5 @@ InstantSearch iOS is [MIT licensed](LICENSE.md).
 [react-instantsearch-github]: https://github.com/algolia/react-instantsearch/
 [instantsearch-android-github]: https://github.com/algolia/instantsearch-android
 [instantsearch-js-github]: https://github.com/algolia/instantsearch.js
+[instantsearch-vue-github]: https://github.com/algolia/vue-instantsearch
+[instantsearch-angular-github]: https://github.com/algolia/angular-instantsearch

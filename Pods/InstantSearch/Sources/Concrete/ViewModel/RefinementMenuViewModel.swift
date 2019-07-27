@@ -12,39 +12,93 @@ import InstantSearchCore
 /// ViewModel - View: RefinementMenuViewModelDelegate.
 ///
 /// ViewModel - Searcher: SearchableViewModel, ResultingDelegate, ResettableDelegate.
-public class RefinementMenuViewModel: RefinementMenuViewModelDelegate, SearchableIndexViewModel {
+@objcMembers public class RefinementMenuViewModel: NSObject, RefinementMenuViewModelDelegate, SearchableIndexViewModel {
     
     // MARK: - Properties
+    private var _searcherId: SearcherId?
+
     public var searcherId: SearcherId {
-        return SearcherId(index:  view.index, variant: view.variant)
-    }
-    
-    var attribute: String {
-        return view.attribute
-    }
-    
-    var refinedFirst: Bool {
-        return view.refinedFirst
-    }
-    
-    var isDisjunctive: Bool {
-        switch view.operator {
-        case "or", "OR", "|", "||": return true
-        case "and", "AND", "&", "&&": return false
-        default: fatalError("operator of RefinementMenu cannot be interpreted. Please chose one of: 'or', 'and'")
+        set {
+            _searcherId = newValue
+        } get {
+            if let strongSearcherId = _searcherId { return strongSearcherId}
+
+            if let view = view {
+                return SearcherId(index: view.index, variant: view.variant)
+            } else {
+                print("ERROR - ViewModel not associated to any searcherId or View, so it cannot operate")
+                return SearcherId(index: "")
+            }
         }
     }
     
-    var limit: Int {
-        return view.limit
+    private var _refinedFirst: Bool?
+
+    public var refinedFirst: Bool {
+        set {
+            _refinedFirst = newValue
+        } get {
+            return _refinedFirst ?? view?.refinedFirst ?? Constants.Defaults.refinedFirst
+        }
+    }
+
+    private var _attribute: String?
+
+    public var attribute: String {
+        set {
+            _attribute = newValue
+        } get {
+            return _attribute ?? view?.attribute ?? Constants.Defaults.attribute
+        }
+    }
+
+    private var _isDisjunctive: Bool?
+
+    var isDisjunctive: Bool {
+        set {
+            _isDisjunctive = newValue
+        } get {
+            if let strongIsDisjunctive = _isDisjunctive { return strongIsDisjunctive}
+            switch view?.operator ?? Constants.Defaults.operatorRefinement {
+            case "or", "OR", "|", "||": return true
+            case "and", "AND", "&", "&&": return false
+            default: fatalError("operator of RefinementMenu cannot be interpreted. Please chose one of: 'or', 'and'")
+            }
+        }
+    }
+
+    private var _areMultipleSelectionsAllowed: Bool?
+
+    var areMultipleSelectionsAllowed: Bool {
+        set {
+            _areMultipleSelectionsAllowed = newValue
+        } get {
+            return _areMultipleSelectionsAllowed
+                ?? view?.areMultipleSelectionsAllowed
+                ?? Constants.Defaults.areMultipleSelectionsAllowed
+        }
+    }
+
+    private var _limit: Int?
+
+    public var limit: Int {
+        set {
+            _limit = newValue
+        } get {
+            return _limit ?? view?.limit ?? Constants.Defaults.limit
+        }
     }
     
     var transformRefinementList: TransformRefinementList {
-        return TransformRefinementList(named: view.sortBy.lowercased())
+        if let view = view {
+            return TransformRefinementList(named: view.sortBy.lowercased())
+        } else {
+            return TransformRefinementList(named: Constants.Defaults.sortBy.lowercased())
+        }
     }
     
     // TODO" The state for this should be on IS Core, not in the VM.
-    var facetResults: [FacetValue] = []
+    public var facetResults: [FacetValue] = []
     
     // MARK: - SearchableViewModel
     
@@ -74,22 +128,22 @@ public class RefinementMenuViewModel: RefinementMenuViewModelDelegate, Searchabl
         // If facet variable has been set beforehand, then we fill
         // the refinement List with the facets that are already fetched from Algolia
         
-        if let results = searcher.results, searcher.hits.isEmpty, let facetCounts = results.facets(name: attribute) {
+        if let results = searcher.results, let facetCounts = results.facets(name: attribute) {
             facetResults = getRefinementList(params: searcher.params,
                                              facetCounts: facetCounts,
                                              andFacetName: attribute,
                                              transformRefinementList: transformRefinementList,
                                              areRefinedValuesFirst: refinedFirst)
             
-            view.reloadRefinements()
+            view?.reloadRefinements()
         }
     }
     
     // MARK: - RefinementMenuViewModelDelegate
     
-    public weak var view: RefinementMenuViewDelegate!
+    public weak var view: RefinementMenuViewDelegate?
     
-    init() { }
+    override init() { }
     
     public init(view: RefinementMenuViewDelegate) {
         self.view = view
@@ -110,17 +164,39 @@ public class RefinementMenuViewModel: RefinementMenuViewModelDelegate, Searchabl
     /// This simulated selecting a facet
     /// it will tggle the facet refinement, deselect the row and then execute a search
     public func didSelectRow(at indexPath: IndexPath) {
-        
-        searcher.params.setFacet(withName: attribute, disjunctive: isDisjunctive)
-        searcher.params.toggleFacetRefinement(name: attribute, value: facetResults[indexPath.item].value)
-        view.deselectRow(at: indexPath)
+
+        if isDisjunctive {
+          searcher.params.setFacet(withName: attribute, disjunctive: true)
+          searcher.params.toggleFacetRefinement(name: attribute, value: facetResults[indexPath.item].value)
+        } else if !isDisjunctive && areMultipleSelectionsAllowed {
+          searcher.params.setFacet(withName: attribute, disjunctive: false)
+          searcher.params.toggleFacetRefinement(name: attribute, value: facetResults[indexPath.item].value)
+        } else {
+          // when conjunctive and one single value can be selected,
+          // we need to keep the other values visible, so we still do a disjunctive facet
+          searcher.params.setFacet(withName: attribute, disjunctive: true)
+          let value = facetResults[indexPath.item].value
+          
+          if searcher.params.hasFacetRefinement(name: attribute, value: value) { // deselect if already selected
+            searcher.params.clearFacetRefinements(name: attribute)
+          } else { // select new one only.
+            searcher.params.clearFacetRefinements(name: attribute)
+            searcher.params.addFacetRefinement(name: attribute, value: value)
+          }
+          
+        }
+        view?.deselectRow(at: indexPath)
         searcher.search()
     }
 }
 
 extension RefinementMenuViewModel: ResultingDelegate {
-    public func on(results: SearchResults?, error: Error?, userInfo: [String : Any]) {
-        
+    public func on(results: SearchResults?, error: Error?, userInfo: [String: Any]) {
+
+        defer {
+            view?.reloadRefinements()
+        }
+
         guard let results = results else {
             print(error ?? "")
             return
@@ -128,6 +204,8 @@ extension RefinementMenuViewModel: ResultingDelegate {
         
         guard let facetCounts = results.facets(name: attribute) else {
             print("No facet counts found for attribute: \(attribute)")
+            facetResults = []
+
             return
         }
         
@@ -136,12 +214,11 @@ extension RefinementMenuViewModel: ResultingDelegate {
                                          andFacetName: attribute,
                                          transformRefinementList: transformRefinementList,
                                          areRefinedValuesFirst: refinedFirst)
-        view.reloadRefinements()
     }
 }
 
 extension RefinementMenuViewModel: ResettableDelegate {
     func onReset() {
-        view.reloadRefinements()
+        view?.reloadRefinements()
     }
 }

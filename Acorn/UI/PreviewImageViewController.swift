@@ -28,19 +28,26 @@ class PreviewImageViewController: UIViewController {
     
     lazy var inputBarYPosition = inputBarView.frame.origin.y
     
+    let nightModeOn = UserDefaults.standard.bool(forKey: "nightModePref")
+    
     override func viewDidLoad() {
         super.viewDidLoad()
 
         imageView.image = image
         
+        let backSwipeGesture = UIScreenEdgePanGestureRecognizer(target: self, action: #selector(didSwipeBack(_:)))
+        backSwipeGesture.edges = .left
+        backSwipeGesture.delegate = self
+        self.view.addGestureRecognizer(backSwipeGesture)
+        
         NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow(_:)),
-                                               name: NSNotification.Name.UIKeyboardWillShow, object: nil)
+                                               name: UIResponder.keyboardWillShowNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide(_:)),
-                                               name: NSNotification.Name.UIKeyboardWillHide, object: nil)
+                                               name: UIResponder.keyboardWillHideNotification, object: nil)
     }
     
     @IBAction func didTapSendButton(_ sender: Any) {
-        if !isUserEmailVerified(user: user) {
+        if !isUserEmailVerified() {
             showEmailVerificationAlert(user: user)
             return
         }
@@ -69,8 +76,14 @@ class PreviewImageViewController: UIViewController {
             dismiss(animated: true, completion: nil)
         } else if let _ = commentVC {
             
-            let imageData = UIImageJPEGRepresentation(imageView.image!, 0.3)
-            dataSource.sendComment(articleId: articleId!, commentText: inputTextView.text, commentImageData: imageData, onComplete: { self.dismiss(animated: true, completion: nil) }) { (error) in
+            let imageData = imageView.image!.jpegData(compressionQuality: 0.3)
+            dataSource.sendComment(articleId: articleId!, commentText: inputTextView.text, commentImageData: imageData, onComplete: { (userStatus) in
+                if let userStatus = userStatus {
+                    self.view.makeToast("Congratulations! You have grown into a \(userStatus)")
+                }
+                self.dismiss(animated: true, completion: nil)
+                
+            }) { (error) in
                 self.view.makeToast("An error occurred while posting")
                 
             }
@@ -92,7 +105,7 @@ class PreviewImageViewController: UIViewController {
     
     func adjustLayoutForKeyboardShow(_ show: Bool, notification: Notification) {
         let userInfo = notification.userInfo ?? [:]
-        let keyboardFrame = (userInfo[UIKeyboardFrameEndUserInfoKey] as! NSValue).cgRectValue
+        let keyboardFrame = (userInfo[UIResponder.keyboardFrameEndUserInfoKey] as! NSValue).cgRectValue
         let adjustmentHeight = keyboardFrame.height * (show ? 1 : -1)
         
         if show {
@@ -114,4 +127,44 @@ class PreviewImageViewController: UIViewController {
         inputTextView.endEditing(true)
     }
 
+}
+
+extension PreviewImageViewController: UITextViewDelegate {
+    func textViewDidBeginEditing(_ textView: UITextView) {
+        if nightModeOn {
+            textView.textColor = ResourcesNight.COLOR_DEFAULT_TEXT
+        } else {
+            textView.textColor = ResourcesDay.COLOR_DEFAULT_TEXT
+        }
+        if textView.text == "Write something..." {
+            textView.text = nil
+        }
+    }
+    
+    func textViewDidEndEditing(_ textView: UITextView) {
+        if nightModeOn {
+            textView.textColor = ResourcesNight.COLOR_DEFAULT_TEXT
+        } else {
+            textView.textColor = ResourcesDay.COLOR_DEFAULT_TEXT
+        }
+        if textView.text.isEmpty {
+            textView.text = "Write something..."
+        }
+    }
+}
+
+extension PreviewImageViewController: UIGestureRecognizerDelegate {
+    @objc func didSwipeBack(_ sender: UIScreenEdgePanGestureRecognizer) {
+        let dX = sender.translation(in: self.view).x
+        if sender.state == .ended {
+            let fraction = abs(dX/self.view.bounds.width)
+            if fraction > 0.3 {
+                dismiss(animated: true, completion: nil)
+            }
+        }
+    }
+    
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        return true
+    }
 }

@@ -1,18 +1,16 @@
-/*
- Copyright 2017-present the Material Components for iOS authors. All Rights Reserved.
-
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
- http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
- */
+// Copyright 2017-present the Material Components for iOS authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #import "MDCTextInputControllerFullWidth.h"
 
@@ -28,10 +26,10 @@
 #import "MaterialPalettes.h"
 #import "MaterialTypography.h"
 
-static const CGFloat MDCTextInputControllerFullWidthHintTextOpacity = 0.54f;
-static const CGFloat MDCTextInputControllerFullWidthHorizontalInnerPadding = 8.f;
-static const CGFloat MDCTextInputControllerFullWidthHorizontalPadding = 16.f;
-static const CGFloat MDCTextInputControllerFullWidthVerticalPadding = 20.f;
+static const CGFloat MDCTextInputControllerFullWidthHintTextOpacity = (CGFloat)0.54;
+static const CGFloat MDCTextInputControllerFullWidthHorizontalInnerPadding = 8;
+static const CGFloat MDCTextInputControllerFullWidthHorizontalPadding = 16;
+static const CGFloat MDCTextInputControllerFullWidthVerticalPadding = 20;
 
 static inline UIColor *MDCTextInputControllerFullWidthInlinePlaceholderTextColorDefault() {
   return [UIColor colorWithWhite:0 alpha:MDCTextInputControllerFullWidthHintTextOpacity];
@@ -88,6 +86,7 @@ static UIFont *_trailingUnderlineLabelFontDefault;
 
 @property(nonatomic, copy) NSString *errorAccessibilityValue;
 @property(nonatomic, copy, readwrite) NSString *errorText;
+@property(nonatomic, copy) NSString *helperAccessibilityLabel;
 @property(nonatomic, copy) NSString *previousLeadingText;
 
 @property(nonatomic, strong) UIColor *previousPlaceholderColor;
@@ -256,15 +255,14 @@ static UIFont *_trailingUnderlineLabelFontDefault;
   }
 }
 
-#pragma  mark - TextInput Customization
+#pragma mark - TextInput Customization
 
 - (void)updateTextInput {
   UIFont *font = self.textInputFont;
   if (self.mdc_adjustsFontForContentSizeCategory) {
     // TODO: (#4331) This needs to be converted to the new text scheme.
-    font =
-        [font mdc_fontSizedForMaterialTextStyle:MDCFontTextStyleBody1
-                           scaledForDynamicType:_mdc_adjustsFontForContentSizeCategory];
+    font = [font mdc_fontSizedForMaterialTextStyle:MDCFontTextStyleBody1
+                              scaledForDynamicType:_mdc_adjustsFontForContentSizeCategory];
   }
   self.textInput.font = font;
 }
@@ -285,7 +283,6 @@ static UIFont *_trailingUnderlineLabelFontDefault;
     placeHolderFont =
         [placeHolderFont mdc_fontSizedForMaterialTextStyle:MDCFontTextStyleBody1
                                       scaledForDynamicType:_mdc_adjustsFontForContentSizeCategory];
-
   }
 
   self.textInput.placeholderLabel.font = placeHolderFont;
@@ -303,9 +300,8 @@ static UIFont *_trailingUnderlineLabelFontDefault;
     UIFont *font = self.trailingUnderlineLabelFont;
     if (self.mdc_adjustsFontForContentSizeCategory) {
       // TODO: (#4331) This needs to be converted to the new text scheme.
-      font =
-          [font mdc_fontSizedForMaterialTextStyle:MDCFontTextStyleCaption
-                             scaledForDynamicType:_mdc_adjustsFontForContentSizeCategory];
+      font = [font mdc_fontSizedForMaterialTextStyle:MDCFontTextStyleCaption
+                                scaledForDynamicType:_mdc_adjustsFontForContentSizeCategory];
     }
     self.textInput.trailingUnderlineLabel.font = font;
   }
@@ -428,6 +424,13 @@ static UIFont *_trailingUnderlineLabelFontDefault;
 
 - (void)setErrorAccessibilityValue:(NSString *)errorAccessibilityValue {
   _errorAccessibilityValue = [errorAccessibilityValue copy];
+}
+
+- (void)setHelperAccessibilityLabel:(NSString *)helperAccessibilityLabel {
+  _helperAccessibilityLabel = [helperAccessibilityLabel copy];
+  if ([self.textInput.leadingUnderlineLabel.text isEqualToString:self.helperText]) {
+    self.textInput.leadingUnderlineLabel.accessibilityLabel = _helperAccessibilityLabel;
+  }
 }
 
 - (UIColor *)errorColor {
@@ -570,7 +573,7 @@ static UIFont *_trailingUnderlineLabelFontDefault;
 }
 
 + (void)setLeadingUnderlineLabelTextColorDefault:
-        (__unused UIColor *)leadingUnderlineLabelTextColorDefault {
+    (__unused UIColor *)leadingUnderlineLabelTextColorDefault {
   // Not implemented. Leading underline label is always clear.
 }
 
@@ -658,23 +661,23 @@ static UIFont *_trailingUnderlineLabelFontDefault;
 }
 
 - (UIColor *)textInputClearButtonTintColor {
-    if (_textInputClearButtonTintColor) {
-        return _textInputClearButtonTintColor;
-    }
-    return [self class].textInputClearButtonTintColorDefault ?: self.textInput.clearButton.tintColor;
+  if (_textInputClearButtonTintColor) {
+    return _textInputClearButtonTintColor;
+  }
+  return [self class].textInputClearButtonTintColorDefault ?: self.textInput.clearButton.tintColor;
 }
 
 - (void)setTextInputClearButtonTintColor:(UIColor *)textInputClearButtonTintColor {
-    _textInputClearButtonTintColor = textInputClearButtonTintColor;
-    _textInput.clearButton.tintColor = _textInputClearButtonTintColor;
+  _textInputClearButtonTintColor = textInputClearButtonTintColor;
+  _textInput.clearButton.tintColor = _textInputClearButtonTintColor;
 }
 
 + (UIColor *)textInputClearButtonTintColorDefault {
-    return _textInputClearButtonTintColorDefault;
+  return _textInputClearButtonTintColorDefault;
 }
 
 + (void)setTextInputClearButtonTintColorDefault:(UIColor *)textInputClearButtonTintColorDefault {
-    _textInputClearButtonTintColorDefault = textInputClearButtonTintColorDefault;
+  _textInputClearButtonTintColorDefault = textInputClearButtonTintColorDefault;
 }
 
 - (UIFont *)trailingUnderlineLabelFont {
@@ -720,7 +723,7 @@ static UIFont *_trailingUnderlineLabelFontDefault;
 }
 
 + (void)setTrailingUnderlineLabelTextColorDefault:
-        (UIColor *)trailingUnderlineLabelTextColorDefault {
+    (UIColor *)trailingUnderlineLabelTextColorDefault {
   _trailingUnderlineLabelTextColorDefault =
       trailingUnderlineLabelTextColorDefault
           ? trailingUnderlineLabelTextColorDefault
@@ -991,15 +994,13 @@ static UIFont *_trailingUnderlineLabelFontDefault;
 
   // The trailing label gets in the way. If it has a frame, it's used. But if not, an
   // estimate is made of the size the text will be.
-  if (CGRectGetWidth(self.textInput.trailingUnderlineLabel.frame) > 1.f) {
+  if (CGRectGetWidth(self.textInput.trailingUnderlineLabel.frame) > 1) {
     textInsets.right += MDCCeil(CGRectGetWidth(self.textInput.trailingUnderlineLabel.frame));
   } else if (self.characterCountMax) {
     CGRect charCountRect = [[self characterCountText]
         boundingRectWithSize:self.textInput.bounds.size
                      options:NSStringDrawingUsesLineFragmentOrigin
-                  attributes:@{
-                    NSFontAttributeName : self.textInput.trailingUnderlineLabel.font
-                  }
+                  attributes:@{NSFontAttributeName : self.textInput.trailingUnderlineLabel.font}
                      context:nil];
     textInsets.right += MDCCeil(CGRectGetWidth(charCountRect));
   }
@@ -1149,8 +1150,18 @@ static UIFont *_trailingUnderlineLabelFontDefault;
                                    leadingUnderlineLabelText ? leadingUnderlineLabelText : @""];
   } else {
     self.textInput.accessibilityValue = nil;
-    self.textInput.leadingUnderlineLabel.accessibilityLabel = nil;
+    if ([self.textInput.leadingUnderlineLabel.text isEqualToString:self.helperText]) {
+      self.textInput.leadingUnderlineLabel.accessibilityLabel = self.helperAccessibilityLabel;
+    } else {
+      self.textInput.leadingUnderlineLabel.accessibilityLabel = nil;
+    }
   }
+}
+
+- (void)setHelperText:(NSString *)helperText
+    helperAccessibilityLabel:(NSString *)helperAccessibilityLabel {
+  self.helperText = helperText;
+  self.helperAccessibilityLabel = helperAccessibilityLabel;
 }
 
 #pragma mark - Accessibility
@@ -1181,7 +1192,7 @@ static UIFont *_trailingUnderlineLabelFontDefault;
 }
 
 + (void)setMdc_adjustsFontForContentSizeCategoryDefault:
-        (BOOL)mdc_adjustsFontForContentSizeCategoryDefault {
+    (BOOL)mdc_adjustsFontForContentSizeCategoryDefault {
   _mdc_adjustsFontForContentSizeCategoryDefault = mdc_adjustsFontForContentSizeCategoryDefault;
 }
 

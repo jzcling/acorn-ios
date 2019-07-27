@@ -40,9 +40,42 @@ import UIKit
     /// + NOTE: It is safer to use the getSearcher() method
     /// + WARNING: Don't use this in the case of configuring with multi-index.
     public var searcher: Searcher!
+  
+    public var history: LocalHistory = {
+      // Store the history in a `history.dat` file inside the `Application Support` directory.
+      let appSupportDir = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first!
+      let historyFile = URL(fileURLWithPath: appSupportDir).appendingPathComponent("history.dat").path
+      let history = LocalHistory(filePath: historyFile)
+      return history
+    }()
     
     private var isMultiIndexActive = false
-    
+  
+    public var recordHistory = false
+  
+  public var debuggingEnabled = false {
+    didSet {
+      if searcher != nil {
+        searcher.debuggingEnabled = debuggingEnabled
+      }
+      searchers.forEach { (_, searcher) in
+        searcher.debuggingEnabled = debuggingEnabled
+      }
+    }
+  }
+  
+    //TODO: these 2 fields below might have to be moved to another class dedicated for state management of searcher Ids.
+  
+    @objc dynamic public var selectedSearcherId: SearcherId?
+  
+    public var selectedSearcher: Searcher? {
+      guard let selectedSearcherId = selectedSearcherId else {
+        print("need to fill the selected SearchedId to use this")
+        return nil
+      }
+      return getSearcher(named: selectedSearcherId.index, withId: selectedSearcherId.variant)
+    }
+  
     /// The search parameters of the Searcher. This is just a quick access to `searcher.params`.
     /// + NOTE: It is safer to use the getSearcher().params method
     /// + WARNING: Don't use this in the case of configuring with multi-index.
@@ -193,7 +226,7 @@ import UIKit
     }
     
     /// Get the searcher associated to the index used for InstantSearch
-    public func getSearcher() -> Searcher {
+    @objc public func getSearcher() -> Searcher {
         if isMultiIndexActive {
             fatalError("Since you are using multi-index, you should use getSearcher(named:withId:)")
         }
@@ -202,8 +235,76 @@ import UIKit
     }
     
     /// Get the searcher associated to the specific index with name and id used for InstantSearch
-    public func getSearcher(named name: String, withId id: String = "") -> Searcher? {
+    @objc public func getSearcher(named name: String, withId id: String = "") -> Searcher? {
         return searchers[SearcherId(index: name, variant: id)]
+    }
+    
+    // MARK: Caching
+    
+    /// Whether the search cache is enabled on this index. Default: `false`.
+    ///
+    @objc public var searchCacheEnabled: Bool = false {
+        didSet {
+            if isMultiIndexActive {
+                searchers.forEach {
+                    if let index = $1.index as? Index {
+                        index.searchCacheEnabled = searchCacheEnabled
+                    }
+                }
+            } else {
+                if let index = getSearcher().index as? Index {
+                    index.searchCacheEnabled = searchCacheEnabled
+                }
+            }
+        }
+    }
+    
+    /// Expiration delay for items in the search cache. Default: 2 minutes.
+    ///
+    /// + Note: The delay is a minimum threshold. Items may survive longer in cache.
+    ///
+    @objc public var searchCacheExpiringTimeInterval: TimeInterval = 120 {
+        didSet {
+            if isMultiIndexActive {
+                searchers.forEach {
+                    if let index = $1.index as? Index {
+                        index.searchCacheExpiringTimeInterval = searchCacheExpiringTimeInterval
+                    }
+                }
+            } else {
+                if let index = getSearcher().index as? Index {
+                    index.searchCacheExpiringTimeInterval = searchCacheExpiringTimeInterval
+                }
+            }
+        }
+    }
+    
+    @objc public func searchCacheEnabled(_ searchCacheEnabled: Bool, for searcherIds: [SearcherId]) {
+        guard isMultiIndexActive else { return }
+        
+        searcherIds.forEach { (searcherId) in
+            let searcher = searchers.filter {
+                $0.key == searcherId
+            }.first // Should only have one searcher associated to the specific searcherId
+            
+            if let index = searcher?.value.index as? Index {
+                index.searchCacheEnabled = searchCacheEnabled
+            }
+        }
+    }
+    
+    @objc public func searchCacheExpiringTimeInterval(_ searchCacheExpiringTimeInterval: TimeInterval, for searcherIds: [SearcherId]) {
+        guard isMultiIndexActive else { return }
+        
+        searcherIds.forEach { (searcherId) in
+            let searcher = searchers.filter {
+                $0.key == searcherId
+            }.first // Should only have one searcher associated to the specific searcherId
+            
+            if let index = searcher?.value.index as? Index {
+                index.searchCacheExpiringTimeInterval = searchCacheExpiringTimeInterval
+            }
+        }
     }
     
     // MARK: Add widget methods
@@ -308,6 +409,8 @@ import UIKit
         // After a widget is added, we can decide to make a search. This is when
         // a widget modifies the state of the searcher.params
         if doSearch {
+          // TODO: more efficient search need to be done: only do a search to
+          // the corresponding searcher(s) of the widget
             search()
         }
     }
@@ -527,6 +630,45 @@ import UIKit
             self.searcher.search()
         }
     }
+  
+  public func search(with searchText: String, in searcherIds: [SearcherId]) {
+    searcherIds.forEach { (searcherId) in
+      if let searcher = searchers[searcherId] {
+        searcher.params.query = searchText
+        searcher.search()
+      } else {
+        print("tried to search with inexistent searchId")
+      }
+    }
+  }
+  
+  public func clearParameters(in searcherIds: [SearcherId]) {
+    searcherIds.forEach { (searcherId) in
+      if let searcher = searchers[searcherId] {
+        searcher.reset()
+      } else {
+        print("tried to clear params with inexistent searchId")
+      }
+    }
+  }
+  
+  public func clearParameters(exceptIn searcherIds: [SearcherId]) {
+    searchers.forEach { (searcherId, searcher) in
+      if !searcherIds.contains(searcherId) {
+        searcher.reset()
+      }
+    }
+  }
+  
+  public func clearParameters() {
+    if isMultiIndexActive {
+      for (_, searcher) in searchers {
+        searcher.reset()
+      }
+    } else {
+      self.searcher.reset()
+    }
+  }
 }
 
 extension InstantSearch: UISearchResultsUpdating {
@@ -563,4 +705,46 @@ extension InstantSearch: UISearchBarDelegate {
     public func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {        
         search(with: searchText)
     }
+}
+
+extension InstantSearch {
+  public func appendHistory(queryText: String) {
+    guard recordHistory else {
+      print("need to set recordHistory to true to record history")
+      return
+    }
+    
+    let params = SearchParameters()
+    params.query = queryText
+    history.add(params)
+    history.saveAsync()
+  }
+  
+  public func clearAllHistory() {
+    history.clear()
+  }
+  
+  public func clearQueryInHistory(queryText: String) {
+    let filteredQueries = history.contents.filter { (query) -> Bool in
+      return query != queryText
+    }
+    
+    clearAllHistory()
+    
+    filteredQueries.forEach { (query) in
+      let params = SearchParameters()
+      params.query = query
+      history.add(params)
+    }
+  }
+  
+  public func searchHistory(queryText: String, maxHits: Int = 2) -> [HistoryHit] {
+    let params = SearchParameters()
+    params.query = queryText
+    let options = HistorySearchOptions()
+    options.maxHits =  maxHits
+    let hits = history.search(query: params, options: options)
+    
+    return hits
+  }
 }
