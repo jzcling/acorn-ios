@@ -46,7 +46,7 @@ class DataSource {
     lazy var savedArticlesReminderPreferenceRef = self.database.reference(withPath: "preference/savedArticlesReminderNotificationValue/\(uid)")
     lazy var locationPreferenceRef = self.database.reference(withPath: "preference/locationNotificationValue/\(uid)")
     lazy var videosInFeedPreferenceRef = self.database.reference(withPath: "preference/videosInFeed/\(uid)")
-    lazy var algoliaRef = self.database.reference(withPath: "algoliaApiKey")
+    lazy var algoliaRef = self.database.reference(withPath: "api/algoliaApiKey")
     lazy var youtubeApiRef = self.database.reference(withPath: "api/youtubeApiKey")
     lazy var reportRef = self.database.reference(withPath: "reported")
     lazy var notificationRef = self.database.reference(withPath: "notification")
@@ -254,7 +254,7 @@ class DataSource {
         var articleIds = [String]()
         var duplicatesIds = [String]()
         
-        query.observeSingleEvent(of: .value) { (snap) in
+        query.observe(.value) { (snap) in
             // if value changes, reset all articles and remove all observers
             if articleIds.count > 0 {
                 for articleId in articleIds {
@@ -1249,6 +1249,25 @@ class DataSource {
         observeVideosForMainFeed(query: query, onComplete: onComplete)
     }
     
+    func getSingleVideo(id: String, onComplete: @escaping (Video) -> ()) {
+        let query = videoRef.child(id)
+        query.observeSingleEvent(of: .value, with: { (snap) in
+            if let _ = snap.value {
+                let video = Video(snapshot: snap)
+                onComplete(video)
+            }
+        })
+    }
+    
+    func observeSingleVideo(id: String, onComplete: @escaping (Video) -> ()) {
+        videoRef.child(id).observe(.value) { (snap) in
+            if let _ = snap.value {
+                let video = Video(snapshot: snap)
+                onComplete(video)
+            }
+        }
+    }
+    
     
     // Video Feed Cells
     func updateVideoVote(video: Video, actionIsUpvote: Bool, wasUpvoted: Bool, wasDownvoted: Bool, onComplete: @escaping () -> ()) {
@@ -1977,6 +1996,8 @@ class DataSource {
             "date": Date().timeIntervalSince1970 * 1000
         ]
         
-        self.notificationRef.child(uid).updateChildValues(data)
+        if let key = self.notificationRef.child(uid).childByAutoId().key {
+            self.notificationRef.child(uid).child(key).updateChildValues(data)
+        }
     }
 }
