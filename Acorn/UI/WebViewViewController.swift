@@ -16,9 +16,12 @@ import Toast_Swift
 class WebViewViewController: UIViewController, WKUIDelegate, UIGestureRecognizerDelegate {
 
     @IBOutlet weak var mainView: UIView!
+    @IBOutlet weak var stackView: UIStackView!
     @IBOutlet weak var webView: WKWebView!
     @IBOutlet weak var navBar: UINavigationBar!
+    @IBOutlet weak var searchStackView: UIStackView!
     @IBOutlet weak var searchBar: UISearchBar!
+    @IBOutlet weak var nextButton: UIButton!
     @IBOutlet weak var progressView: UIProgressView!
     @IBOutlet weak var messageOverlayView: UIView!
     @IBOutlet weak var messageOverlayLabel: UILabel!
@@ -32,7 +35,9 @@ class WebViewViewController: UIViewController, WKUIDelegate, UIGestureRecognizer
     @IBOutlet weak var saveButton: BounceButton!
     @IBOutlet weak var shareButton: BounceButton!
     
+    
     var articleId: String?
+    var postcode: [String]?
     var article: Article?
     var isFollowedByUser: Bool = false
     
@@ -60,13 +65,38 @@ class WebViewViewController: UIViewController, WKUIDelegate, UIGestureRecognizer
     
     var searchIndex = 0
     var resultCount = 0
+    var postcodeIndex = 0
+    
+    let timeLog = TimeLog()
+    var appearTime: Double = 0
+    var activeTime: Double = 0
+    var readTime: Int = 0
+    
+    lazy var toastPosition = CGPoint(x: self.view.bounds.size.width / 2.0, y: (self.view.bounds.size.height - 30) - 20 - actionButtonStackView.frame.height)
+    
+    // Ad
+    let bannerView = { () -> GADBannerView in
+        let bannerView = GADBannerView(adSize: kGADAdSizeSmartBannerPortrait)
+        bannerView.translatesAutoresizingMaskIntoConstraints = false
+        bannerView.adUnitID = "ca-app-pub-9396779536944241/8919524667"
+        return bannerView
+    }()
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        stackView.insertArrangedSubview(bannerView, at: 4)
+        NSLayoutConstraint.activate([
+            stackView.leftAnchor.constraint(equalTo: bannerView.leftAnchor),
+            stackView.rightAnchor.constraint(equalTo: bannerView.rightAnchor)
+        ])
+        bannerView.rootViewController = self
+        bannerView.load(GADRequest())
         
         if hasOpenedArticle() {
             messageOverlayView.isHidden = true
         } else {
+            messageOverlayView.sizeToFit()
+            messageOverlayView.layoutIfNeeded()
             messageOverlayView.layer.masksToBounds = false
             messageOverlayView.layer.cornerRadius = 15
             messageOverlayView.layer.shadowColor = UIColor.black.cgColor
@@ -75,17 +105,18 @@ class WebViewViewController: UIViewController, WKUIDelegate, UIGestureRecognizer
             messageOverlayView.layer.shadowRadius = 5
             messageOverlayView.layer.shadowPath = UIBezierPath(roundedRect: messageOverlayView.bounds, cornerRadius: 15).cgPath
             
-            let appDelegate = UIApplication.shared.delegate as! AppDelegate
-            appDelegate.hasOpenedArticle = true
+            let globals = Globals.instance
+            globals.hasOpenedArticle = true
         }
             
         webView.uiDelegate = self
         webView.navigationDelegate = self
+        webView.scrollView.delegate = self
         webView.allowsBackForwardNavigationGestures = true
         webView.load(URLRequest(url: URL(string: "about:blank")!))
         
         searchBar.delegate = self
-        searchBar.isHidden = true
+        searchStackView.isHidden = true
         
         let backSwipeGesture = UIScreenEdgePanGestureRecognizer(target: self, action: #selector(didSwipeBack(_:)))
         backSwipeGesture.edges = .left
@@ -100,6 +131,11 @@ class WebViewViewController: UIViewController, WKUIDelegate, UIGestureRecognizer
         
         NotificationCenter.default.addObserver(self, selector: #selector(nightModeEnabled), name: .nightModeOn, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(nightModeDisabled), name: .nightModeOff, object: nil)
+        
+        timeLog.userId = uid
+        timeLog.itemId = articleId
+        timeLog.type = "article"
+        timeLog.openTime = Date().timeIntervalSince1970 * 1000
     }
     
     @objc func didSwipeBack(_ sender: UIScreenEdgePanGestureRecognizer) {
@@ -164,6 +200,7 @@ class WebViewViewController: UIViewController, WKUIDelegate, UIGestureRecognizer
     }
     
     override func viewDidAppear(_ animated: Bool) {
+        print("webview: viewDidAppear")
         super.viewDidAppear(true)
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
@@ -185,6 +222,8 @@ class WebViewViewController: UIViewController, WKUIDelegate, UIGestureRecognizer
         } else {
             loadFromFirebaseDb()
         }
+        
+        appearTime = Date().timeIntervalSince1970 * 1000
     }
     
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
@@ -203,8 +242,8 @@ class WebViewViewController: UIViewController, WKUIDelegate, UIGestureRecognizer
         self.webView.addObserver(self, forKeyPath: "estimatedProgress", options: .new, context: nil)
         
         let wordCount = htmlString.split(separator: " ").count
-        let readTime = Int(ceil(Double(wordCount) / 200.0))
-        dataSource.setArticleReadTime(articleId: self.articleId!, readTime: readTime)
+        self.readTime = Int(ceil(Double(wordCount) / 200.0))
+        dataSource.setArticleReadTime(articleId: self.articleId!, readTime: self.readTime)
         
         dataSource.observeSingleArticle(articleId: articleId!) { (retrievedArticle) in
             self.article = retrievedArticle
@@ -247,7 +286,6 @@ class WebViewViewController: UIViewController, WKUIDelegate, UIGestureRecognizer
             
             Analytics.logEvent(AnalyticsEventSelectContent, parameters: [
                 AnalyticsParameterItemID: self.article?.objectID ?? "",
-                AnalyticsParameterItemName: self.article?.title ?? "",
                 AnalyticsParameterItemCategory: self.article?.mainTheme ?? "",
                 "item_source": self.article?.source ?? "",
                 AnalyticsParameterContentType: self.article?.type ?? ""
@@ -308,7 +346,6 @@ class WebViewViewController: UIViewController, WKUIDelegate, UIGestureRecognizer
             
             Analytics.logEvent(AnalyticsEventSelectContent, parameters: [
                 AnalyticsParameterItemID: self.article?.objectID ?? "",
-                AnalyticsParameterItemName: self.article?.title ?? "",
                 AnalyticsParameterItemCategory: self.article?.mainTheme ?? "",
                 "item_source": self.article?.source ?? "",
                 AnalyticsParameterContentType: self.article?.type ?? ""
@@ -327,8 +364,8 @@ class WebViewViewController: UIViewController, WKUIDelegate, UIGestureRecognizer
         if isSuccessful {
             if article?.readTime == nil {
                 let wordCount = generatedHtml?.split(separator: " ").count
-                let readTime = Int(ceil(Double(wordCount!) / 200.0))
-                dataSource.setArticleReadTime(article: self.article!, readTime: readTime)
+                self.readTime = Int(ceil(Double(wordCount!) / 200.0))
+                dataSource.setArticleReadTime(article: self.article!, readTime: self.readTime)
             }
             
             htmlString = generatedHtml!
@@ -342,9 +379,9 @@ class WebViewViewController: UIViewController, WKUIDelegate, UIGestureRecognizer
             
             dismiss(animated: true, completion: nil)
             if let vc = feedVC {
-                vc.view.makeToast("Failed to load article")
+                vc.view.makeToast("Failed to load article", point: toastPosition, title: nil, image: nil, completion: nil)
             } else if let vc = searchVC {
-                vc.view.makeToast("Failed to load article")
+                vc.view.makeToast("Failed to load article", point: toastPosition, title: nil, image: nil, completion: nil)
             }
         }
     }
@@ -358,13 +395,83 @@ class WebViewViewController: UIViewController, WKUIDelegate, UIGestureRecognizer
     }
     
     @IBAction func didTapSearchButton(_ sender: Any) {
+        searchButtonTapped()
+    }
+    
+    func searchButtonTapped() {
         UIView.animate(withDuration: 0.3) {
-            self.searchBar.isHidden = !self.searchBar.isHidden
+            self.searchStackView.isHidden = !self.searchStackView.isHidden
+            self.nextButton.isHidden = true
         }
-        if searchBar.isHidden {
+        if searchStackView.isHidden {
             searchBar.resignFirstResponder()
+            webView.evaluateJavaScript("uiWebview_RemoveAllHighlights()") { (result, error) in
+                if let error = error {
+                    print(error)
+                }
+            }
         } else {
             searchBar.becomeFirstResponder()
+        }
+    }
+    
+    @IBAction func didTapNextButton(_ sender: Any) {
+        nextButtonTapped()
+    }
+    
+    func nextButtonTapped() {
+        if let postcode = postcode {
+            if postcodeIndex < postcode.count {
+                let searchText = postcode[postcodeIndex]
+                searchBar.text = searchText
+                if searchIndex < 1 {
+                    findPostcode(searchText) { self.nextPostcode() }
+                    nextButton.setTitle("Next", for: .normal)
+                } else {
+                    nextPostcode()
+                }
+            } else {
+                self.view.makeToast("No more nearby addresses", point: toastPosition, title: nil, image: nil, completion: nil)
+                postcodeIndex = 0
+                nextButton.setTitle("Find", for: .normal)
+            }
+        }
+    }
+    
+    func findPostcode(_ postcode: String, onComplete: @escaping () -> ()) {
+        let startSearch = "uiWebview_HighlightAllOccurrencesOfString('\(postcode)')"
+        print("search: \(startSearch)")
+        
+        webView.evaluateJavaScript(startSearch) { (result, error) in
+            if let error = error {
+                print(error)
+                return
+            }
+            
+            self.webView.evaluateJavaScript("uiWebview_SearchResultCount") { (count, error) in
+                if let error = error {
+                    print(error)
+                    return
+                }
+                
+                self.resultCount = count as! Int
+                self.searchIndex = self.resultCount
+                onComplete()
+            }
+        }
+    }
+    
+    func nextPostcode() {
+        print("searchIndex: \(searchIndex), postcodeIndex: \(postcodeIndex)")
+        let goToNext = "uiWebview_ScrollTo('\(self.searchIndex - 1)')"
+        self.webView.evaluateJavaScript(goToNext) { (result, error) in
+            if let error = error {
+                print(error)
+            }
+        }
+        self.searchIndex -= 1
+        if self.searchIndex < 1 {
+            self.postcodeIndex += 1
         }
     }
     
@@ -418,7 +525,7 @@ class WebViewViewController: UIViewController, WKUIDelegate, UIGestureRecognizer
         dispatchGroup.enter()
         dataSource.updateUserVote(article: article!, actionIsUpvote: true) { (userStatus) in
             if let userStatus = userStatus {
-                self.view.makeToast("Congratulations! You have grown into a \(userStatus)")
+                self.view.makeToast("Congratulations! You have grown into a \(userStatus)", point: self.toastPosition, title: nil, image: nil, completion: nil)
             }
             dispatchGroup.leave()
         }
@@ -452,12 +559,11 @@ class WebViewViewController: UIViewController, WKUIDelegate, UIGestureRecognizer
         dispatchGroup.enter()
         dataSource.updateUserVote(article: article!, actionIsUpvote: false) { (userStatus) in
             if let userStatus = userStatus {
-                self.view.makeToast("Congratulations! You have grown into a \(userStatus)")
+                self.view.makeToast("Congratulations! You have grown into a \(userStatus)", point: self.toastPosition, title: nil, image: nil, completion: nil)
             }
             dispatchGroup.leave()
         }
         dispatchGroup.notify(queue: .main) {
-            
             self.upvoteButton.isEnabled = true
             self.downvoteButton.isEnabled = true
         }
@@ -494,7 +600,6 @@ class WebViewViewController: UIViewController, WKUIDelegate, UIGestureRecognizer
             
             Analytics.logEvent(AnalyticsEventShare, parameters: [
                 AnalyticsParameterItemID: self.article?.objectID ?? "",
-                AnalyticsParameterItemName: self.article?.title ?? "",
                 AnalyticsParameterItemCategory: self.article?.mainTheme ?? "",
                 "item_source": self.article?.source ?? "",
                 AnalyticsParameterContentType: self.article?.type ?? ""
@@ -506,6 +611,18 @@ class WebViewViewController: UIViewController, WKUIDelegate, UIGestureRecognizer
             }
         }
     }
+    
+    override func viewDidDisappear(_ animated: Bool) {
+        print("viewDidDisappear")
+        let now = Date().timeIntervalSince1970 * 1000
+        activeTime += now - appearTime
+        timeLog.activeTime = activeTime
+        timeLog.closeTime = now
+        if (readTime > 0) { timeLog.percentReadTimeActive = activeTime / Double(readTime) }
+        self.dataSource.logItemTimeLog(timeLog)
+        super.viewDidDisappear(true)
+    }
+    
     
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
@@ -535,6 +652,14 @@ extension WebViewViewController: WKNavigationDelegate {
                 }
             }
         }
+        
+        if self.didFinishInitialLoad, let postcode = postcode {
+            nextButton.setTitle("Find", for: .normal)
+            searchStackView.isHidden = false
+            nextButton.isHidden = false
+            let searchText = postcode[postcodeIndex]
+            searchBar.text = searchText
+        }
     }
 }
 
@@ -562,12 +687,22 @@ extension WebViewViewController: UISearchBarDelegate {
     
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
         if searchIndex < 1 {
-            self.view.makeToast("You've reached the end of the article!")
+            self.view.makeToast("You've reached the end of the article!", point: toastPosition, title: nil, image: nil, completion: nil)
             searchIndex = resultCount
         } else {
-            let goToNext = "uiWebview_ScrollTo('\(searchIndex)')"
+            let goToNext = "uiWebview_ScrollTo('\(searchIndex - 1)')"
             webView.evaluateJavaScript(goToNext)
             searchIndex -= 1
+        }
+    }
+}
+
+extension WebViewViewController: UIScrollViewDelegate {
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        if (scrollView.contentOffset.y > scrollView.frame.height) {
+            let scrollPercent = Double(scrollView.contentOffset.y / (scrollView.contentSize.height - scrollView.frame.height))
+            print("scrollPercent: \(scrollPercent)")
+            if scrollPercent > timeLog.percentScroll ?? 0 { timeLog.percentScroll = min(1.0, scrollPercent) }
         }
     }
 }

@@ -216,7 +216,6 @@ class CreatePostViewController: UIViewController {
                 
                 Analytics.logEvent("create_post", parameters: [
                     AnalyticsParameterItemID: postAsDict["objectID"] as Any,
-                    AnalyticsParameterItemName: postAsDict["title"] as Any,
                     AnalyticsParameterItemCategory: postAsDict["mainTheme"] as Any,
                     "item_source": postAsDict["source"] as Any,
                     AnalyticsParameterContentType: postAsDict["type"] as Any

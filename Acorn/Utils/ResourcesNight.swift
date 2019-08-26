@@ -21,6 +21,7 @@ struct ResourcesNight {
     static let CARD_BG_COLOR = UIColor(hex: "3c3f41")
     static let CARD_TEXT_COLOR = UIColor(hex: "f8f8f8")
     static let CARD_TEXT_COLOR_FAINT = UIColor(hex: "a9a9a9")
+    static let CARD_TEXT_COLOR_READ = UIColor(hex: "999999")
     
     // action buttons
     static let BUTTON_DEFAULT_TINT_COLOR = UIColor(hex: "bdbdbd")
@@ -29,6 +30,7 @@ struct ResourcesNight {
     static let COMMENT_TINT_COLOR = UIColor(hex: "0a7e8c")
     static let SAVE_TINT_COLOR = UIColor(hex: "ffba5c")
     static let SHARE_TINT_COLOR = UIColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 0.87)
+    static let CTA_DEFAULT_TINT_COLOR = UIColor(hex: "727272")
     
     // comment
     static let COMMENT_BG_COLOR = UIColor(hex: "eee8aa")
@@ -39,7 +41,7 @@ struct ResourcesNight {
     static let WEBVIEW_BG_COLOR_HEX = "181a1b"
     static let WEBVIEW_TEXT_COLOR_HEX = "dbd6d8"
     static let WEBVIEW_SUBTITLE_COLOR_HEX = "bbbbbb"
-    static let WEBVIEW_QUOTE_BG_COLOR_HEX = "cdcdcd"
+    static let WEBVIEW_QUOTE_BG_COLOR_HEX = "9f9f9f"
     
     // more options
     static let OPTIONS_BG_COLOR = UIColor(hex: "1e2d3e")

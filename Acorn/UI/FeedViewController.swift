@@ -30,10 +30,11 @@ class FeedViewController: MDCCollectionViewController {
     @IBOutlet weak var userButton: UIBarButtonItem!
     
     let appDelegate = UIApplication.shared.delegate as! AppDelegate
+    let globals = Globals.instance
     
     var user: User?
     var uid: String?
-    lazy var token = appDelegate.token
+    lazy var token = globals.token
     var acornUser: AcornUser?
     var isUserPremium: Bool = false
     var referredBy: String?
@@ -54,6 +55,7 @@ class FeedViewController: MDCCollectionViewController {
     var didLaunch: Bool = true
     var wasRefreshCalled: Bool = false
     var subscriptionsDidChange: Bool = false
+    var feedDidChange: Bool = false
     
     let defaults = UserDefaults.standard
     var themeKey: String?
@@ -72,12 +74,23 @@ class FeedViewController: MDCCollectionViewController {
     lazy var colorCardBackground = nightModeOn ? ResourcesNight.CARD_BG_COLOR : ResourcesDay.CARD_BG_COLOR
     lazy var colorCardText = nightModeOn ? ResourcesNight.CARD_TEXT_COLOR : ResourcesDay.CARD_TEXT_COLOR
     lazy var colorCardTextFaint = nightModeOn ? ResourcesNight.CARD_TEXT_COLOR_FAINT : ResourcesDay.CARD_TEXT_COLOR_FAINT
+    lazy var colorCardTextRead = nightModeOn ? ResourcesNight.CARD_TEXT_COLOR_READ : ResourcesDay.CARD_TEXT_COLOR_READ
     
-    var articleList = [Article]()
+    var articleList = [AnyObject]()
+    var articleListIds = [String]()
+    var hitsArticles = [Article]()
     var videoList = [Video]()
     var savedArticleList = [Article]()
+    var seenList = [String: String]()
     
-    let bottomBarView = MDCBottomNavigationBar()
+    // Ads
+    let nativeAdUnitId = "ca-app-pub-9396779536944241/7190035242"
+    var adLoader: GADAdLoader!
+    var adList = [GADUnifiedNativeAd]()
+    var areAdsLoaded = false
+    
+    lazy var bottomBarView = MDCBottomNavigationBar()
+    lazy var toastPosition = CGPoint(x: self.view.bounds.size.width / 2.0, y: (self.view.bounds.size.height - 30) - 10 - bottomBarView.frame.height)
     lazy var subscriptionsButton = { () -> UITabBarItem in
         let button = UITabBarItem(title: nil, image: #imageLiteral(resourceName: "ic_checklist"), tag: 0)
 //        let button = UIBarButtonItem(image: #imageLiteral(resourceName: "ic_checklist"), style: .plain, target: self, action: #selector(getSubscriptionsFeed))
@@ -134,16 +147,54 @@ class FeedViewController: MDCCollectionViewController {
     var insets: UIEdgeInsets?
     var cellWidth: CGFloat?
     
+    let newContentPrompt = { () -> UIView in
+        let prompt = UIView()
+        let label = UILabel()
+        prompt.translatesAutoresizingMaskIntoConstraints = false
+        label.translatesAutoresizingMaskIntoConstraints = false
+        prompt.addSubview(label)
+        
+        label.textAlignment = .center
+        label.text = "New content awaits you! Tap to refresh"
+        label.textColor = .white
+        label.numberOfLines = 1
+        label.font = UIFont .systemFont(ofSize: 13.0, weight: UIFont.Weight(rawValue: 1.0))
+        label.sizeToFit()
+        
+        label.centerXAnchor.constraint(equalTo: prompt.centerXAnchor).isActive = true
+        label.centerYAnchor.constraint(equalTo: prompt.centerYAnchor).isActive = true
+        
+        prompt.widthAnchor.constraint(equalToConstant: label.bounds.width + 16.0).isActive = true
+        prompt.heightAnchor.constraint(equalToConstant: label.bounds.height + 8.0).isActive = true
+        prompt.layer.cornerRadius = 12
+        
+        return prompt
+    }()
+    
+    // Ad
+    let bannerView = { () -> GADBannerView in
+        let bannerView = GADBannerView(adSize: kGADAdSizeSmartBannerPortrait)
+        bannerView.translatesAutoresizingMaskIntoConstraints = false
+        bannerView.adUnitID = "ca-app-pub-9396779536944241/6978282252"
+        return bannerView
+    }()
+    
     override func awakeFromNib() {
 //        bottomBarView.autoresizingMask = [ .flexibleWidth, .flexibleTopMargin ]
         view.addSubview(bottomBarView)
         view.addSubview(floatingButton)
+        view.addSubview(newContentPrompt)
+        view.addSubview(bannerView)
+        
+        newContentPrompt.centerXAnchor.constraint(equalTo: view.centerXAnchor).isActive = true
+        newContentPrompt.centerYAnchor.constraint(equalTo: view.topAnchor, constant: 115.0).isActive = true
+        newContentPrompt.isHidden = true
         
         // Enable inclusion of safe area in size calcs
         bottomBarView.sizeThatFitsIncludesSafeArea = true
         
         let size = bottomBarView.sizeThatFits(view.bounds.size)
-        let bottomBarFrame = CGRect(x: 0, y: view.bounds.height - size.height, width: size.width, height: size.height)
+        var bottomBarFrame = CGRect(x: 0, y: view.bounds.height - size.height, width: size.width, height: size.height)
         
         //Extend the Bottom Navigation to the bottom of the screen
 //        bottomBarFrame.size.height += view.safeAreaInsets.bottom
@@ -176,7 +227,7 @@ class FeedViewController: MDCCollectionViewController {
         // Done here as safeareainsets are 0 until this callback is triggered
         let height = CGFloat(48), width = CGFloat(48)
         let x = view.bounds.width - CGFloat(15) - width - view.safeAreaInsets.right
-        let y = view.bounds.height - bottomBarView.frame.height - CGFloat(15) - height - view.safeAreaInsets.bottom
+        let y = view.bounds.height - bottomBarView.frame.height - bannerView.frame.height - CGFloat(15) - height - view.safeAreaInsets.bottom
         floatingButton.frame = CGRect(x: x, y: y, width: width, height: height)
     }
     
@@ -203,6 +254,13 @@ class FeedViewController: MDCCollectionViewController {
                                          layout: collectionViewLayout,
                                          insetForSectionAt: 0)
         self.cellWidth = collectionView.bounds.width - (insets?.left)! - (insets?.right)!
+        
+        bannerView.rootViewController = self
+        bannerView.load(GADRequest())
+        
+//        let collectionViewBottomConstraint = NSLayoutConstraint(item: collectionView, attribute: .bottom, relatedBy: .equal, toItem: bannerView, attribute: .top, multiplier: 1, constant: 0)
+//        let bannerViewBottomConstraint = NSLayoutConstraint(item: bannerView, attribute: .bottom, relatedBy: .equal, toItem: self.bottomBarView, attribute: .top, multiplier: 1, constant: 0)
+//        self.view.addConstraints([bannerViewBottomConstraint])
         
         let refreshControl = UIRefreshControl()
         refreshControl.addTarget(self,
@@ -233,25 +291,21 @@ class FeedViewController: MDCCollectionViewController {
         colorCardBackground = ResourcesNight.CARD_BG_COLOR
         colorCardText = ResourcesNight.CARD_TEXT_COLOR
         colorCardTextFaint = ResourcesNight.CARD_TEXT_COLOR_FAINT
+        colorCardTextRead = ResourcesNight.CARD_TEXT_COLOR_READ
         
         self.view.backgroundColor = colorBackgroundMain
         self.collectionView?.backgroundColor = colorBackground
         if selectedFeed == "Subscriptions" {
-//            subscriptionsButton.tintColor = colorAccent
             subscriptionsButton.selectedImage?.sd_tintedImage(with: colorAccent)
         } else if selectedFeed == "Trending" {
-//            trendingButton.tintColor = colorAccent
             trendingButton.selectedImage?.sd_tintedImage(with: colorAccent)
         } else if selectedFeed == "Deals" {
-//            dealsButton.tintColor = colorAccent
             dealsButton.selectedImage?.sd_tintedImage(with: colorAccent)
-//        } else if selectedFeed == "Saved" {
-//            savedButton.tintColor = colorAccent
         }
         let colorScheme = MDCBasicColorScheme(primaryColor: colorAccent)
         MDCButtonColorThemer.apply(colorScheme, to: floatingButton)
         bottomBarView.barTintColor = colorBackgroundMain
-        
+        newContentPrompt.backgroundColor = colorAccent
     }
     
     func disableNightMode() {
@@ -263,6 +317,7 @@ class FeedViewController: MDCCollectionViewController {
         colorCardBackground = ResourcesDay.CARD_BG_COLOR
         colorCardText = ResourcesDay.CARD_TEXT_COLOR
         colorCardTextFaint = ResourcesDay.CARD_TEXT_COLOR_FAINT
+        colorCardTextRead = ResourcesDay.CARD_TEXT_COLOR_READ
         
         self.view.backgroundColor = colorBackgroundMain
         self.collectionView?.backgroundColor = colorBackground
@@ -282,7 +337,7 @@ class FeedViewController: MDCCollectionViewController {
         let colorScheme = MDCBasicColorScheme(primaryColor: colorAccent)
         MDCButtonColorThemer.apply(colorScheme, to: floatingButton)
         bottomBarView.barTintColor = colorBackgroundMain
-        
+        newContentPrompt.backgroundColor = colorAccent
     }
     
     func launchLogin() {
@@ -311,7 +366,7 @@ class FeedViewController: MDCCollectionViewController {
                     // this is required as facebook users accounts are not automatically email verified
                     for userInfo in currentUser.providerData {
                         if userInfo.providerID == "facebook.com" {
-                            self.appDelegate.isUserEmailVerified = true
+                            self.globals.isUserEmailVerified = true
                             retrievedUser.isEmailVerified = true
                         }
                     }
@@ -319,7 +374,7 @@ class FeedViewController: MDCCollectionViewController {
                     if (!currentUser.isEmailVerified && !retrievedUser.isEmailVerified) {
                         self.showEmailVerificationAlert(user: currentUser)
                     } else {
-                        self.appDelegate.isUserEmailVerified = true
+                        self.globals.isUserEmailVerified = true
                     }
                     
                     self.dataSource.getThemeSubscriptions(user: currentUser) { themePrefs in
@@ -337,7 +392,7 @@ class FeedViewController: MDCCollectionViewController {
                         retrievedUser.displayName = currentUser.displayName ?? ""
                         retrievedUser.token = self.token ?? ""
                         retrievedUser.email = currentUser.email ?? ""
-                        if !retrievedUser.isEmailVerified { retrievedUser.isEmailVerified = self.appDelegate.isUserEmailVerified }
+                        if !retrievedUser.isEmailVerified { retrievedUser.isEmailVerified = self.globals.isUserEmailVerified }
                         retrievedUser.device = Device.current.description
                         retrievedUser.creationTimeStamp = (currentUser.metadata.creationDate?.timeIntervalSince1970 ?? 0) * 1000
                         retrievedUser.lastSignInTimeStamp = (currentUser.metadata.lastSignInDate?.timeIntervalSince1970 ?? 0) * 1000
@@ -376,6 +431,13 @@ class FeedViewController: MDCCollectionViewController {
                         }
                     
                         self.loadData()
+                        
+                        if retrievedUser.openedArticles.keys.count > 50 {
+                            if !self.defaults.bool(forKey: "seenSurveyRequest") {
+                                self.sendSurveyRequest(user: retrievedUser)
+                                self.defaults.set(true, forKey: "seenSurveyRequest")
+                            }
+                        }
                     }
                 } else if retrievedUser == nil {
                     print("new user")
@@ -383,11 +445,11 @@ class FeedViewController: MDCCollectionViewController {
                     // this is required as facebook users accounts are not automatically email verified
                     for userInfo in currentUser.providerData {
                         if userInfo.providerID == "facebook.com" {
-                            self.appDelegate.isUserEmailVerified = true
+                            self.globals.isUserEmailVerified = true
                         }
                     }
                     
-                    let acornUser = AcornUser(uid: self.uid ?? "", displayName: currentUser.displayName ?? "", token: self.token ?? "", email: currentUser.email ?? "", isEmailVerified: self.appDelegate.isUserEmailVerified, device: Device.current.description, creationTimeStamp: (currentUser.metadata.creationDate?.timeIntervalSince1970 ?? 0) * 1000, lastSignInTimeStamp: (currentUser.metadata.lastSignInDate?.timeIntervalSince1970 ?? 0) * 1000, openedSinceLastReport: true)
+                    let acornUser = AcornUser(uid: self.uid ?? "", displayName: currentUser.displayName ?? "", token: self.token ?? "", email: currentUser.email ?? "", isEmailVerified: self.globals.isUserEmailVerified, device: Device.current.description, creationTimeStamp: (currentUser.metadata.creationDate?.timeIntervalSince1970 ?? 0) * 1000, lastSignInTimeStamp: (currentUser.metadata.lastSignInDate?.timeIntervalSince1970 ?? 0) * 1000, openedSinceLastReport: true)
                     
                     if self.referredBy != nil { acornUser.referredBy = self.referredBy }
                     
@@ -475,6 +537,21 @@ class FeedViewController: MDCCollectionViewController {
         }
     }
     
+    func sendSurveyRequest(user: AcornUser) {
+        let firstName = user.displayName.split(separator: " ")[0]
+        let ac = UIAlertController(title: "Help Shape the Future of Acorn!", message: "Thanks for supporting Acorn, \(firstName)! Having reached 50 articles read, we would love to hear your opinion on the app. Would you like to help improve Acorn?", preferredStyle: .alert)
+        ac.addAction(UIAlertAction(title: "No", style: .cancel, handler: { _ in
+            self.dataSource.logSurveyResponse(false)
+        }))
+        ac.addAction(UIAlertAction(title: "Yes", style: .destructive, handler: { _ in
+            self.dataSource.logSurveyResponse(true)
+            if let url = URL(string: "https://docs.google.com/forms/d/e/1FAIpQLSdrEHdVUB5M7ouMTihf5Y02yGhGytPK0-xjY427TcedfBMCBQ/viewform?usp=sf_link") {
+                UIApplication.shared.open(url)
+            }
+        }))
+        self.present(ac, animated: true, completion: nil)
+    }
+    
     @objc private func refreshOptions(sender: UIRefreshControl) {
         wasRefreshCalled = true
         reloadFeed()
@@ -487,7 +564,6 @@ class FeedViewController: MDCCollectionViewController {
     }
     
     private func resetView() {
-//        resetButtonTints()
         dataSource.removeFeedObservers()
         articleList = [Article]()
         cleanCollectionView()
@@ -501,6 +577,15 @@ class FeedViewController: MDCCollectionViewController {
                                         height: size.height)
         bottomBarView.frame = bottomBarViewFrame
         MDCSnackbarManager.setBottomOffset(bottomBarView.frame.height)
+        
+        let guide = view.safeAreaLayoutGuide
+        NSLayoutConstraint.activate([
+            guide.leftAnchor.constraint(equalTo: bannerView.leftAnchor),
+            guide.rightAnchor.constraint(equalTo: bannerView.rightAnchor)
+        ])
+        bannerView.frame.origin.y = view.bounds.size.height - size.height - bannerView.frame.height
+        
+        collectionView.contentInset.bottom = bottomBarView.frame.height - bannerView.frame.height
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -509,7 +594,88 @@ class FeedViewController: MDCCollectionViewController {
         
         if didLaunch || didLogin || subscriptionsDidChange {
             setupUser()
-            didLaunch = false
+        } else {
+            for article in self.articleList {
+                if let article = article as? Article {
+                    self.articleListIds.append(article.objectID)
+                    
+                    if article.type == "article" || article.type == "post" {
+                        self.dataSource.observeSingleArticle(articleId: article.objectID) { (item) in
+                            if let index = self.articleListIds.firstIndex(of: item.objectID) {
+                                print("article returned for index \(index): \(item.objectID)")
+                                self.articleList[index] = item
+                                self.collectionView?.reloadData()
+                            }
+                        }
+                    } else if article.type == "video" {
+                        self.dataSource.observeSingleVideo(id: article.objectID) { video in
+                            let convertedVideo = Article(video: video)
+                            if let index = self.articleListIds.firstIndex(of: convertedVideo.objectID) {
+                                print("video returned for index \(index): \(convertedVideo.objectID)")
+                                self.articleList[index] = convertedVideo
+                                self.collectionView?.reloadData()
+                            }
+                        }
+                    }
+                }
+            }
+            
+            if selectedFeed == "Subscriptions" {
+                bottomBarView.selectedItem = bottomBarView.items[0]
+                dataSource.getSubscriptionsFeed() { (articles) in
+                    if let firstArticle = self.articleList.first as? Article, let lastArticle = self.articleList.last as? Article {
+                        if (firstArticle.objectID != articles.first?.objectID ?? "" || lastArticle.objectID != articles.last?.objectID ?? "") {
+                            self.hitsArticles = articles
+                            let gesture = UITapGestureRecognizer(target: self, action: #selector(self.didTapNewContentPrompt(_:)))
+                            self.newContentPrompt.addGestureRecognizer(gesture)
+                            self.newContentPrompt.isHidden = false
+                        }
+                    }
+                }
+            } else if selectedFeed == "Trending" {
+                bottomBarView.selectedItem = bottomBarView.items[1]
+                dataSource.getTrendingFeed() { (articles) in
+                    if let firstArticle = self.articleList.first as? Article, let lastArticle = self.articleList.last as? Article {
+                        if (firstArticle.objectID != articles.first?.objectID ?? "" || lastArticle.objectID != articles.last?.objectID ?? "") {
+                            self.hitsArticles = articles
+                            let gesture = UITapGestureRecognizer(target: self, action: #selector(self.didTapNewContentPrompt(_:)))
+                            self.newContentPrompt.addGestureRecognizer(gesture)
+                            self.newContentPrompt.isHidden = false
+                        }
+                    }
+                }
+            } else if selectedFeed == "Deals" {
+                bottomBarView.selectedItem = bottomBarView.items[2]
+                dataSource.getDealsFeed() { (articles) in
+                    if let firstArticle = self.articleList.first as? Article, let lastArticle = self.articleList.last as? Article {
+                        if (firstArticle.objectID != articles.first?.objectID ?? "" || lastArticle.objectID != articles.last?.objectID ?? "") {
+                            self.hitsArticles = articles
+                            let gesture = UITapGestureRecognizer(target: self, action: #selector(self.didTapNewContentPrompt(_:)))
+                            self.newContentPrompt.addGestureRecognizer(gesture)
+                            self.newContentPrompt.isHidden = false
+                        }
+                    }
+                }
+            } else if selectedFeed == "FilteredTheme" {
+                if masterFeed == "Subscriptions" {
+                    bottomBarView.selectedItem = bottomBarView.items[0]
+                } else if masterFeed == "Trending" {
+                    bottomBarView.selectedItem = bottomBarView.items[1]
+                }
+                guard let theme = self.specificFeed else { return }
+                let themeKey = theme
+                let themeFilter = "mainTheme: \"\(theme)\""
+                dataSource.getFilteredThemeFeed(key: themeKey, filters: themeFilter) { (articles) in
+                    if let firstArticle = self.articleList.first as? Article, let lastArticle = self.articleList.last as? Article {
+                        if (firstArticle.objectID != articles.first?.objectID ?? "" || lastArticle.objectID != articles.last?.objectID ?? "") {
+                            self.hitsArticles = articles
+                            let gesture = UITapGestureRecognizer(target: self, action: #selector(self.didTapNewContentPrompt(_:)))
+                            self.newContentPrompt.addGestureRecognizer(gesture)
+                            self.newContentPrompt.isHidden = false
+                        }
+                    }
+                }
+            }
         }
         
         if defaults.bool(forKey: "locationNotifPref") {
@@ -527,6 +693,7 @@ class FeedViewController: MDCCollectionViewController {
         // listener for premium status
         let now = Date().timeIntervalSince1970 * 1000.0
         if let user = Auth.auth().currentUser {
+            print("observe user premium status")
             self.dataSource.getUserPremiumStatus(user) { (status) in
                 if let end = status["end"] {
                     if end > now {
@@ -537,25 +704,10 @@ class FeedViewController: MDCCollectionViewController {
             }
         }
         
-        
         MDCSnackbarManager.setBottomOffset(bottomBarView.frame.height)
         navigationItem.leftBarButtonItems?[0].accessibilityLabel = "Notifications"
         navigationItem.rightBarButtonItems?[0].accessibilityLabel = "More options"
         navigationItem.rightBarButtonItems?[1].accessibilityLabel = "Search articles"
-        
-        if selectedFeed == "Subscriptions" {
-            bottomBarView.selectedItem = bottomBarView.items[0]
-        } else if selectedFeed == "Trending" {
-            bottomBarView.selectedItem = bottomBarView.items[1]
-        } else if selectedFeed == "Deals" {
-            bottomBarView.selectedItem = bottomBarView.items[2]
-        } else if selectedFeed == "FilteredTheme" {
-            if masterFeed == "Subscriptions" {
-                bottomBarView.selectedItem = bottomBarView.items[0]
-            } else if masterFeed == "Trending" {
-                bottomBarView.selectedItem = bottomBarView.items[0]
-            }
-        }
     }
     
     func highlightSaveButton(onComplete: @escaping () -> ()) {
@@ -590,61 +742,22 @@ class FeedViewController: MDCCollectionViewController {
     }
     
     @objc func getSubscriptionsFeed() {
-        self.view.makeToast("Subscriptions")
+        self.view.makeToast("Subscriptions", point: toastPosition, title: nil, image: nil, completion: nil)
         if selectedFeed != "Subscriptions" || wasRefreshCalled || subscriptionsDidChange || didLogin {
-            resetView()
+            dataSource.removeFeedObservers()
             selectedFeed = "Subscriptions"
+            feedDidChange = true
+            self.newContentPrompt.isHidden = true
             
-            let dispatchGroup = DispatchGroup()
-            dispatchGroup.enter()
             dataSource.getSubscriptionsFeed() { (articles) in
-                print("articlesCount: \(articles.count)")
-                self.articleList = articles
-                dispatchGroup.leave()
-            }
-            
-            let showVideos = defaults.bool(forKey: "videosInFeedPref")
-            print("showVideos: \(showVideos)")
-            if showVideos {
-                let channelsToRemove = defaults.array(forKey: "videosInFeedChannelsToRemove") as? [String] ?? [String]()
-                
-                dispatchGroup.enter()
-                dataSource.getVideosForMainFeed { (videos) in
-                    let subscribedThemes = self.defaults.string(forKey: "themeKey")?.components(separatedBy: "_") ?? ResourcesDay.THEME_LIST.sorted()
-                    for video in videos {
-                        if let source = video.source, let theme = video.mainTheme {
-                            if !channelsToRemove.contains(source) && subscribedThemes.contains(theme) {
-                                self.videoList.append(video)
-                            }
-                        }
-                    }
-                    dispatchGroup.leave()
-                }
-                
-                dispatchGroup.notify(queue: .main) {
-                    let sizeLimit = min(self.articleList.count / 5, self.videoList.count)
-                    for i in 0..<sizeLimit {
-                        let videoToInsert = Article(video: self.videoList[i])
-                        self.articleList.insert(videoToInsert, at: (i+1)*5)
-                    }
-                    
-                    self.collectionView?.reloadData()
-                    self.collectionViewLayout.invalidateLayout()
-                    self.clearLoading()
-                    self.subscriptionsDidChange = false
-                    self.didLogin = false
-                    self.isFirstTimeLogin = false
-                    self.wasRefreshCalled = false
-                }
-            } else {
-                dispatchGroup.notify(queue: .main) {
-                    self.collectionView?.reloadData()
-                    self.collectionViewLayout.invalidateLayout()
-                    self.clearLoading()
-                    self.subscriptionsDidChange = false
-                    self.didLogin = false
-                    self.isFirstTimeLogin = false
-                    self.wasRefreshCalled = false
+                if self.didLaunch || self.feedDidChange {
+                    self.getFeed(for: articles)
+                    self.feedDidChange = false
+                } else {
+                    self.hitsArticles = articles
+                    let gesture = UITapGestureRecognizer(target: self, action: #selector(self.didTapNewContentPrompt(_:)))
+                    self.newContentPrompt.addGestureRecognizer(gesture)
+                    self.newContentPrompt.isHidden = false
                 }
             }
         } else {
@@ -668,56 +781,22 @@ class FeedViewController: MDCCollectionViewController {
     }
     
     @objc func getTrendingFeed() {
-        self.view.makeToast("Trending")
+        self.view.makeToast("Trending", point: toastPosition, title: nil, image: nil, completion: nil)
         if selectedFeed != "Trending" || wasRefreshCalled {
-            resetView()
+            dataSource.removeFeedObservers()
             selectedFeed = "Trending"
+            feedDidChange = true
+            self.newContentPrompt.isHidden = true
             
-            let dispatchGroup = DispatchGroup()
-            dispatchGroup.enter()
             dataSource.getTrendingFeed() { (articles) in
-                print("articlesCount: \(articles.count)")
-                self.articleList = articles
-                dispatchGroup.leave()
-            }
-            
-            let showVideos = defaults.bool(forKey: "videosInFeedPref")
-            print("showVideos: \(showVideos)")
-            if showVideos {
-                let channelsToRemove = defaults.array(forKey: "videosInFeedChannelsToRemove") as? [String] ?? [String]()
-                
-                dispatchGroup.enter()
-                dataSource.getVideosForMainFeed { (videos) in
-                    let themes = ResourcesDay.THEME_LIST.sorted()
-                    for video in videos {
-                        if let source = video.source, let theme = video.mainTheme {
-                            if !channelsToRemove.contains(source) && themes.contains(theme) {
-                                self.videoList.append(video)
-                            }
-                        }
-                    }
-                    self.videoList.shuffle()
-                    dispatchGroup.leave()
-                }
-                
-                dispatchGroup.notify(queue: .main) {
-                    let sizeLimit = min(self.articleList.count / 5, self.videoList.count)
-                    for i in 0..<sizeLimit {
-                        let videoToInsert = Article(video: self.videoList[i])
-                        self.articleList.insert(videoToInsert, at: (i+1)*5)
-                    }
-                    
-                    self.collectionView?.reloadData()
-                    self.collectionViewLayout.invalidateLayout()
-                    self.clearLoading()
-                    self.wasRefreshCalled = false
-                }
-            } else {
-                dispatchGroup.notify(queue: .main) {
-                    self.collectionView?.reloadData()
-                    self.collectionViewLayout.invalidateLayout()
-                    self.clearLoading()
-                    self.wasRefreshCalled = false
+                if self.didLaunch || self.feedDidChange {
+                    self.getFeed(for: articles)
+                    self.feedDidChange = false
+                } else {
+                    self.hitsArticles = articles
+                    let gesture = UITapGestureRecognizer(target: self, action: #selector(self.didTapNewContentPrompt(_:)))
+                    self.newContentPrompt.addGestureRecognizer(gesture)
+                    self.newContentPrompt.isHidden = false
                 }
             }
         } else {
@@ -741,55 +820,22 @@ class FeedViewController: MDCCollectionViewController {
     }
     
     @objc func getDealsFeed() {
-        self.view.makeToast("Deals")
+        self.view.makeToast("Deals", point: toastPosition, title: nil, image: nil, completion: nil)
         if selectedFeed != "Deals" || wasRefreshCalled {
-            resetView()
+            dataSource.removeFeedObservers()
             selectedFeed = "Deals"
+            feedDidChange = true
+            self.newContentPrompt.isHidden = true
             
-            let dispatchGroup = DispatchGroup()
-            dispatchGroup.enter()
             dataSource.getDealsFeed() { (articles) in
-                print("articlesCount: \(articles.count)")
-                self.articleList = articles
-                dispatchGroup.leave()
-            }
-            
-            let showVideos = defaults.bool(forKey: "videosInFeedPref")
-            print("showVideos: \(showVideos)")
-            if showVideos {
-                let channelsToRemove = defaults.array(forKey: "videosInFeedChannelsToRemove") as? [String] ?? [String]()
-                
-                dispatchGroup.enter()
-                dataSource.getVideosForMainFeed { (videos) in
-                    let themes = ["Deals"]
-                    for video in videos {
-                        if let source = video.source, let theme = video.mainTheme {
-                            if !channelsToRemove.contains(source) && themes.contains(theme) {
-                                self.videoList.append(video)
-                            }
-                        }
-                    }
-                    dispatchGroup.leave()
-                }
-                
-                dispatchGroup.notify(queue: .main) {
-                    let sizeLimit = min(self.articleList.count / 5, self.videoList.count)
-                    for i in 0..<sizeLimit {
-                        let videoToInsert = Article(video: self.videoList[i])
-                        self.articleList.insert(videoToInsert, at: (i+1)*5)
-                    }
-                    
-                    self.collectionView?.reloadData()
-                    self.collectionViewLayout.invalidateLayout()
-                    self.clearLoading()
-                    self.wasRefreshCalled = false
-                }
-            } else {
-                dispatchGroup.notify(queue: .main) {
-                    self.collectionView?.reloadData()
-                    self.collectionViewLayout.invalidateLayout()
-                    self.clearLoading()
-                    self.wasRefreshCalled = false
+                if self.didLaunch || self.feedDidChange {
+                    self.getFeed(for: articles)
+                    self.feedDidChange = false
+                } else {
+                    self.hitsArticles = articles
+                    let gesture = UITapGestureRecognizer(target: self, action: #selector(self.didTapNewContentPrompt(_:)))
+                    self.newContentPrompt.addGestureRecognizer(gesture)
+                    self.newContentPrompt.isHidden = false
                 }
             }
         } else {
@@ -812,35 +858,135 @@ class FeedViewController: MDCCollectionViewController {
         }
     }
     
+    @objc func didTapNewContentPrompt(_ sender: UITapGestureRecognizer) {
+        getFeed(for: self.hitsArticles)
+        newContentPrompt.isHidden = true
+    }
+    
+    func getFeed(for articles: [Article]) {
+        print("articlesCount: \(articles.count)")
+        removeArticleObservers()
+        self.articleList = articles
+        self.articleListIds.removeAll()
+        
+        let showVideos = self.defaults.bool(forKey: "videosInFeedPref")
+        print("showVideos: \(showVideos)")
+        if showVideos {
+            let channelsToRemove = self.defaults.array(forKey: "videosInFeedChannelsToRemove") as? [String] ?? [String]()
+            
+            self.dataSource.getVideosForMainFeed { (videos) in
+                var themes = [String]()
+                if self.selectedFeed == "Subscriptions" {
+                    themes = self.defaults.string(forKey: "themeKey")?.components(separatedBy: "_") ?? ResourcesDay.THEME_LIST.sorted()
+                } else if self.selectedFeed == "Trending" {
+                    themes = ResourcesDay.THEME_LIST.sorted()
+                } else if self.selectedFeed == "Deals" {
+                    themes = ["Deals"]
+                } else if self.selectedFeed == "FilteredTheme" {
+                    guard let theme = self.specificFeed else { return }
+                    themes = [theme]
+                }
+                for video in videos {
+                    if let source = video.source, let theme = video.mainTheme {
+                        if !channelsToRemove.contains(source) && themes.contains(theme) {
+                            self.videoList.append(video)
+                        }
+                    }
+                }
+                self.videoList.shuffle()
+                
+                let sizeLimit = min(self.articleList.count / 5, self.videoList.count)
+                for i in 0..<sizeLimit {
+                    let videoToInsert = Article(video: self.videoList[i])
+                    self.articleList.insert(videoToInsert, at: (i+1)*5)
+                }
+                
+                DispatchQueue.main.async {
+                    self.collectionView?.reloadData()
+                    self.collectionViewLayout.invalidateLayout()
+                    self.clearLoading()
+                    self.subscriptionsDidChange = false
+                    self.didLogin = false
+                    self.isFirstTimeLogin = false
+                    self.wasRefreshCalled = false
+                    self.didLaunch = false
+                }
+                
+                for article in self.articleList {
+                    if let article = article as? Article {
+                        self.articleListIds.append(article.objectID)
+                        
+                        if article.type == "article" || article.type == "post" {
+                            self.dataSource.observeSingleArticle(articleId: article.objectID) { (item) in
+                                if let index = self.articleListIds.firstIndex(of: item.objectID) {
+                                    print("article returned for index \(index): \(item.objectID)")
+                                    self.articleList[index] = item
+                                    self.collectionView?.reloadData()
+                                }
+                            }
+                        } else if article.type == "video" {
+                            self.dataSource.observeSingleVideo(id: article.objectID) { video in
+                                let convertedVideo = Article(video: video)
+                                if let index = self.articleListIds.firstIndex(of: convertedVideo.objectID) {
+                                    print("video returned for index \(index): \(convertedVideo.objectID)")
+                                    self.articleList[index] = convertedVideo
+                                    self.collectionView?.reloadData()
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                self.loadAds()
+            }
+        } else {
+            DispatchQueue.main.async {
+                self.collectionView?.reloadData()
+                self.collectionViewLayout.invalidateLayout()
+                self.clearLoading()
+                self.subscriptionsDidChange = false
+                self.didLogin = false
+                self.isFirstTimeLogin = false
+                self.wasRefreshCalled = false
+                self.didLaunch = false
+            }
+                
+            for article in self.articleList {
+                if let article = article as? Article {
+                    self.articleListIds.append(article.objectID)
+                    self.dataSource.observeSingleArticle(articleId: article.objectID) { (item) in
+                        if let index = self.articleListIds.firstIndex(of: item.objectID) {
+                            self.articleList[index] = item
+                            self.collectionView?.reloadData()
+                        }
+                    }
+                }
+            }
+            
+            self.loadAds()
+        }
+    }
+    
     func getFilteredThemeFeed(theme: String?) {
         if selectedFeed != "Deals" || wasRefreshCalled {
             if let theme = theme {
-                self.view.makeToast(theme)
+                self.view.makeToast(theme, point: toastPosition, title: nil, image: nil, completion: nil)
                 self.masterFeed = self.selectedFeed
-                resetView()
+                dataSource.removeFeedObservers()
                 self.selectedFeed = "FilteredTheme"
                 self.specificFeed = theme
-                
-//                switch masterFeed {
-//                case "Subscriptions":
-//                    self.subscriptionsButton.tintColor = self.colorAccent
-//                case "Trending":
-//                    self.trendingButton.tintColor = self.colorAccent
-//                case "Deals":
-//                    self.dealsButton.tintColor = self.colorAccent
-//                default:
-//                    self.subscriptionsButton.tintColor = self.colorAccent
-//                }
                 
                 let themeKey = theme
                 let themeFilter = "mainTheme: \"\(theme)\""
                 dataSource.getFilteredThemeFeed(key: themeKey, filters: themeFilter) { (articles) in
-                    self.articleList = articles
-                    
-                    self.collectionView?.reloadData()
-                    self.collectionViewLayout.invalidateLayout()
-                    self.clearLoading()
-                    self.wasRefreshCalled = false
+                    if self.didLaunch {
+                        self.getFeed(for: articles)
+                    } else {
+                        self.hitsArticles = articles
+                        let gesture = UITapGestureRecognizer(target: self, action: #selector(self.didTapNewContentPrompt(_:)))
+                        self.newContentPrompt.addGestureRecognizer(gesture)
+                        self.newContentPrompt.isHidden = false
+                    }
                 }
             }
         } else {
@@ -866,11 +1012,20 @@ class FeedViewController: MDCCollectionViewController {
     }
     
     @objc func getSavedFeed() {
-        
-        self.view.makeToast("Saved Articles")
+        self.view.makeToast("Saved Articles", point: toastPosition, title: nil, image: nil, completion: nil)
         if selectedFeed != "Saved" || wasRefreshCalled {
             dataSource.getSavedFeed() { (articles) in
-                self.savedArticleList = articles
+                var articleList = [Article]()
+                articleList.append(contentsOf: articles)
+                articleList.sort(by: { (o1, o2) -> Bool in
+                    if let uid = self.uid {
+                        let saveDate1 = o1.savers?[uid] ?? 0
+                        let saveDate2 = o2.savers?[uid] ?? 0
+                        return saveDate2 < saveDate1
+                    }
+                    return true
+                })
+                self.savedArticleList = articleList
                 
                 self.clearLoading()
                 
@@ -882,8 +1037,7 @@ class FeedViewController: MDCCollectionViewController {
     }
     
     @objc func getNearbyFeed() {
-        
-        self.view.makeToast("Nearby")
+        self.view.makeToast("Nearby", point: toastPosition, title: nil, image: nil, completion: nil)
         if selectedFeed != "Nearby" {
             self.clearLoading()
             self.performSegue(withIdentifier: "Nearby", sender: self)
@@ -893,7 +1047,7 @@ class FeedViewController: MDCCollectionViewController {
     }
     
     @objc func getVideoFeed() {
-        self.view.makeToast("Videos")
+        self.view.makeToast("Videos", point: toastPosition, title: nil, image: nil, completion: nil)
         self.performSegue(withIdentifier: "Videos", sender: self)
     }
     
@@ -929,7 +1083,8 @@ class FeedViewController: MDCCollectionViewController {
             if user.isEmailVerified {
                 performSegue(withIdentifier: "Create Post", sender: self)
             } else {
-                self.view.makeToast("Please verify your email before posting!")
+                let toastMessage = "Please verify your email before posting!"
+                self.view.makeToast(toastMessage, point: toastPosition, title: nil, image: nil, completion: nil)
             }
         }
     }
@@ -940,19 +1095,19 @@ class FeedViewController: MDCCollectionViewController {
     
     @IBAction func didTapNavBarTitle(_ sender: Any) {
         let dropdown = DropDown()
-        let subscribedThemes = self.defaults.string(forKey: "themeKey")?.components(separatedBy: "_")
+        let subscribedThemes = self.defaults.string(forKey: "themeKey")?.components(separatedBy: "_") ?? ResourcesDay.THEME_LIST.sorted()
         let themeList = ResourcesDay.THEME_LIST.sorted()
         dropdown.anchorView = self.navBarTitleButton
         
         switch self.selectedFeed {
         case "Subscriptions":
-            dropdown.dataSource = subscribedThemes ?? []
+            dropdown.dataSource = subscribedThemes
         case "Trending":
             dropdown.dataSource = themeList
         case "Deals":
             return
         default:
-            dropdown.dataSource = subscribedThemes ?? []
+            dropdown.dataSource = subscribedThemes
         }
         
         dropdown.width = 200
@@ -963,12 +1118,10 @@ class FeedViewController: MDCCollectionViewController {
         dropdown.selectionAction = { (index: Int, item: String) in
             switch self.masterFeed {
             case "Subscriptions":
-                guard let subscribedThemes = subscribedThemes else { return }
                 self.getFilteredThemeFeed(theme: subscribedThemes[index])
             case "Trending":
                 self.getFilteredThemeFeed(theme: themeList[index])
             default:
-                guard let subscribedThemes = subscribedThemes else { return }
                 self.getFilteredThemeFeed(theme: subscribedThemes[index])
             }
         }
@@ -998,10 +1151,13 @@ class FeedViewController: MDCCollectionViewController {
                     do {
                         try Auth.auth().signOut()
                     } catch {
-                        
+                        print("error logging out")
                     }
                     self.resetView()
+                    self.removeArticleObservers()
                     self.selectedFeed = nil
+                    self.userButton.tintColor = .white
+                    self.isUserPremium = false
                     self.launchLogin()
                 }))
                 self.present(ac, animated: true, completion: nil)
@@ -1085,10 +1241,31 @@ class FeedViewController: MDCCollectionViewController {
     }
     
     override func viewDidDisappear(_ animated: Bool) {
+        print("viewDidDisappear")
         if let _ = Auth.auth().currentUser {
             self.dataSource.removePremiumStatusObserver()
         }
         dataSource.removeFeedObservers()
+        
+        removeArticleObservers()
+        
+        for id in seenList.keys {
+            dataSource.logSeenItemEvent(uid: uid!, itemId: id, type: seenList[id]!)
+        }
+        seenList.removeAll()
+    }
+    
+    func removeArticleObservers() {
+        // remove all observers for previous article list
+        for article in self.articleList {
+            if let article = article as? Article {
+                if article.type == "article" || article.type == "post" {
+                    self.dataSource.removeArticleObserver(article.objectID)
+                } else if article.type == "video" {
+                    self.dataSource.removeVideoObserver(article.objectID)
+                }
+            }
+        }
     }
     
     override func numberOfSections(in collectionView: UICollectionView) -> Int {
@@ -1100,53 +1277,157 @@ class FeedViewController: MDCCollectionViewController {
     }
     
     override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        let article = articleList[indexPath.item]
-        if article.type == "video" {
-            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "VideoMainFeedCvCell", for: indexPath) as! VideoFeedCvCell
-            cell.delegate = self
-            let video = Video(article: article)
-            cell.video = video
-            cell.textColor = colorCardText
-            cell.textColorFaint = colorCardTextFaint
-            
-            cell.backgroundColor = colorCardBackground
-            
-            cell.sourceLabelWidthConstraint.constant = cellWidth!*7/24
-            
-            // get saveButton for highlighting
-            if indexPath.item == 0 {
-                self.saveButtonToHighlight = cell.saveButton
-            }
-            
-            cell.populateCell(video: video)
-            return cell
-        } else if article.type == "post" {
-            if (article.link != nil && article.link != "") {
-                let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "FeedCvCellPostWithArticle", for: indexPath) as! FeedCvCellPostWithArticle
+        if let article = articleList[indexPath.item] as? Article {
+            if article.type == "video" {
+                let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "VideoMainFeedCvCell", for: indexPath) as! VideoFeedCvCell
                 cell.delegate = self
-                cell.article = article
+                let video = Video(article: article)
+                cell.video = video
                 cell.textColor = colorCardText
                 cell.textColorFaint = colorCardTextFaint
+                cell.textColorRead = colorCardTextRead
                 
                 cell.backgroundColor = colorCardBackground
                 
-                cell.sourceLabelWidthConstraint.constant = cellWidth!/3
+                cell.sourceLabelWidthConstraint.constant = cellWidth!*7/24
                 
                 // get saveButton for highlighting
                 if indexPath.item == 0 {
                     self.saveButtonToHighlight = cell.saveButton
                 }
                 
-                cell.populateContent(article: article, selectedFeed: self.selectedFeed!)
+                cell.populateCell(video: video)
                 return cell
-            } else {
-                if (article.postImageUrl != nil && article.postImageUrl != "") {
-                    if (article.title != article.postText) {
-                        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "FeedCvCellPostWithArticle", for: indexPath) as! FeedCvCellPostWithArticle
+            } else if article.type == "post" {
+                if (article.link != nil && article.link != "") {
+                    let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "FeedCvCellPostWithArticle", for: indexPath) as! FeedCvCellPostWithArticle
+                    cell.delegate = self
+                    cell.article = article
+                    cell.textColor = colorCardText
+                    cell.textColorFaint = colorCardTextFaint
+                    
+                    cell.backgroundColor = colorCardBackground
+                    
+                    cell.sourceLabelWidthConstraint.constant = cellWidth!/3
+                    
+                    // get saveButton for highlighting
+                    if indexPath.item == 0 {
+                        self.saveButtonToHighlight = cell.saveButton
+                    }
+                    
+                    cell.populateContent(article: article, selectedFeed: self.selectedFeed!)
+                    return cell
+                } else {
+                    if (article.postImageUrl != nil && article.postImageUrl != "") {
+                        if (article.title != article.postText) {
+                            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "FeedCvCellPostWithArticle", for: indexPath) as! FeedCvCellPostWithArticle
+                            cell.delegate = self
+                            cell.article = article
+                            cell.textColor = colorCardText
+                            cell.textColorFaint = colorCardTextFaint
+                            cell.textColorRead = colorCardTextRead
+                            
+                            cell.backgroundColor = colorCardBackground
+                            
+                            cell.sourceLabelWidthConstraint.constant = cellWidth!/3
+                            
+                            // get saveButton for highlighting
+                            if indexPath.item == 0 {
+                                self.saveButtonToHighlight = cell.saveButton
+                            }
+                            
+                            cell.populateContent(article: article, selectedFeed: self.selectedFeed!)
+                            return cell
+                        } else {
+                            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "FeedCvCellPost", for: indexPath) as! FeedCvCellPost
+                            cell.delegate = self
+                            cell.article = article
+                            cell.textColor = colorCardText
+                            cell.textColorFaint = colorCardTextFaint
+                            cell.textColorRead = colorCardTextRead
+                            
+                            cell.backgroundColor = colorCardBackground
+                            
+                            cell.sourceLabelWidthConstraint.constant = cellWidth!/3
+                            
+                            // get saveButton for highlighting
+                            if indexPath.item == 0 {
+                                self.saveButtonToHighlight = cell.saveButton
+                            }
+                            
+                            cell.populateContent(article: article, selectedFeed: self.selectedFeed!)
+                            return cell
+                        }
+                    } else {
+                        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "FeedCvCellPostNoImage", for: indexPath) as! FeedCvCellPostNoImage
                         cell.delegate = self
                         cell.article = article
                         cell.textColor = colorCardText
                         cell.textColorFaint = colorCardTextFaint
+                        cell.textColorRead = colorCardTextRead
+                        
+                        cell.backgroundColor = colorCardBackground
+                        
+                        cell.sourceLabelWidthConstraint.constant = cellWidth!/3
+                        
+                        // get saveButton for highlighting
+                        if indexPath.item == 0 {
+                            self.saveButtonToHighlight = cell.saveButton
+                        }
+                        
+                        cell.populateContent(article: article, selectedFeed: self.selectedFeed!)
+                        return cell
+                    }
+                }
+            } else {
+                if (article.imageUrl != nil && article.imageUrl != "") {
+                    if (article.duplicates?.count ?? 0 > 0) {
+                        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "FeedCvCellWithDuplicates", for: indexPath) as! FeedCvCellWithDuplicates
+                        cell.delegate = self
+                        cell.article = article
+                        cell.textColor = colorCardText
+                        cell.textColorFaint = colorCardTextFaint
+                        cell.textColorRead = colorCardTextRead
+                        
+                        cell.backgroundColor = colorCardBackground
+                        
+                        cell.sourceLabelWidthConstraint.constant = cellWidth!*7/24
+                        
+                        // get saveButton for highlighting
+                        if indexPath.item == 0 {
+                            self.saveButtonToHighlight = cell.saveButton
+                        }
+                        
+                        cell.populateContent(article: article, selectedFeed: self.selectedFeed!)
+                        return cell
+                    } else {
+                        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "FeedCvCell", for: indexPath) as! FeedCvCell
+                        cell.delegate = self
+                        cell.article = article
+                        cell.textColor = colorCardText
+                        cell.textColorFaint = colorCardTextFaint
+                        cell.textColorRead = colorCardTextRead
+                        
+                        cell.backgroundColor = colorCardBackground
+                        
+                        cell.sourceLabelWidthConstraint.constant = cellWidth!*7/24
+                        
+                        // get saveButton for highlighting
+                        if indexPath.item == 0 {
+                            self.saveButtonToHighlight = cell.saveButton
+                        }
+                        
+                        cell.populateContent(article: article, selectedFeed: self.selectedFeed!)
+                        return cell
+                    }
+                } else {
+                    if (article.duplicates!.count > 0) {
+                        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "FeedCvCellNoImageWithDuplicates", for: indexPath) as! FeedCvCellNoImageWithDuplicates
+                        cell.delegate = self
+                        cell.article = article
+                        cell.textColor = colorCardText
+                        cell.textColorFaint = colorCardTextFaint
+                        cell.textColorRead = colorCardTextRead
                         
                         cell.backgroundColor = colorCardBackground
                         
@@ -1160,11 +1441,12 @@ class FeedViewController: MDCCollectionViewController {
                         cell.populateContent(article: article, selectedFeed: self.selectedFeed!)
                         return cell
                     } else {
-                        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "FeedCvCellPost", for: indexPath) as! FeedCvCellPost
+                        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "FeedCvCellNoImage", for: indexPath) as! FeedCvCellNoImage
                         cell.delegate = self
                         cell.article = article
                         cell.textColor = colorCardText
                         cell.textColorFaint = colorCardTextFaint
+                        cell.textColorRead = colorCardTextRead
                         
                         cell.backgroundColor = colorCardBackground
                         
@@ -1178,172 +1460,106 @@ class FeedViewController: MDCCollectionViewController {
                         cell.populateContent(article: article, selectedFeed: self.selectedFeed!)
                         return cell
                     }
-                } else {
-                    let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "FeedCvCellPostNoImage", for: indexPath) as! FeedCvCellPostNoImage
-                    cell.delegate = self
-                    cell.article = article
-                    cell.textColor = colorCardText
-                    cell.textColorFaint = colorCardTextFaint
-                    
-                    cell.backgroundColor = colorCardBackground
-                    
-                    cell.sourceLabelWidthConstraint.constant = cellWidth!/3
-                    
-                    // get saveButton for highlighting
-                    if indexPath.item == 0 {
-                        self.saveButtonToHighlight = cell.saveButton
-                    }
-                    
-                    cell.populateContent(article: article, selectedFeed: self.selectedFeed!)
-                    return cell
                 }
             }
         } else {
-            if (article.imageUrl != nil && article.imageUrl != "") {
-                if (article.duplicates?.count ?? 0 > 0) {
-                    let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "FeedCvCellWithDuplicates", for: indexPath) as! FeedCvCellWithDuplicates
-                    cell.delegate = self
-                    cell.article = article
-                    cell.textColor = colorCardText
-                    cell.textColorFaint = colorCardTextFaint
-                    
-                    cell.backgroundColor = colorCardBackground
-                    
-                    cell.sourceLabelWidthConstraint.constant = cellWidth!*7/24
-                    
-                    // get saveButton for highlighting
-                    if indexPath.item == 0 {
-                        self.saveButtonToHighlight = cell.saveButton
-                    }
-                    
-                    cell.populateContent(article: article, selectedFeed: self.selectedFeed!)
-                    return cell
-                } else {
-                    let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "FeedCvCell", for: indexPath) as! FeedCvCell
-                    cell.delegate = self
-                    cell.article = article
-                    cell.textColor = colorCardText
-                    cell.textColorFaint = colorCardTextFaint
-                    
-                    cell.backgroundColor = colorCardBackground
-                    
-                    cell.sourceLabelWidthConstraint.constant = cellWidth!*7/24
-                    
-                    // get saveButton for highlighting
-                    if indexPath.item == 0 {
-                        self.saveButtonToHighlight = cell.saveButton
-                    }
-                    
-                    cell.populateContent(article: article, selectedFeed: self.selectedFeed!)
-                    return cell
-                }
-            } else {
-                if (article.duplicates!.count > 0) {
-                    let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "FeedCvCellNoImageWithDuplicates", for: indexPath) as! FeedCvCellNoImageWithDuplicates
-                    cell.delegate = self
-                    cell.article = article
-                    cell.textColor = colorCardText
-                    cell.textColorFaint = colorCardTextFaint
-                    
-                    cell.backgroundColor = colorCardBackground
-                    
-                    cell.sourceLabelWidthConstraint.constant = cellWidth!/3
-                    
-                    // get saveButton for highlighting
-                    if indexPath.item == 0 {
-                        self.saveButtonToHighlight = cell.saveButton
-                    }
-                    
-                    cell.populateContent(article: article, selectedFeed: self.selectedFeed!)
-                    return cell
-                } else {
-                    let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "FeedCvCellNoImage", for: indexPath) as! FeedCvCellNoImage
-                    cell.delegate = self
-                    cell.article = article
-                    cell.textColor = colorCardText
-                    cell.textColorFaint = colorCardTextFaint
-                    
-                    cell.backgroundColor = colorCardBackground
-                    
-                    cell.sourceLabelWidthConstraint.constant = cellWidth!/3
-                    
-                    // get saveButton for highlighting
-                    if indexPath.item == 0 {
-                        self.saveButtonToHighlight = cell.saveButton
-                    }
-                    
-                    cell.populateContent(article: article, selectedFeed: self.selectedFeed!)
-                    return cell
-                }
-            }
+            let nativeAd = articleList[indexPath.item] as! GADUnifiedNativeAd
+            nativeAd.rootViewController = self
+            
+            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "NativeAdCvCell", for: indexPath) as! NativeAdCvCell
+            cell.textColor = colorCardText
+            cell.textColorFaint = colorCardTextFaint
+            cell.backgroundColor = colorCardBackground
+            cell.populateContent(ad: nativeAd)
+            return cell
         }
     }
     
     override func collectionView(_ collectionView: UICollectionView, cellHeightAt indexPath: IndexPath) -> CGFloat {
-        let article = articleList[indexPath.item]
+        if let article = articleList[indexPath.item] as? Article {
         
-        if selectedFeed == "Saved" {
-            return 138
-        }
-        
-        let cellDefaultHeight: CGFloat = 116
-        let imageHeight = self.cellWidth! / 16.0 * 9.0
-        let duplicatesCvHeight: CGFloat = 8 + 131
-        
-        if article.type == "article" || article.type == "video" {
-            let tempTitleLabel = UILabel(frame: CGRect(x: 0, y: 0, width: self.cellWidth! - 24, height: CGFloat.greatestFiniteMagnitude))
-            tempTitleLabel.numberOfLines = 0
-            tempTitleLabel.lineBreakMode = .byWordWrapping
-            tempTitleLabel.font = UIFont.systemFont(ofSize: 18.0)
-            tempTitleLabel.text = article.title
-            tempTitleLabel.sizeToFit()
-            let titleHeight = tempTitleLabel.frame.height
-            
-            if article.type == "video" {
-                return cellDefaultHeight + titleHeight + imageHeight
+            if selectedFeed == "Saved" {
+                return 138
             }
             
-            if (article.imageUrl != nil && article.imageUrl != "") {
-                if (article.duplicates?.count ?? 0 > 0) {
-                    return cellDefaultHeight + titleHeight + imageHeight + duplicatesCvHeight
-                } else {
+            let cellDefaultHeight: CGFloat = 116
+            let imageHeight = self.cellWidth! / 16.0 * 9.0
+            let duplicatesCvHeight: CGFloat = 8 + 131
+            
+            if article.type == "article" || article.type == "video" {
+                let tempTitleLabel = UILabel(frame: CGRect(x: 0, y: 0, width: self.cellWidth! - 24, height: CGFloat.greatestFiniteMagnitude))
+                tempTitleLabel.numberOfLines = 0
+                tempTitleLabel.lineBreakMode = .byWordWrapping
+                tempTitleLabel.font = UIFont.systemFont(ofSize: 18.0)
+                tempTitleLabel.text = article.title
+                tempTitleLabel.sizeToFit()
+                let titleHeight = tempTitleLabel.frame.height
+                
+                if article.type == "video" {
                     return cellDefaultHeight + titleHeight + imageHeight
                 }
-            } else {
-                if (article.duplicates?.count ?? 0 > 0) {
-                    return cellDefaultHeight + titleHeight + duplicatesCvHeight
+                
+                if (article.imageUrl != nil && article.imageUrl != "") {
+                    if (article.duplicates?.count ?? 0 > 0) {
+                        return cellDefaultHeight + titleHeight + imageHeight + duplicatesCvHeight
+                    } else {
+                        return cellDefaultHeight + titleHeight + imageHeight
+                    }
                 } else {
-                    return cellDefaultHeight + titleHeight
+                    if (article.duplicates?.count ?? 0 > 0) {
+                        return cellDefaultHeight + titleHeight + duplicatesCvHeight
+                    } else {
+                        return cellDefaultHeight + titleHeight
+                    }
+                }
+            } else {
+                let tempTitleLabel = UILabel(frame: CGRect(x: 0, y: 0, width: self.cellWidth! - 24, height: CGFloat.greatestFiniteMagnitude))
+                tempTitleLabel.numberOfLines = 0
+                tempTitleLabel.lineBreakMode = .byWordWrapping
+                tempTitleLabel.font = UIFont.systemFont(ofSize: 18.0)
+                tempTitleLabel.text = article.postText
+                tempTitleLabel.sizeToFit()
+                let titleHeight = tempTitleLabel.frame.height
+                
+                if (article.link != nil && article.link != "") {
+                    let tempArticleTitleLabel = UILabel(frame: CGRect(x: 0, y: 0, width: self.cellWidth! - 148, height: CGFloat.greatestFiniteMagnitude))
+                    tempArticleTitleLabel.numberOfLines = 0
+                    tempArticleTitleLabel.lineBreakMode = .byWordWrapping
+                    tempArticleTitleLabel.font = UIFont.systemFont(ofSize: 16.0)
+                    tempArticleTitleLabel.text = article.postText
+                    tempArticleTitleLabel.sizeToFit()
+                    let articleTitleHeight = tempArticleTitleLabel.frame.height
+                    
+                    let articleCardHeightAdjustment = max(articleTitleHeight + 25, 90)
+                    
+                    return 144 + titleHeight + articleCardHeightAdjustment
+                } else {
+                    if (article.postImageUrl != nil && article.postImageUrl != "") {
+                        return cellDefaultHeight + titleHeight + imageHeight
+                    } else {
+                        return cellDefaultHeight + titleHeight
+                    }
                 }
             }
         } else {
-            let tempTitleLabel = UILabel(frame: CGRect(x: 0, y: 0, width: self.cellWidth! - 24, height: CGFloat.greatestFiniteMagnitude))
-            tempTitleLabel.numberOfLines = 0
-            tempTitleLabel.lineBreakMode = .byWordWrapping
-            tempTitleLabel.font = UIFont.systemFont(ofSize: 18.0)
-            tempTitleLabel.text = article.postText
-            tempTitleLabel.sizeToFit()
-            let titleHeight = tempTitleLabel.frame.height
+            let cellDefaultHeight: CGFloat = 79
+            let imageHeight = self.cellWidth! / 16.0 * 9.0
             
-            if (article.link != nil && article.link != "") {
-                let tempArticleTitleLabel = UILabel(frame: CGRect(x: 0, y: 0, width: self.cellWidth! - 148, height: CGFloat.greatestFiniteMagnitude))
-                tempArticleTitleLabel.numberOfLines = 0
-                tempArticleTitleLabel.lineBreakMode = .byWordWrapping
-                tempArticleTitleLabel.font = UIFont.systemFont(ofSize: 16.0)
-                tempArticleTitleLabel.text = article.postText
-                tempArticleTitleLabel.sizeToFit()
-                let articleTitleHeight = tempArticleTitleLabel.frame.height
-                
-                let articleCardHeightAdjustment = max(articleTitleHeight + 25, 90)
-                
-                return 144 + titleHeight + articleCardHeightAdjustment
-            } else {
-                if (article.postImageUrl != nil && article.postImageUrl != "") {
-                    return cellDefaultHeight + titleHeight + imageHeight
-                } else {
-                    return cellDefaultHeight + titleHeight
-                }
-            }
+            let nativeAd = articleList[indexPath.item] as! GADUnifiedNativeAd
+            let headline = nativeAd.headline ?? ""
+            let body = nativeAd.body ?? ""
+            var bodyText = headline
+            if body.count > headline.count { bodyText = body }
+            
+            let tempBodyLabel = UILabel(frame: CGRect(x: 0, y: 0, width: self.cellWidth! - 24, height: CGFloat.greatestFiniteMagnitude))
+            tempBodyLabel.numberOfLines = 0
+            tempBodyLabel.lineBreakMode = .byWordWrapping
+            tempBodyLabel.font = UIFont.systemFont(ofSize: 18.0)
+            tempBodyLabel.text = bodyText
+            tempBodyLabel.sizeToFit()
+            let bodyHeight = tempBodyLabel.frame.height
+            
+            return cellDefaultHeight + bodyHeight + imageHeight
         }
     }
     
@@ -1355,6 +1571,7 @@ class FeedViewController: MDCCollectionViewController {
                 highlightSaveButton(onComplete: {})
             }
         }
+        
 //        if indexPath.item == (self.articleList.count - self.loadTrigger) {
 //            let lastArticle = articleList.last
 //            switch selectedFeed {
@@ -1370,6 +1587,18 @@ class FeedViewController: MDCCollectionViewController {
 //
 //            }
 //        }
+    }
+    
+    override func collectionView(_ collectionView: UICollectionView, didEndDisplaying cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
+        if indexPath.item < articleList.count {
+            if let article = articleList[indexPath.item] as? Article {
+    //            print("endDisplay: \(indexPath.item), id: \(article.objectID), title: \(article.title)")
+                if !seenList.keys.contains(article.objectID) {
+        //            dataSource.logSeenItemEvent(uid: uid!, itemId: article.objectID, type: article.type)
+                    seenList[article.objectID] = article.type
+                }
+            }
+        }
     }
     
     func showLoading() {
@@ -1467,7 +1696,6 @@ extension FeedViewController: FeedCvCellDelegate {
             
             Analytics.logEvent(AnalyticsEventShare, parameters: [
                 AnalyticsParameterItemID: article.objectID,
-                AnalyticsParameterItemName: article.title ?? "",
                 AnalyticsParameterItemCategory: article.mainTheme ?? "",
                 "item_source": article.source ?? "",
                 AnalyticsParameterContentType: article.type
@@ -1537,7 +1765,8 @@ extension FeedViewController: FeedCvCellDelegate {
         dispatchGroup.enter()
         dataSource.updateUserVote(article: article, actionIsUpvote: true) { (userStatus) in
             if let userStatus = userStatus {
-                self.view.makeToast("Congratulations! You have grown into a \(userStatus)")
+                let toastMessage = "Congratulations! You have grown into a \(userStatus)"
+                self.view.makeToast(toastMessage, point: self.toastPosition, title: nil, image: nil, completion: nil)
             }
             dispatchGroup.leave()
         }
@@ -1579,7 +1808,8 @@ extension FeedViewController: FeedCvCellDelegate {
         dispatchGroup.enter()
         dataSource.updateUserVote(article: article, actionIsUpvote: false) { (userStatus) in
             if let userStatus = userStatus {
-                self.view.makeToast("Congratulations! You have grown into a \(userStatus)")
+                let toastMessage = "Congratulations! You have grown into a \(userStatus)"
+                self.view.makeToast(toastMessage, point: self.toastPosition, title: nil, image: nil, completion: nil)
             }
             dispatchGroup.leave()
         }
@@ -1609,14 +1839,6 @@ extension FeedViewController: FeedCvCellDelegate {
 extension FeedViewController: VideoFeedCvCellDelegate {
     
     func openVideo(_ video: Video) {
-        Analytics.logEvent(AnalyticsEventSelectContent, parameters: [
-            AnalyticsParameterItemID: video.objectID,
-            AnalyticsParameterItemName: video.title ?? "",
-            AnalyticsParameterItemCategory: video.mainTheme ?? "",
-            "item_source": video.source ?? "",
-            AnalyticsParameterContentType: video.type
-            ])
-        
         let vc = mainStoryboard.instantiateViewController(withIdentifier: "YTPlayer") as? YTPlayerViewController
         vc?.videoId = String(video.objectID.suffix(11))
         PIPKit.show(with: vc!)
@@ -1630,7 +1852,7 @@ extension FeedViewController: VideoFeedCvCellDelegate {
             
             Analytics.logEvent(AnalyticsEventShare, parameters: [
                 AnalyticsParameterItemID: video?.objectID ?? "",
-                AnalyticsParameterItemName: video?.title ?? "",
+                AnalyticsParameterItemCategory: video?.mainTheme ?? "",
                 "item_source": video?.source ?? "",
                 AnalyticsParameterContentType: video?.type ?? ""
                 ])
@@ -1701,7 +1923,8 @@ extension FeedViewController: VideoFeedCvCellDelegate {
         dispatchGroup.enter()
         dataSource.updateUserVote(video: video, actionIsUpvote: true) { (userStatus) in
             if let userStatus = userStatus {
-                self.view.makeToast("Congratulations! You have grown into a \(userStatus)")
+                let toastMessage = "Congratulations! You have grown into a \(userStatus)"
+                self.view.makeToast(toastMessage, point: self.toastPosition, title: nil, image: nil, completion: nil)
             }
             dispatchGroup.leave()
         }
@@ -1743,7 +1966,8 @@ extension FeedViewController: VideoFeedCvCellDelegate {
         dispatchGroup.enter()
         dataSource.updateUserVote(video: video, actionIsUpvote: false) { (userStatus) in
             if let userStatus = userStatus {
-                self.view.makeToast("Congratulations! You have grown into a \(userStatus)")
+                let toastMessage = "Congratulations! You have grown into a \(userStatus)"
+                self.view.makeToast(toastMessage, point: self.toastPosition, title: nil, image: nil, completion: nil)
             }
             dispatchGroup.leave()
         }
@@ -1824,13 +2048,13 @@ extension UIViewController {
     }
     
     func isUserEmailVerified() -> (Bool) {
-        let appDelegate = UIApplication.shared.delegate as! AppDelegate
-        return appDelegate.isUserEmailVerified
+        let globals = Globals.instance
+        return globals.isUserEmailVerified
     }
     
     func hasOpenedArticle() -> (Bool) {
-        let appDelegate = UIApplication.shared.delegate as! AppDelegate
-        return appDelegate.hasOpenedArticle
+        let globals = Globals.instance
+        return globals.hasOpenedArticle
     }
 }
 
@@ -1849,7 +2073,8 @@ extension FeedViewController: MDCBottomNavigationBarDelegate {
             if isUserPremium {
                 self.getNearbyFeed()
             } else {
-                self.view.makeToast("Refer a friend using the Share App Invite feature to access this premium feature!")
+                let toastMessage = "Refer a friend using the Share App Invite feature to access this premium feature!"
+                self.view.makeToast(toastMessage, point: self.toastPosition, title: nil, image: nil, completion: nil)
             }
         } else if item.tag == 5 {
             self.getVideoFeed()
@@ -1859,7 +2084,7 @@ extension FeedViewController: MDCBottomNavigationBarDelegate {
 
 extension FeedViewController: CreatePostDelegate {
     func postCreated() {
-        dismiss(animated: true, completion: { self.view.makeToast("Post created!") })
+        dismiss(animated: true, completion: { self.view.makeToast("Post Created!", point: self.toastPosition, title: nil, image: nil, completion: nil) })
     }
 }
 
@@ -1894,3 +2119,44 @@ extension FeedViewController: CLLocationManagerDelegate {
     }
 }
 
+extension FeedViewController: GADUnifiedNativeAdLoaderDelegate {
+    func adLoader(_ adLoader: GADAdLoader, didFailToReceiveAdWithError error: GADRequestError) {
+        print("\(adLoader) failed with error: \(error.localizedDescription)")
+    }
+    
+    func adLoader(_ adLoader: GADAdLoader, didReceive nativeAd: GADUnifiedNativeAd) {
+        print("Received native ad: \(nativeAd)")
+        adList.append(nativeAd)
+    }
+    
+    func adLoaderDidFinishLoading(_ adLoader: GADAdLoader) {
+        addNativeAdsToFeed()
+        self.collectionView?.reloadData()
+    }
+    
+    func loadAds() {
+        let options = GADMultipleAdsAdLoaderOptions()
+        options.numberOfAds = 5
+        adLoader = GADAdLoader(adUnitID: self.nativeAdUnitId, rootViewController: self, adTypes: [.unifiedNative], options: [options])
+        adLoader.delegate = self
+        adLoader.load(GADRequest())
+    }
+    
+    func addNativeAdsToFeed() {
+        if adList.count <= 0 {
+            return
+        }
+        
+        var index = 3
+        let interval = 10
+        for ad in adList {
+            if index < articleList.count {
+                articleList.insert(ad, at: index)
+                articleListIds.insert("0", at: index)
+                index += interval
+            } else {
+                break
+            }
+        }
+    }
+}

@@ -11,7 +11,7 @@ import SearchTextField
 import RSSelectionMenu
 import CoreLocation
 
-class NearbyViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, CLLocationManagerDelegate {
+class NearbyViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, CLLocationManagerDelegate, UITextFieldDelegate {
     
     @IBOutlet weak var backButton: UIBarButtonItem!
     @IBOutlet weak var filterButton: UIBarButtonItem!
@@ -19,6 +19,13 @@ class NearbyViewController: UIViewController, UITableViewDelegate, UITableViewDa
     @IBOutlet weak var searchBar: UISearchBar!
     @IBOutlet weak var searchBackgroundView: UIView!
     @IBOutlet weak var searchTextField: SearchTextField!
+    @IBOutlet weak var searchTypeStackView: UIStackView!
+    @IBOutlet weak var searchMrtView: UIView!
+    @IBOutlet weak var searchMrtTextView: UILabel!
+    @IBOutlet weak var searchMrtTick: UIImageView!
+    @IBOutlet weak var searchKeywordView: UIView!
+    @IBOutlet weak var searchKeywordTextView: UILabel!
+    @IBOutlet weak var searchKeywordTick: UIImageView!
     @IBOutlet weak var locationBackgroundView: UIView!
     @IBOutlet weak var locationLabel: UILabel!
     @IBOutlet weak var tableView: UITableView!
@@ -29,6 +36,9 @@ class NearbyViewController: UIViewController, UITableViewDelegate, UITableViewDa
     
     var nearbyList = [Article]()
     var filteredNearbyList = [Article]()
+    var isMrtChecked = true
+    var isKeywordChecked = false
+    var keywordSearchText: String?
     
     let themeArray = ResourcesDay.THEME_LIST
     var selectedThemes = [String]()
@@ -38,6 +48,11 @@ class NearbyViewController: UIViewController, UITableViewDelegate, UITableViewDa
     var filteredStationNames = [String]()
     var selectedMrtStation: String?
     var locale: String?
+    
+    var address: String?
+    var latitude: Double?
+    var longitude: Double?
+    var radius: Double = 1500
     
     let dataSource = DataSource.instance
     
@@ -63,6 +78,10 @@ class NearbyViewController: UIViewController, UITableViewDelegate, UITableViewDa
             }
         }
         
+        if let keyword = keywordSearchText {
+            selectKeywordButton()
+        }
+        
         tableView.dataSource = self
         tableView.delegate = self
         
@@ -74,6 +93,9 @@ class NearbyViewController: UIViewController, UITableViewDelegate, UITableViewDa
             self.mrtStationNames = Array(stations.keys).sorted()
             self.searchTextField.filterStrings(self.mrtStationNames)
         }
+        
+        searchTextField.returnKeyType = .search
+        searchTextField.delegate = self
         
 //        searchTextField.userStoppedTypingHandler = {
 //            self.filteredStationNames.removeAll()
@@ -87,7 +109,21 @@ class NearbyViewController: UIViewController, UITableViewDelegate, UITableViewDa
         
         searchTextField.itemSelectionHandler = { filteredResults, itemPosition in
             let item = filteredResults[itemPosition]
-            self.searchNearbyArticles(station: item.title)
+            if self.isMrtChecked {
+                self.selectedMrtStation = item.title
+                self.searchTextField.text = self.selectedMrtStation
+                self.searchNearbyArticles(station: self.selectedMrtStation!, keyword: self.keywordSearchText)
+                return
+            }
+            
+            if self.isKeywordChecked {
+                self.keywordSearchText = item.title
+                if let station = self.selectedMrtStation {
+                    self.searchNearbyArticles(station: station, keyword: self.keywordSearchText)
+                } else {
+                    self.getNearbyFeed(lat: self.latitude!, lng: self.longitude!, address: self.address!, radius: self.radius, keyword: self.keywordSearchText)
+                }
+            }
         }
         
         self.filteredNearbyList = self.nearbyList
@@ -106,16 +142,61 @@ class NearbyViewController: UIViewController, UITableViewDelegate, UITableViewDa
         }
         NotificationCenter.default.addObserver(self, selector: #selector(nightModeEnabled), name: .nightModeOn, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(nightModeDisabled), name: .nightModeOff, object: nil)
+        
+        let mrtTapGesture = UITapGestureRecognizer(target: self, action: #selector(self.selectMrtButton))
+        self.searchMrtView.addGestureRecognizer(mrtTapGesture)
+        let keywordTapGesture = UITapGestureRecognizer(target: self, action: #selector(self.selectKeywordButton))
+        self.searchKeywordView.addGestureRecognizer(keywordTapGesture)
+        
     }
     
-    func searchNearbyArticles(station: String) {
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        guard let text = textField.text else { return true }
+        if isMrtChecked {
+            var address = ""
+            var isStationFound = false
+            for station in mrtStationNames {
+                if station.lowercased().contains(text.lowercased()) {
+                    address = station
+                    selectedMrtStation = station
+                    isStationFound = true
+                }
+            }
+            
+            if !isStationFound {
+                self.view.makeToast("Please choose from one of the MRT Stations suggested")
+            }
+            
+            searchNearbyArticles(station: address, keyword: keywordSearchText)
+            return true
+        }
+        
+        if isKeywordChecked {
+            keywordSearchText = text
+            if let station = selectedMrtStation {
+                searchNearbyArticles(station: station, keyword: keywordSearchText)
+            } else {
+                getNearbyFeed(lat: self.latitude!, lng: self.longitude!, address: self.address!, radius: self.radius, keyword: self.keywordSearchText)
+            }
+            return true
+        }
+        return true
+    }
+    
+    func searchNearbyArticles(station: String, keyword: String? = nil) {
         if let location = self.mrtStationMap[station] {
             guard let lat = location["latitude"] as? Double, let lng = location["longitude"] as? Double else {
                 self.locationLabel.text = "Could not get location for \(station)"
                 return
             }
-            self.locationLabel.text = "Fetching articles near \(station)"
-            self.getNearbyFeed(lat: lat, lng: lng, address: station, radius: 2000)
+            var search = keyword
+            if search?.trimmingCharacters(in: .whitespacesAndNewlines) == "" { search = nil }
+            if let search = search {
+                self.locationLabel.text = "Fetching articles about \(search) near \(station)"
+            } else {
+                self.locationLabel.text = "Fetching articles near \(station)"
+            }
+            self.getNearbyFeed(lat: lat, lng: lng, address: station, radius: self.radius, keyword: search)
         } else {
             self.locationLabel.text = "Could not get location for \(station)"
         }
@@ -137,8 +218,13 @@ class NearbyViewController: UIViewController, UITableViewDelegate, UITableViewDa
         self.tableView.backgroundColor = ResourcesNight.CARD_BG_COLOR
         self.locationBackgroundView.backgroundColor = ResourcesNight.COLOR_BG_MAIN
         self.searchTextField.theme = SearchTextFieldTheme.darkTheme()
+        self.searchBackgroundView.backgroundColor = ResourcesNight.COLOR_BG_MAIN
         
         textColor = ResourcesNight.COLOR_DEFAULT_TEXT
+        self.searchMrtTextView.textColor = ResourcesNight.COLOR_DEFAULT_TEXT
+        self.searchKeywordTextView.textColor = ResourcesNight.COLOR_DEFAULT_TEXT
+        self.searchMrtTick.tintColor = ResourcesNight.COLOR_ACCENT
+        self.searchKeywordTick.tintColor = ResourcesNight.COLOR_ACCENT
         self.locationLabel.textColor = textColor
     }
     
@@ -148,8 +234,13 @@ class NearbyViewController: UIViewController, UITableViewDelegate, UITableViewDa
         self.tableView.backgroundColor = ResourcesDay.CARD_BG_COLOR
         self.locationBackgroundView.backgroundColor = ResourcesDay.COLOR_BG_MAIN
         self.searchTextField.theme = SearchTextFieldTheme.lightTheme()
+        self.searchBackgroundView.backgroundColor = ResourcesDay.COLOR_BG_MAIN
         
         textColor = ResourcesDay.COLOR_DEFAULT_TEXT
+        self.searchMrtTextView.textColor = ResourcesDay.COLOR_DEFAULT_TEXT
+        self.searchKeywordTextView.textColor = ResourcesDay.COLOR_DEFAULT_TEXT
+        self.searchMrtTick.tintColor = ResourcesDay.COLOR_ACCENT
+        self.searchKeywordTick.tintColor = ResourcesDay.COLOR_ACCENT
         self.locationLabel.textColor = textColor
     }
     
@@ -173,8 +264,8 @@ class NearbyViewController: UIViewController, UITableViewDelegate, UITableViewDa
         guard let location = manager.location else {
             return
         }
+        locationManager.stopUpdatingLocation()
         
-        var address: String?;
         CLGeocoder().reverseGeocodeLocation(location) { (placemarks, error) in
             if let error = error {
                 self.view.makeToast("Error getting your location")
@@ -182,27 +273,39 @@ class NearbyViewController: UIViewController, UITableViewDelegate, UITableViewDa
                 return
             }
             if let addr = placemarks?.first?.thoroughfare {
-                address = addr
-                self.locationLabel.text = "Fetching articles near \(address ?? "")"
+                self.address = addr
+                self.locationLabel.text = "Fetching articles near \(self.address ?? "")"
             } else {
                 self.locationLabel.text = "Failed to get your address"
                 return
             }
-            self.getNearbyFeed(lat: location.coordinate.latitude, lng: location.coordinate.longitude, address: address ?? "", radius: 2000)
+            self.latitude = location.coordinate.latitude
+            self.longitude = location.coordinate.longitude
+            self.getNearbyFeed(lat: self.latitude!, lng: self.longitude!, address: self.address!, radius: self.radius, keyword: self.keywordSearchText)
         }
     }
     
-    func getNearbyFeed(lat: Double, lng: Double, address: String, radius: Double) {
+    func getNearbyFeed(lat: Double, lng: Double, address: String, radius: Double, keyword: String? = nil) {
         nearbyList.removeAll()
-        self.dataSource.getNearbyFeed(lat: lat, lng: lng, radius: radius, onComplete: { (articleList) in
+        var search = keyword
+        if search?.trimmingCharacters(in: .whitespacesAndNewlines) == "" { search = nil }
+        self.dataSource.getNearbyFeed(lat: lat, lng: lng, radius: radius, keyword: search, onComplete: { (articleList) in
             if articleList.count == 0 {
-                self.view.makeToast("Could not find articles near \(address)")
-                self.locationLabel.text = "Error getting articles near \(address)"
+                if let search = search {
+//                    self.view.makeToast("Could not find articles about \(keyword) near \(address)")
+                    self.locationLabel.text = "Could not find articles about \(search) near \(address)"
+                } else {
+                    self.locationLabel.text = "Could not find articles about near \(address)"
+                }
                 return
             }
             self.nearbyList.append(contentsOf: articleList)
             self.addFeedFilters()
-            self.locationLabel.text = "Showing articles near \(address)"
+            if let search = search {
+                self.locationLabel.text = "Showing articles about \(search) near \(address)"
+            } else {
+                self.locationLabel.text = "Showing articles near \(address)"
+            }
             self.tableView.reloadData()
         })
     }
@@ -246,7 +349,12 @@ class NearbyViewController: UIViewController, UITableViewDelegate, UITableViewDa
         let article = filteredNearbyList[indexPath.row]
         dataSource.recordOpenArticleDetails(articleId: article.objectID, mainTheme: article.mainTheme ?? "General")
         if article.link != nil && article.link != "" {
-            openArticle(article.objectID)
+            if let postcode = article.postcode {
+                print("postcode: \(postcode)")
+                openArticle(article.objectID, postcode)
+            } else {
+                openArticle(article.objectID)
+            }
         } else {
             openComments(article.objectID)
         }
@@ -308,6 +416,26 @@ class NearbyViewController: UIViewController, UITableViewDelegate, UITableViewDa
         selectionMenu.show(style: .present, from: self)
     }
     
+    @objc func selectMrtButton() {
+        self.isMrtChecked = true
+        self.isKeywordChecked = false
+        self.searchMrtTick.isHidden = false
+        self.searchKeywordTick.isHidden = true
+        
+        self.searchTextField.text = self.selectedMrtStation
+        self.searchTextField.filterStrings(self.mrtStationNames)
+    }
+    
+    @objc func selectKeywordButton() {
+        self.isMrtChecked = false
+        self.isKeywordChecked = true
+        self.searchMrtTick.isHidden = true
+        self.searchKeywordTick.isHidden = false
+        
+        self.searchTextField.filterStrings([])
+        self.searchTextField.text = self.keywordSearchText
+    }
+    
     
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
@@ -316,10 +444,16 @@ class NearbyViewController: UIViewController, UITableViewDelegate, UITableViewDa
 }
 
 extension NearbyViewController: ArticleListTvCellDelegate {
-    
     func openArticle(_ articleId: String) {
         let vc = mainStoryboard.instantiateViewController(withIdentifier: "WebView") as? WebViewViewController
         vc?.articleId = articleId
+        self.present(vc!, animated: true, completion: nil)
+    }
+    
+    func openArticle(_ articleId: String, _ postcode: [String]) {
+        let vc = mainStoryboard.instantiateViewController(withIdentifier: "WebView") as? WebViewViewController
+        vc?.articleId = articleId
+        vc?.postcode = postcode
         self.present(vc!, animated: true, completion: nil)
     }
     
@@ -335,21 +469,35 @@ extension NearbyViewController: ArticleListTvCellDelegate {
 extension NearbyViewController: UISearchBarDelegate {
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
         guard let text = searchBar.text else { return }
-        var address = ""
-        var isStationFound = false
-        for station in mrtStationNames {
-            if station.lowercased().contains(text.lowercased()) {
-                address = station
-                isStationFound = true
+        if isMrtChecked {
+            var address = ""
+            var isStationFound = false
+            for station in mrtStationNames {
+                if station.lowercased().contains(text.lowercased()) {
+                    address = station
+                    selectedMrtStation = station
+                    isStationFound = true
+                }
             }
-        }
-        
-        if !isStationFound {
-            self.view.makeToast("Please choose from one of the MRT Stations suggested")
+            
+            if !isStationFound {
+                self.view.makeToast("Please choose from one of the MRT Stations suggested")
+                return
+            }
+            
+            searchNearbyArticles(station: address, keyword: keywordSearchText)
             return
         }
         
-        searchNearbyArticles(station: address)
+        if isKeywordChecked {
+            keywordSearchText = text
+            if let station = selectedMrtStation {
+                searchNearbyArticles(station: station, keyword: keywordSearchText)
+            } else {
+                getNearbyFeed(lat: self.latitude!, lng: self.longitude!, address: self.address!, radius: self.radius, keyword: self.keywordSearchText)
+            }
+            return
+        }
     }
     
     func searchBarTextDidBeginEditing(_ searchBar: UISearchBar) {
@@ -363,7 +511,7 @@ extension NearbyViewController: UISearchBarDelegate {
         }
         
         searchSelectionMenu.onDismiss = { stations in
-            self.searchNearbyArticles(station: stations[0])
+            self.searchNearbyArticles(station: stations[0], keyword: self.keywordSearchText)
         }
         
         searchSelectionMenu.tableView?.backgroundColor = nightModeOn ? ResourcesNight.CARD_BG_COLOR : ResourcesDay.CARD_BG_COLOR

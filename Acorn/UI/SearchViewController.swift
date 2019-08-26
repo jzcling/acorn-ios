@@ -27,8 +27,6 @@ class SearchViewController: HitsTableViewController {
 
         hitsTableView = tableView
         
-        InstantSearch.shared.registerAllWidgets(in: self.view)
-        
         searchBar.becomeFirstResponder()
         
         if nightModeOn {
@@ -38,6 +36,8 @@ class SearchViewController: HitsTableViewController {
         }
         NotificationCenter.default.addObserver(self, selector: #selector(nightModeEnabled), name: .nightModeOn, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(nightModeDisabled), name: .nightModeOff, object: nil)
+        
+        InstantSearch.shared.registerAllWidgets(in: self.view)
     }
     
     @objc func nightModeEnabled() {

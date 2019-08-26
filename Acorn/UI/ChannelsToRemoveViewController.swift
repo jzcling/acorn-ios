@@ -25,7 +25,7 @@ class ChannelsToRemoveViewController: UIViewController, UITableViewDelegate, UIT
         super.viewDidLoad()
         
         channelsRemoved = defaults.array(forKey: "videosInFeedChannelsToRemove") as? [String] ?? [String]()
-        print("channelsRemoved: \(channelsRemoved)")
+//        print("channelsRemoved: \(channelsRemoved)")
         
         tableView.dataSource = self
         tableView.delegate = self
@@ -120,7 +120,7 @@ extension ChannelsToRemoveViewController: ChannelTvCellDelegate {
         channelsToRemove.append(contentsOf: channelsRemoved!)
         
         if bool {
-            if let index = channelsToRemove.index(of: channel) {
+            if let index = channelsToRemove.firstIndex(of: channel) {
                 channelsToRemove.remove(at: index)
                 print("\(channel) at \(index) removed: \(channelsToRemove)")
                 defaults.set(channelsToRemove, forKey: "videosInFeedChannelsToRemove")

@@ -15,6 +15,7 @@ import MaterialComponents
 import UserNotifications
 import DropDown
 import InstantSearch
+import InstantSearchCore
 import FirebaseMessaging
 import SwiftSoup
 import DeviceKit
@@ -24,6 +25,7 @@ import SQLite3
 import Fabric
 import Crashlytics
 import CoreLocation
+import PIPKit
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate, MessagingDelegate {
@@ -36,12 +38,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     
     let defaults = UserDefaults.standard
     
+    let globals = Globals.instance
+    
     let toastManager = ToastManager.shared
-    
-    var token: String?
-    
-    var isUserEmailVerified: Bool = false
-    var hasOpenedArticle: Bool = false
     
     lazy var user = Auth.auth().currentUser
     
@@ -62,6 +61,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         
         FirebaseApp.configure()
         Analytics.logEvent(AnalyticsEventAppOpen, parameters: nil)
+        GADMobileAds.sharedInstance().start(completionHandler: nil)
         
         let authUI = FUIAuth.defaultAuthUI()
         authUI?.delegate = self
@@ -125,7 +125,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String) {
         let dataDict = ["token": fcmToken]
-        token = fcmToken
+        globals.token = fcmToken
         NotificationCenter.default.post(name: Notification.Name("FCMToken"), object: nil, userInfo: dataDict)
     }
     
@@ -169,6 +169,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
                     }
                 }
             }
+        } else if userInfo["type"] as? String == "promotional" {
+            completionHandler(.newData)
         }
     }
     
@@ -215,6 +217,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
             }
         } else if userInfo["type"] as? String == "location" {
             completionHandler([.alert, .sound])
+        } else if userInfo["type"] as? String == "promotional" {
+            completionHandler([.alert, .sound])
         }
     }
     
@@ -258,7 +262,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         } else if userInfo["type"] as? String == "location" {
             guard let locale = userInfo["locale"] as? String else { return }
             dataSource.logNotificationClicked(uid: user?.uid, type: "Nearby")
-            openNearby(locale)
+            openNearby(locale: locale)
+        } else if userInfo["type"] as? String == "promotional" {
+            guard let storyboardId = userInfo["iosStoryboardId"] as? String else { return }
+            let campaignId = userInfo["campaignId"] as? String
+            dataSource.logNotificationClicked(uid: user?.uid, itemId: campaignId ?? "", type: "Promotional")
+            if storyboardId == "Nearby", let search = userInfo["keyword"] as? String {
+                openNearby(search: search)
+            }
         }
         
         completionHandler()
@@ -310,9 +321,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         rootVC.present(vc!, animated: false)
     }
     
-    func openNearby(_ locale: String) {
+    func openVideo(_ videoId: String) {
+        let vc = mainStoryboard.instantiateViewController(withIdentifier: "YTPlayer") as? YTPlayerViewController
+        vc?.videoId = videoId
+        self.window?.rootViewController = rootVC
+//        rootVC.present(vc!, animated: false)
+        PIPKit.show(with: vc!)
+    }
+    
+    func openNearby(locale: String? = nil, search: String? = nil) {
         let vc = mainStoryboard.instantiateViewController(withIdentifier: "Nearby") as? NearbyViewController
         vc?.locale = locale
+        vc?.keywordSearchText = search
         self.window?.rootViewController = rootVC
         rootVC.present(vc!, animated: false)
     }
@@ -391,28 +411,59 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
                         }
                     }
                 } else if url?.absoluteString.contains("share") ?? false {
-                    var articleId: String?
-                    var sharerId: String?
-                    let components = URLComponents(url: link, resolvingAgainstBaseURL: false)
-                    if let queryItems = components?.queryItems {
-                        for query in queryItems {
-                            print("\(query.name): \(query.value ?? "nil")")
-                            switch query.name {
-                            case "id":
-                                articleId = query.value
-                            case "sharerId":
-                                sharerId = query.value
-                            default:
-                                break
+                    let lastSegment = link.lastPathComponent
+                    if lastSegment == "article" {
+                        var articleId: String?
+                        var sharerId: String?
+                        let components = URLComponents(url: link, resolvingAgainstBaseURL: false)
+                        if let queryItems = components?.queryItems {
+                            for query in queryItems {
+                                print("\(query.name): \(query.value ?? "nil")")
+                                switch query.name {
+                                case "id":
+                                    articleId = query.value
+                                case "sharerId":
+                                    sharerId = query.value
+                                default:
+                                    break
+                                }
+                            }
+                            if let articleId = articleId {
+                                print("articleId: \(articleId)")
+                                if let sharerId = sharerId {
+                                    self.feedVC?.referredBy = sharerId
+                                }
+                                DispatchQueue.main.async {
+                                    self.openArticle(articleId)
+                                }
                             }
                         }
-                        if let articleId = articleId {
-                            print("articleId: \(articleId)")
-                            if let sharerId = sharerId {
-                                self.feedVC?.referredBy = sharerId
+                    } else if lastSegment == "video" {
+                        var videoId: String?
+                        var youtubeId: String?
+                        var sharerId: String?
+                        let components = URLComponents(url: link, resolvingAgainstBaseURL: false)
+                        if let queryItems = components?.queryItems {
+                            for query in queryItems {
+                                print("\(query.name): \(query.value ?? "nil")")
+                                switch query.name {
+                                case "id":
+                                    videoId = query.value
+                                case "youtubeId":
+                                    youtubeId = query.value
+                                case "sharerId":
+                                    sharerId = query.value
+                                default:
+                                    break
+                                }
                             }
-                            DispatchQueue.main.async {
-                                self.openArticle(articleId)
+                            if let youtubeId = youtubeId {
+                                if let sharerId = sharerId {
+                                    self.feedVC?.referredBy = sharerId
+                                }
+                                DispatchQueue.main.async {
+                                    self.openVideo(youtubeId)
+                                }
                             }
                         }
                     }
@@ -478,7 +529,7 @@ extension AppDelegate: FUIAuthDelegate {
         if !user.isEmailVerified {
             user.sendEmailVerification(completion: nil)
         } else {
-            self.isUserEmailVerified = true
+            globals.isUserEmailVerified = true
         }
         
         print("appDelegate getUser:")
@@ -486,9 +537,9 @@ extension AppDelegate: FUIAuthDelegate {
             if let retrievedUser = retrievedUser {
                 retrievedUser.uid = user.uid
                 retrievedUser.displayName = user.displayName ?? ""
-                retrievedUser.token = self.token ?? ""
+                retrievedUser.token = self.globals.token ?? ""
                 retrievedUser.email = user.email ?? ""
-                if !retrievedUser.isEmailVerified { retrievedUser.isEmailVerified = self.isUserEmailVerified }
+                if !retrievedUser.isEmailVerified { retrievedUser.isEmailVerified = self.globals.isUserEmailVerified }
                 retrievedUser.device = Device.current.description
                 retrievedUser.creationTimeStamp = (user.metadata.creationDate?.timeIntervalSince1970 ?? 0) * 1000
                 retrievedUser.lastSignInTimeStamp = (user.metadata.lastSignInDate?.timeIntervalSince1970 ?? 0) * 1000
@@ -496,7 +547,7 @@ extension AppDelegate: FUIAuthDelegate {
                 
                 self.dataSource.setUser(retrievedUser.toDict())
             } else {
-                let acornUser = AcornUser(uid: user.uid, displayName: user.displayName ?? "", token: self.token ?? "", email: user.email ?? "", isEmailVerified: self.isUserEmailVerified, device: Device.current.description, creationTimeStamp: (user.metadata.creationDate?.timeIntervalSince1970 ?? 0) * 1000, lastSignInTimeStamp: (user.metadata.lastSignInDate?.timeIntervalSince1970 ?? 0) * 1000, openedSinceLastReport: true)
+                let acornUser = AcornUser(uid: user.uid, displayName: user.displayName ?? "", token: self.globals.token ?? "", email: user.email ?? "", isEmailVerified: self.globals.isUserEmailVerified, device: Device.current.description, creationTimeStamp: (user.metadata.creationDate?.timeIntervalSince1970 ?? 0) * 1000, lastSignInTimeStamp: (user.metadata.lastSignInDate?.timeIntervalSince1970 ?? 0) * 1000, openedSinceLastReport: true)
                 
                 self.dataSource.setUser(acornUser.toDict())
             }

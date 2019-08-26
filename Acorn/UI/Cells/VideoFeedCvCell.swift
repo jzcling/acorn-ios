@@ -13,6 +13,7 @@ import Firebase
 
 class VideoFeedCvCell: UICollectionViewCell {
     
+    @IBOutlet weak var newBannerImageView: UIImageView!
     @IBOutlet weak var themeLabel: UILabel!
     @IBOutlet weak var topSeparatorLabel: UILabel!
     @IBOutlet weak var youtubeViewCountLabel: UILabel!
@@ -41,6 +42,7 @@ class VideoFeedCvCell: UICollectionViewCell {
     var video: Video?
     var textColor: UIColor?
     var textColorFaint: UIColor?
+    var textColorRead: UIColor?
     
     lazy var user = Auth.auth().currentUser!
     lazy var uid = user.uid
@@ -123,6 +125,11 @@ class VideoFeedCvCell: UICollectionViewCell {
     }
     
     func populateCell(video: Video) {
+        if let seenBy = video.seenBy?.keys, seenBy.contains(uid) {
+            newBannerImageView.isHidden = true
+        } else {
+            newBannerImageView.isHidden = false
+        }
         if (video.mainTheme == nil || video.mainTheme == "") {
             themeLabel.isHidden = true
             topSeparatorLabel.isHidden = true
@@ -141,6 +148,11 @@ class VideoFeedCvCell: UICollectionViewCell {
             youtubeViewCountLabel.sizeToFit()
         } else {
             youtubeViewCountLabel.text = ""
+        }
+        if let viewedBy = video.viewedBy?.keys, viewedBy.contains(uid) {
+            titleLabel.textColor = textColorRead
+        } else {
+            titleLabel.textColor = textColor
         }
         titleLabel.text = video.title
         sourceLabel.text = video.source
@@ -232,7 +244,11 @@ class VideoFeedCvCell: UICollectionViewCell {
     }
     
     @IBAction func didTapShareButton(_ sender: Any) {
-        delegate?.openShareActivity(self.video?.videoUrl, self.video)
+        guard let video = self.video else { return }
+        let url = ShareUtils.createVideoShareUri(videoId: video.objectID, sharerId: uid)
+        ShareUtils.createShortDynamicLink(url: url, sharerId: uid) { (dynamicLink) in
+            self.delegate?.openShareActivity(dynamicLink, video)
+        }
     }
     
     @IBAction func didTapOptionsButton(_ sender: Any) {

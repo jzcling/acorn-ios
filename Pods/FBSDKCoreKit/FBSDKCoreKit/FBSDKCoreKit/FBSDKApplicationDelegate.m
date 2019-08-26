@@ -25,7 +25,9 @@
 #import "FBSDKConstants.h"
 #import "FBSDKDynamicFrameworkLoader.h"
 #import "FBSDKError.h"
+#import "FBSDKFeatureManager.h"
 #import "FBSDKGateKeeperManager.h"
+#import "FBSDKInstrumentManager.h"
 #import "FBSDKInternalUtility.h"
 #import "FBSDKLogger.h"
 #import "FBSDKServerConfiguration.h"
@@ -102,6 +104,10 @@ static UIApplicationState _applicationState;
   [[FBSDKAppEvents singleton] registerNotifications];
 
   [delegate application:[UIApplication sharedApplication] didFinishLaunchingWithOptions:launchOptions];
+
+  if ([FBSDKFeatureManager isEnabled:FBSDKFeatureInstrument]) {
+    [FBSDKInstrumentManager enable];
+  }
 
 #if !TARGET_OS_TV
   // Register Listener for App Link measurement events
@@ -204,8 +210,6 @@ static UIApplicationState _applicationState;
     [FBSDKAccessToken setCurrentAccessToken:cachedToken];
     // fetch app settings
     [FBSDKServerConfigurationManager loadServerConfigurationWithCompletionBlock:NULL];
-    // fetch gate keepers
-    [FBSDKGateKeeperManager loadGateKeepers];
 
     if (FBSDKSettings.isAutoLogAppEventsEnabled) {
         [self _logSDKInitialize];

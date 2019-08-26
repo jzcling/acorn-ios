@@ -142,11 +142,11 @@ class SavedArticlesViewController: UIViewController, UITableViewDelegate, UITabl
     }
     
 
-    func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+//    func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
 //        if indexPath.item == (self.savedList.count - self.loadTrigger) {
 //            getMoreSavedFeed(startAt: self.savedList.count)
 //        }
-    }
+//    }
     
     func getMoreSavedFeed(startAt: Int) {
         let initialList = self.savedList
@@ -258,11 +258,11 @@ extension SavedArticlesViewController: UISearchBarDelegate {
             let tempFilteredSavedList = self.filteredSavedList
             self.filteredSavedList.removeAll()
             for article in tempFilteredSavedList {
-                if article.title?.range(of: text) != nil ||
-                    article.mainTheme?.range(of: text) != nil ||
-                    article.source?.range(of: text) != nil ||
-                    article.postAuthor?.range(of: text) != nil ||
-                    article.postText?.range(of: text) != nil {
+                if article.title?.range(of: text, options: .caseInsensitive) != nil ||
+                    article.mainTheme?.range(of: text, options: .caseInsensitive) != nil ||
+                    article.source?.range(of: text, options: .caseInsensitive) != nil ||
+                    article.postAuthor?.range(of: text, options: .caseInsensitive) != nil ||
+                    article.postText?.range(of: text, options: .caseInsensitive) != nil {
                         self.filteredSavedList.append(article)
                 }
             }

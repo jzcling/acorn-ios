@@ -8,7 +8,8 @@
 
 import Foundation
 
-protocol ArticleListTvCellDelegate: class {
-    func openArticle(_ articleId: String)
-    func openComments(_ articleId: String)
+@objc protocol ArticleListTvCellDelegate: class {
+    @objc optional func openArticle(_ articleId: String)
+    @objc optional func openArticle(_ articleId: String, _ postcode: [String])
+    @objc optional func openComments(_ articleId: String)
 }

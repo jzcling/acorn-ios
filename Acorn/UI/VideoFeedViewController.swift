@@ -46,6 +46,7 @@ class VideoFeedViewController: MDCCollectionViewController {
     var colorCardBackground: UIColor?
     var colorCardText: UIColor?
     var colorCardTextFaint: UIColor?
+    var colorCardTextRead: UIColor?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -102,6 +103,7 @@ class VideoFeedViewController: MDCCollectionViewController {
         colorCardBackground = ResourcesNight.CARD_BG_COLOR
         colorCardText = ResourcesNight.CARD_TEXT_COLOR
         colorCardTextFaint = ResourcesNight.CARD_TEXT_COLOR_FAINT
+        colorCardTextRead = ResourcesNight.CARD_TEXT_COLOR_READ
         
         self.view.backgroundColor = colorBackgroundMain
         self.collectionView?.backgroundColor = colorBackground
@@ -116,6 +118,7 @@ class VideoFeedViewController: MDCCollectionViewController {
         colorCardBackground = ResourcesDay.CARD_BG_COLOR
         colorCardText = ResourcesDay.CARD_TEXT_COLOR
         colorCardTextFaint = ResourcesDay.CARD_TEXT_COLOR_FAINT
+        colorCardTextRead = ResourcesDay.CARD_TEXT_COLOR_READ
         
         self.view.backgroundColor = colorBackgroundMain
         self.collectionView?.backgroundColor = colorBackground
@@ -196,6 +199,7 @@ class VideoFeedViewController: MDCCollectionViewController {
         cell.video = video
         cell.textColor = colorCardText
         cell.textColorFaint = colorCardTextFaint
+        cell.textColorRead = colorCardTextRead
         
         cell.backgroundColor = colorCardBackground
         
@@ -228,14 +232,17 @@ class VideoFeedViewController: MDCCollectionViewController {
             getMoreVideoFeed(startAt: (lastVideo?.trendingIndex)!)
         }
     }
+    
+    override func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        return true
+    }
 }
 
 extension VideoFeedViewController: VideoFeedCvCellDelegate {
     
     func openVideo(_ video: Video) {
-        Analytics.logEvent(AnalyticsEventShare, parameters: [
+        Analytics.logEvent(AnalyticsEventSelectContent, parameters: [
             AnalyticsParameterItemID: video.objectID,
-            AnalyticsParameterItemName: video.title ?? "",
             "item_source": video.source ?? "",
             AnalyticsParameterContentType: video.type
         ])
@@ -259,7 +266,7 @@ extension VideoFeedViewController: VideoFeedCvCellDelegate {
             
             Analytics.logEvent(AnalyticsEventShare, parameters: [
                 AnalyticsParameterItemID: video?.objectID ?? "",
-                AnalyticsParameterItemName: video?.title ?? "",
+                AnalyticsParameterItemCategory: video?.mainTheme ?? "",
                 "item_source": video?.source ?? "",
                 AnalyticsParameterContentType: video?.type ?? ""
             ])
@@ -385,9 +392,5 @@ extension VideoFeedViewController: VideoFeedCvCellDelegate {
 //
 //            saveButton.isEnabled = true
 //        }
-    }
-    
-    override func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
-        return true
     }
 }

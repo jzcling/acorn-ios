@@ -67,7 +67,7 @@ class HtmlUtils {
         // clean by SwiftSoup
         do {
             WHITELIST = try Whitelist.relaxed().preserveRelativeLinks(true)
-                .addTags("iframe", "video", "audio", "source", "track", "img")
+                .addTags("iframe", "video", "audio", "source", "track", "img", "span", "figcaption")
                 .addAttributes("iframe", "src", "frameborder", "height", "width")
                 .addAttributes("video", "src", "controls", "height", "width", "poster")
                 .addAttributes("audio", "src", "controls")
@@ -179,11 +179,12 @@ class HtmlUtils {
             + "h1, h2 {line-height: 130%} "
             + "h1 {font-size: 110%; font-weight: 700, margin-bottom: 0.1em} "
             + "h2 {font-size: 110%; font-weight: 500} "
+            + "h3 {font-size: 100%;} "
             + "a {color: #0099CC} "
             + "h1 a {font-weight: 1000; color: inherit; text-decoration: none} "
             + "img {height: auto} "
             + "img.avatar {vertical-align: middle; width: 16px; height: 16px; border-radius: 50%;} "
-            + "figcaption {font-size: 90%} "
+            + "figcaption {font-size: 80%} "
             //+ "pre {white-space: pre-wrap;} "
             + "blockquote {border-left: thick solid \(QUOTE_LEFT_COLOR); background-color:\(QUOTE_BACKGROUND_COLOR); margin: 0.5em 0 0.5em 0em; padding: 0.5em} "
             + "blockquote p {color: \(QUOTE_TEXT_COLOR)} "

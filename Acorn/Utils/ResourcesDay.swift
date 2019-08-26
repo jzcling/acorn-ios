@@ -21,6 +21,7 @@ struct ResourcesDay {
     static let CARD_BG_COLOR = UIColor.white
     static let CARD_TEXT_COLOR = UIColor.black
     static let CARD_TEXT_COLOR_FAINT = UIColor(hex: "707070")
+    static let CARD_TEXT_COLOR_READ = UIColor(hex: "999999")
     
     // action buttons
     static let BUTTON_DEFAULT_TINT_COLOR = UIColor(hex: "bdbdbd")
@@ -29,6 +30,7 @@ struct ResourcesDay {
     static let COMMENT_TINT_COLOR = UIColor(hex: "0a7e8c")
     static let SAVE_TINT_COLOR = UIColor(hex: "ffba5c")
     static let SHARE_TINT_COLOR = UIColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 0.87)
+    static let CTA_DEFAULT_TINT_COLOR = UIColor(hex: "d3d3d3")
     
     // comment
     static let COMMENT_BG_COLOR = UIColor(hex: "eee8aa")

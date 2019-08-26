@@ -40,7 +40,6 @@ class DuplicateArticleCell: UICollectionViewCell {
     override func prepareForReuse() {
         imageView.sd_cancelCurrentImageLoad()
         imageView.isHidden = false
-        dataSource.removeArticleObserver(articleId!)
     }
     
     func populateCell(articleId: String) {

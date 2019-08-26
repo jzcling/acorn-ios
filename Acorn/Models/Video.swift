@@ -45,6 +45,7 @@ class Video {
     var starRatingCount: Double?
     var starRatingAverage: Double?
     var youtubeViewCount: Double?
+    var seenBy: [String: Double]? = [String: Double]()
     
     init(snapshot: DataSnapshot) {
         let value = snapshot.value as! [String: Any]
@@ -88,6 +89,7 @@ class Video {
         self.starRatingCount = value["starRatingCount"] as? Double ?? 0
         self.starRatingAverage = value["starRatingAverage"] as? Double ?? 0
         self.youtubeViewCount = value["youtubeViewCount"] as? Double ?? 0
+        self.seenBy = value["seenBy"] as? [String: Double] ?? [String: Double]()
     }
     
     init(json: [String: Any]) {
@@ -129,6 +131,7 @@ class Video {
         self.starRatingCount = value["starRatingCount"] as? Double ?? 0
         self.starRatingAverage = value["starRatingAverage"] as? Double ?? 0
         self.youtubeViewCount = value["youtubeViewCount"] as? Double ?? 0
+        self.seenBy = value["seenBy"] as? [String: Double] ?? [String: Double]()
     }
     
     init(article: Article) {
@@ -163,5 +166,6 @@ class Video {
         self.changedSinceLastJob = article.changedSinceLastJob
         self.isReported = article.isReported
         self.youtubeViewCount = Double(article.readTime ?? 0)
+        self.seenBy = article.seenBy
     }
 }

@@ -425,7 +425,7 @@ class CommentViewController: UIViewController, UICollectionViewDataSource, UICol
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         dataSource.removeCommentObservers(articleId!)
-        dataSource.removeArticleObserver(articleId!)
+//        dataSource.removeArticleObserver(articleId!)
     }
     
     deinit {
@@ -522,7 +522,6 @@ class CommentViewController: UIViewController, UICollectionViewDataSource, UICol
             
             Analytics.logEvent("send_comment", parameters: [
                 AnalyticsParameterItemID: self.article?.objectID ?? "",
-                AnalyticsParameterItemName: self.article?.title ?? "",
                 AnalyticsParameterItemCategory: self.article?.mainTheme ?? "",
                 "item_source": self.article?.source ?? "",
                 AnalyticsParameterContentType: self.article?.type ?? ""
@@ -584,7 +583,7 @@ extension CommentViewController: ImagePickerDelegate {
     
     @IBAction func didTapInputAddButton(_ sender: Any) {
         
-        var config = Configuration()
+        let config = Configuration()
         config.recordLocation = false
         config.allowMultiplePhotoSelection = false
         config.showsImageCountLabel = false

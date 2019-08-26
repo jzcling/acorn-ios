@@ -24,6 +24,11 @@ class ShareUtils {
         return "https://acorncommunity.sg/article?id=\(articleId)&url=\(cleanedUrl)&sharerId=\(sharerId)"
     }
     
+    static func createVideoShareUri(videoId: String, sharerId: String) -> String {
+        let youtubeId = videoId.suffix(11)
+        return "https://acorncommunity.sg/video?id=\(videoId)&youtubeId=\(youtubeId)&sharerId=\(sharerId)"
+    }
+    
     static func createShortDynamicLink(url: String, sharerId: String, onComplete: @escaping (String) -> ()) {
         guard let link = URL(string: url) else { return }
         let dynamicLinksDomain = "https://acorncommunity.sg/share"

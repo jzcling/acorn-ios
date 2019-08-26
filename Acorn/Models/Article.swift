@@ -49,6 +49,8 @@ class Article {
     var selector: String?
     var hasAddress: Bool? = false
     var duplicates: [String: Double]? = [String: Double]()
+    var seenBy: [String: Double]? = [String: Double]()
+    var postcode: [String]? = [String]()
     
     init(snapshot: DataSnapshot) {
         let value = snapshot.value as? [String: Any]
@@ -58,19 +60,13 @@ class Article {
         self.postAuthorUid = value?["postAuthorUid"] as? String
         self.postAuthor = value?["postAuthor"] as? String
         self.postText = value?["postText"] as? String
-        
-        let postImageUrl = value?["postImageUrl"] as? String
-        self.postImageUrl = postImageUrl
+        self.postImageUrl = value?["postImageUrl"] as? String
         self.postDate = value?["postDate"] as? Double
         self.title = value?["title"] as? String
         self.source = value?["source"] as? String
-        self.pubDate = value?["pubDate"] as! Double
-        
-        let imageUrl = value?["imageUrl"] as? String
-        self.imageUrl = imageUrl
-        
-        let link = value?["link"] as? String
-        self.link = link
+        self.pubDate = value?["pubDate"] as? Double ?? -(Date().timeIntervalSince1970 * 1000)
+        self.imageUrl = value?["imageUrl"] as? String
+        self.link = value?["link"] as? String
         self.author = value?["author"] as? String
         self.mainTheme = value?["mainTheme"] as? String
         self.readTime = value?["readTime"] as? Int
@@ -96,6 +92,7 @@ class Article {
         self.selector = value?["selector"] as? String
         self.hasAddress = value?["hasAddress"] as? Bool ?? false
         self.duplicates = value?["duplicates"] as? [String: Double] ?? [String: Double]()
+        self.seenBy = value?["seenBy"] as? [String: Double] ?? [String: Double]()
     }
     
     init(json: [String: Any]) {
@@ -141,6 +138,7 @@ class Article {
         self.selector = value["selector"] as? String
         self.hasAddress = value["hasAddress"] as? Bool ?? false
         self.duplicates = value["duplicates"] as? [String: Double] ?? [String: Double]()
+        self.seenBy = value["seenBy"] as? [String: Double] ?? [String: Double]()
     }
     
     init(video: Video) {
@@ -174,5 +172,6 @@ class Article {
         self.changedSinceLastJob = video.changedSinceLastJob
         self.isReported = video.isReported
         self.readTime = Int(video.youtubeViewCount ?? 0)
+        self.seenBy = video.seenBy
     }
 }

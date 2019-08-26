@@ -45,7 +45,8 @@ extension UIBarButtonItem {
         var font = UIFont.systemFont(ofSize: fontSize)
         
         if #available(iOS 9.0, *) { font = UIFont.monospacedDigitSystemFont(ofSize: fontSize, weight: UIFont.Weight.regular) }
-        let badgeSize = text.size(withAttributes: [NSAttributedString.Key.font: font])
+        let labelText = text.count > 2 ? ".." : text
+        let badgeSize = labelText.size(withAttributes: [NSAttributedString.Key.font: font])
         
         // Initialize Badge
         let badge = CAShapeLayer()
@@ -65,10 +66,11 @@ extension UIBarButtonItem {
         
         badge.drawRoundedRect(rect: badgeFrame, andColor: color, filled: filled)
         view.layer.addSublayer(badge)
+        badge.zPosition = view.layer.zPosition + 1
         
-        // Initialiaze Badge's label
+        // Initialize Badge's label
         let label = CATextLayer()
-        label.string = text
+        label.string = labelText
         label.alignmentMode = CATextLayerAlignmentMode.center
         label.font = font
         label.fontSize = font.pointSize

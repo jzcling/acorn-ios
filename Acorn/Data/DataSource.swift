@@ -46,10 +46,12 @@ class DataSource {
     lazy var savedArticlesReminderPreferenceRef = self.database.reference(withPath: "preference/savedArticlesReminderNotificationValue/\(uid)")
     lazy var locationPreferenceRef = self.database.reference(withPath: "preference/locationNotificationValue/\(uid)")
     lazy var videosInFeedPreferenceRef = self.database.reference(withPath: "preference/videosInFeed/\(uid)")
-    lazy var algoliaRef = self.database.reference(withPath: "api/algoliaApiKey")
-    lazy var youtubeApiRef = self.database.reference(withPath: "api/youtubeApiKey")
+    lazy var algoliaRef = self.database.reference(withPath: "api/algoliaKey")
+    lazy var youtubeApiRef = self.database.reference(withPath: "api/youtubeKey")
     lazy var reportRef = self.database.reference(withPath: "reported")
     lazy var notificationRef = self.database.reference(withPath: "notification")
+    lazy var timeLogRef = self.database.reference(withPath: "timeLog")
+    lazy var surveyRef = self.database.reference(withPath: "survey")
     
     lazy var userStorage = self.storage.reference(withPath: uid)
     
@@ -115,7 +117,7 @@ class DataSource {
     }
     
     func updateUser(_ user: [String: Any?]) {
-        self.userRef.updateChildValues(user)
+        self.userRef.updateChildValues(user as [AnyHashable : Any])
     }
     
     func getUserStatus(_ status: Int) -> String {
@@ -188,8 +190,9 @@ class DataSource {
     func observeSingleArticle(articleId: String, onComplete: @escaping ((Article) -> ())) {
         let query = articleRef.child(articleId)
         query.observe(.value) { (snap) in
-            if let value = snap.value as? [String: Any]{
-                onComplete(Article(json: value))
+            if let _ = snap.value {
+                let article = Article(snapshot: snap)
+                onComplete(article)
             }
         }
         self.observedArticlesQueries[articleId] = query
@@ -217,7 +220,7 @@ class DataSource {
         query.observe(.childChanged) { (snap) in
             let article = Article(snapshot: snap)
             
-            if let index = articleIds.index(of: snap.key) {
+            if let index = articleIds.firstIndex(of: snap.key) {
                 let isReported = article.isReported ?? false
                 if isReported {
                     articles.remove(at: index)
@@ -230,7 +233,7 @@ class DataSource {
         }
         
         query.observe(.childRemoved) { (snap) in
-            if let index = articleIds.index(of: snap.key) {
+            if let index = articleIds.firstIndex(of: snap.key) {
                 articles.remove(at: index)
                 articleIds.remove(at: index)
             }
@@ -238,11 +241,11 @@ class DataSource {
         }
         
         query.observe(.childMoved) { (snap, previousChildKey) in
-            if let index = articleIds.index(of: snap.key) {
+            if let index = articleIds.firstIndex(of: snap.key) {
                 articleIds.remove(at: index)
                 articles.remove(at: index)
             }
-            let newIndex = (previousChildKey != nil) ? articleIds.index(of: previousChildKey!)! + 1 : 0
+            let newIndex = (previousChildKey != nil) ? articleIds.firstIndex(of: previousChildKey!)! + 1 : 0
             articleIds.insert(snap.key, at: newIndex)
             articles.insert(Article(snapshot: snap), at: newIndex)
             onComplete(articles)
@@ -269,7 +272,7 @@ class DataSource {
             var count = 0
             for case let data as DataSnapshot in snap.children {
                 let hitsArticle = Article(snapshot: data)
-                self.articleRef.child(hitsArticle.objectID).observe(.value) { (articleSnap) in
+                self.articleRef.child(hitsArticle.objectID).observeSingleEvent(of: .value) { (articleSnap) in
                     count += 1
                     if let _ = articleSnap.value {
                         let article = Article(snapshot: articleSnap)
@@ -284,7 +287,7 @@ class DataSource {
                                 }
                             }
                         } else {
-                            if let index = articleIds.index(of: article.objectID) {
+                            if let index = articleIds.firstIndex(of: article.objectID) {
                                 let isReported = article.isReported ?? false
                                 if isReported {
                                     self.articleRef.child(article.objectID).removeAllObservers()
@@ -292,7 +295,7 @@ class DataSource {
                                     articleIds.remove(at: index)
                                     if let duplicates = article.duplicates {
                                         for duplicateId in duplicates.keys {
-                                            if let duplicateIndex = duplicatesIds.index(of: duplicateId) {
+                                            if let duplicateIndex = duplicatesIds.firstIndex(of: duplicateId) {
                                                 duplicatesIds.remove(at: duplicateIndex)
                                             }
                                         }
@@ -303,7 +306,7 @@ class DataSource {
                             }
                         }
                     } else {
-                        if let index = articleIds.index(of: articleSnap.key) {
+                        if let index = articleIds.firstIndex(of: articleSnap.key) {
                             self.articleRef.child(articleSnap.key).removeAllObservers()
                             articleIds.remove(at: index)
                             articles.remove(at: index)
@@ -325,8 +328,7 @@ class DataSource {
                 initQuery.observeSingleEvent(of: .value) { (lastQuerySnap) in
                     if let lastQueryTimestamp = lastQuerySnap.value as? Double {
                         let timeElapsed = DateUtils.hoursSince(unixTimestamp: lastQueryTimestamp)
-                        if timeElapsed >= 3 {
-                            
+                        if timeElapsed >= 1 { // 1 hour since last load
                             let algoliaQuery = Query()
                             algoliaQuery.filters = filters
                             self.algoliaIndex?.search(algoliaQuery) { (content, error) in
@@ -341,14 +343,12 @@ class DataSource {
                                 }
                             }
                         } else {
-                            
                             let query = hitsRef.queryOrdered(byChild: "trendingIndex").queryLimited(toFirst: self.limit)
 //                            query.keepSynced(true)
                             self.observedFeedQueries.append(query)
                             self.observeHitsArticles(query: query, limit: self.limit, onComplete: onComplete)
                         }
                     } else {
-                        
                         let algoliaQuery = Query()
                         algoliaQuery.filters = filters
                         self.algoliaIndex?.search(algoliaQuery) { (content, error) in
@@ -503,7 +503,6 @@ class DataSource {
     }
     
     func getSavedFeed(startAt: Int, limit: UInt, onComplete: @escaping ([Article]) -> ()) {
-        print("getSavedFeed")
         var savedList = [String]()
         var articles = [Article]()
         
@@ -511,7 +510,6 @@ class DataSource {
 //        savedQuery.keepSynced(true);
         savedQuery.observeSingleEvent(of: .value) { (savedSnap) in
             if let savedItems = savedSnap.value as? [String: Double] {
-                print("saved items retrieved")
                 savedList.append(contentsOf: savedItems.keys)
                 if savedList.count == 0 { return }
                 var counter = startAt
@@ -548,7 +546,7 @@ class DataSource {
         self.observeArticles(query: query, onComplete: onComplete)
     }
     
-    func getNearbyFeed(lat: Double, lng: Double, radius: Double, weekOnly: Bool = false, limit: Int = 50, onComplete: @escaping ([Article]) -> ()) {
+    func getNearbyFeed(lat: Double, lng: Double, radius: Double, keyword: String? = nil, weekOnly: Bool = false, limit: Int = 50, onComplete: @escaping ([Article]) -> ()) {
         // get sphere cap centred at location
         let point: S2Point = S2LatLng.fromDegrees(lat: lat, lng: lng).point
         let angle: S1Angle = S1Angle.init(radians: radius / S2LatLng.earthRadiusMeters)
@@ -561,6 +559,7 @@ class DataSource {
         
         // get all addresses and associated articles in covering cells
         var articleIds = [String: Double]()
+        var postcodeList = [String: [String]]()
         let dispatchGroup = DispatchGroup()
         for id in covering {
             dispatchGroup.enter()
@@ -572,6 +571,8 @@ class DataSource {
             addressQuery.observeSingleEvent(of: .value) { (snap) in
                 for case let data as DataSnapshot in snap.children {
                     let address = Address(snapshot: data)
+                    let postcodePattern = try? NSRegularExpression(pattern:".*(Singapore [0-9]{6})", options: .caseInsensitive)
+                    let postcode = postcodePattern?.stringByReplacingMatches(in: address.address, options: [], range: NSMakeRange(0, address.address.count), withTemplate: "$1")
                     for articleId in address.article.keys {
                         if let reminderDate = address.article[articleId] {
                             let cutoff = DateUtils.getFourteenDaysAgoMidnight()
@@ -580,6 +581,13 @@ class DataSource {
                                  these are all the articles with no reminderDate or reminderDate more than 14 days ago, i.e. first date appearing in title is more than 14 days ago. this is so we avoid removing articles with dates from x to y where reminder date is x-1 but event is still valid as y has not reached. the implication is that there will be deals/events that expired up to 14 days ago
                                 */
                                 articleIds[articleId] = reminderDate
+                                if let postcode = postcode {
+                                    var currentList = [postcode]
+                                    if let list = postcodeList[articleId] {
+                                        currentList.append(contentsOf: list)
+                                    }
+                                    postcodeList[articleId] = currentList
+                                }
                             } else {
                                 print("addressId: \(address.objectID), reminderDate: \(reminderDate)")
                                 self.addressRef.child(address.objectID).child("article").child(articleId).removeValue()
@@ -594,13 +602,14 @@ class DataSource {
         
         dispatchGroup.notify(queue: .main) {
             print("articleIds size: \(articleIds.count)")
-            self.filterNearbyArticles(articleIds: articleIds, weekOnly: weekOnly, limit: limit, onComplete: { (articles) in
+            print("postcodeList size: \(postcodeList.count)")
+            self.filterNearbyArticles(articleIds: articleIds, postcodeList: postcodeList, keyword: keyword, weekOnly: weekOnly, limit: limit, onComplete: { (articles) in
                 onComplete(articles)
             })
         }
     }
     
-    func filterNearbyArticles(articleIds: [String: Double], weekOnly: Bool = false, limit: Int = 50, onComplete: @escaping ([Article]) -> ()) {
+    func filterNearbyArticles(articleIds: [String: Double], postcodeList: [String: [String]], keyword: String? = nil, weekOnly: Bool = false, limit: Int = 50, onComplete: @escaping ([Article]) -> ()) {
         if articleIds.count == 0 {
             onComplete([Article]())
             return
@@ -636,19 +645,50 @@ class DataSource {
         
         let articleLimit = min(limit, articleIdList.count)
         let dispatchGroup = DispatchGroup()
-        for index in 0..<articleLimit {
-            let articleId = articleIdList[index]
-            let query = self.articleRef.child(articleId)
-            dispatchGroup.enter()
-            query.observeSingleEvent(of: .value) { (snap) in
-                let article = Article(snapshot: snap)
-                articles.append(article)
-                dispatchGroup.leave()
+        if let keyword = keyword {
+            var doneList = [String: Bool]()
+            var rejectList = [String: Bool]()
+            for articleId in articleIdList {
+                if doneList.count >= articleLimit {
+                    break
+                }
+                
+                let query = self.articleRef.child(articleId)
+                query.observeSingleEvent(of: .value) { (snap) in
+                    let article = Article(snapshot: snap)
+                    if article.title?.range(of: keyword, options: .caseInsensitive) != nil ||
+                        article.mainTheme?.range(of: keyword, options: .caseInsensitive) != nil ||
+                        article.source?.range(of: keyword, options: .caseInsensitive) != nil ||
+                        article.postAuthor?.range(of: keyword, options: .caseInsensitive) != nil ||
+                        article.postText?.range(of: keyword, options: .caseInsensitive) != nil {
+                        article.postcode = Array(Set(postcodeList[articleId] ?? [String]()))
+                        articles.append(article)
+                        doneList[articleId] = true
+                    } else {
+                        rejectList[articleId] = false
+                    }
+                    
+                    if (doneList.count >= articleLimit || doneList.count + rejectList.count >= articleIdList.count) {
+                        onComplete(articles)
+                    }
+                }
             }
-        }
-        
-        dispatchGroup.notify(queue: .main) {
-            onComplete(articles)
+        } else {
+            for index in 0..<articleLimit {
+                let articleId = articleIdList[index]
+                let query = self.articleRef.child(articleId)
+                dispatchGroup.enter()
+                query.observeSingleEvent(of: .value) { (snap) in
+                    let article = Article(snapshot: snap)
+                    article.postcode = postcodeList[articleId]
+                    articles.append(article)
+                    dispatchGroup.leave()
+                }
+            }
+            
+            dispatchGroup.notify(queue: .main) {
+                onComplete(articles)
+            }
         }
     }
     
@@ -923,7 +963,6 @@ class DataSource {
                 } else if (actionIsUpvote && wasDownvoted) {
                     Analytics.logEvent("upvote_article", parameters: [
                         AnalyticsParameterItemID: article["objectID"] ?? "",
-                        AnalyticsParameterItemName: article["title"] ?? "",
                         AnalyticsParameterItemCategory: article["mainTheme"] ?? "",
                         "item_source": article["source"] ?? "",
                         AnalyticsParameterContentType: article["type"] ?? ""
@@ -933,7 +972,6 @@ class DataSource {
                 } else if (actionIsUpvote && !wasUpvoted && !wasDownvoted) {
                     Analytics.logEvent("upvote_article", parameters: [
                         AnalyticsParameterItemID: article["objectID"] ?? "",
-                        AnalyticsParameterItemName: article["title"] ?? "",
                         AnalyticsParameterItemCategory: article["mainTheme"] ?? "",
                         "item_source": article["source"] ?? "",
                         AnalyticsParameterContentType: article["type"] ?? ""
@@ -943,7 +981,6 @@ class DataSource {
                     upvoters.removeValue(forKey: self.uid)
                     Analytics.logEvent("downvote_article", parameters: [
                         AnalyticsParameterItemID: article["objectID"] ?? "",
-                        AnalyticsParameterItemName: article["title"] ?? "",
                         AnalyticsParameterItemCategory: article["mainTheme"] ?? "",
                         "item_source": article["source"] ?? "",
                         AnalyticsParameterContentType: article["type"] ?? ""
@@ -954,7 +991,6 @@ class DataSource {
                 } else if (!actionIsUpvote && !wasUpvoted && !wasDownvoted) {
                     Analytics.logEvent("downvote_article", parameters: [
                         AnalyticsParameterItemID: article["objectID"] ?? "",
-                        AnalyticsParameterItemName: article["title"] ?? "",
                         AnalyticsParameterItemCategory: article["mainTheme"] ?? "",
                         "item_source": article["source"] ?? "",
                         AnalyticsParameterContentType: article["type"] ?? ""
@@ -1075,7 +1111,6 @@ class DataSource {
                 } else {
                     Analytics.logEvent("save_article", parameters: [
                         AnalyticsParameterItemID: article["objectID"] ?? "",
-                        AnalyticsParameterItemName: article["title"] ?? "",
                         AnalyticsParameterItemCategory: article["mainTheme"] ?? "",
                         "item_source": article["source"] ?? "",
                         AnalyticsParameterContentType: article["type"] ?? ""
@@ -1156,7 +1191,7 @@ class DataSource {
         query.observe(.childChanged) { (snap) in
             let video = Video(snapshot: snap)
             
-            if let index = videoIds.index(of: snap.key) {
+            if let index = videoIds.firstIndex(of: snap.key) {
                 let isReported = video.isReported ?? false
                 if isReported {
                     videos.remove(at: index)
@@ -1169,7 +1204,7 @@ class DataSource {
         }
         
         query.observe(.childRemoved) { (snap) in
-            if let index = videoIds.index(of: snap.key) {
+            if let index = videoIds.firstIndex(of: snap.key) {
                 videos.remove(at: index)
                 videoIds.remove(at: index)
             }
@@ -1177,11 +1212,11 @@ class DataSource {
         }
         
         query.observe(.childMoved) { (snap, previousChildKey) in
-            if let index = videoIds.index(of: snap.key) {
+            if let index = videoIds.firstIndex(of: snap.key) {
                 videoIds.remove(at: index)
                 videos.remove(at: index)
             }
-            let newIndex = (previousChildKey != nil) ? videoIds.index(of: previousChildKey!)! + 1 : 0
+            let newIndex = (previousChildKey != nil) ? videoIds.firstIndex(of: previousChildKey!)! + 1 : 0
             videoIds.insert(snap.key, at: newIndex)
             videos.insert(Video(snapshot: snap), at: newIndex)
             onComplete(videos)
@@ -1226,7 +1261,7 @@ class DataSource {
                         videoIds.append(video.objectID)
                     }
                 } else {
-                    if let index = videoIds.index(of: video.objectID) {
+                    if let index = videoIds.firstIndex(of: video.objectID) {
                         let isReported = video.isReported ?? false
                         if isReported {
                             self.videoRef.child(video.objectID).removeAllObservers()
@@ -1260,12 +1295,14 @@ class DataSource {
     }
     
     func observeSingleVideo(id: String, onComplete: @escaping (Video) -> ()) {
-        videoRef.child(id).observe(.value) { (snap) in
+        let query = videoRef.child(id)
+        query.observe(.value) { (snap) in
             if let _ = snap.value {
                 let video = Video(snapshot: snap)
                 onComplete(video)
             }
         }
+        self.observedVideosQueries[id] = query
     }
     
     
@@ -1481,14 +1518,14 @@ class DataSource {
         query.observe(.childChanged) { (snap) in
             let comment = Comment(snapshot: snap)
             
-            if let index = commentIds.index(of: snap.key) {
+            if let index = commentIds.firstIndex(of: snap.key) {
                 comments[index] = comment
             }
             onComplete(comments)
         }
         
         query.observe(.childRemoved) { (snap) in
-            if let index = commentIds.index(of: snap.key) {
+            if let index = commentIds.firstIndex(of: snap.key) {
                 comments.remove(at: index)
                 commentIds.remove(at: index)
             }
@@ -1496,11 +1533,11 @@ class DataSource {
         }
         
         query.observe(.childMoved) { (snap, previousChildKey) in
-            if let index = commentIds.index(of: snap.key) {
+            if let index = commentIds.firstIndex(of: snap.key) {
                 commentIds.remove(at: index)
                 comments.remove(at: index)
             }
-            let newIndex = (previousChildKey != nil) ? commentIds.index(of: previousChildKey!)! + 1 : 0
+            let newIndex = (previousChildKey != nil) ? commentIds.firstIndex(of: previousChildKey!)! + 1 : 0
             commentIds.insert(snap.key, at: newIndex)
             comments.insert(Comment(snapshot: snap), at: newIndex)
             onComplete(comments)
@@ -1999,5 +2036,33 @@ class DataSource {
         if let key = self.notificationRef.child(uid).childByAutoId().key {
             self.notificationRef.child(uid).child(key).updateChildValues(data)
         }
+    }
+    
+    func logSeenItemEvent(uid: String, itemId: String, type: String) {
+        let now = Date().timeIntervalSince1970 * 1000
+        if (type == "article" || type == "post") {
+            articleRef.child(itemId).child("seenBy").child(uid).setValue(now)
+        } else if type == "video" {
+            videoRef.child(itemId).child("seenBy").child(uid).setValue(now)
+        }
+    }
+    
+    func logItemTimeLog(_ timeLog: TimeLog) {
+        let timeLogAsDict: [String : Any] = [
+            "itemId": timeLog.itemId ?? "",
+            "userId": timeLog.userId ?? "",
+            "openTime": timeLog.openTime ?? 0,
+            "closeTime": timeLog.closeTime ?? 0,
+            "activeTime": timeLog.activeTime ?? 0,
+            "percentScroll": timeLog.percentScroll ?? 0,
+            "percentReadTimeActive": timeLog.percentReadTimeActive ?? 0,
+            "type": timeLog.type ?? ""
+        ]
+        guard let key = timeLogRef.childByAutoId().key else { return }
+        timeLogRef.child(key).setValue(timeLogAsDict)
+    }
+    
+    func logSurveyResponse(_ response: Bool) {
+        surveyRef.child(uid).setValue(response)
     }
 }

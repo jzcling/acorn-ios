@@ -151,8 +151,8 @@ class UserViewController: UIViewController {
         self.mostViewedThemesLabel.textColor = ResourcesDay.COLOR_DEFAULT_TEXT
     }
     
-    override func viewDidAppear(_ animated: Bool) {
-        super .viewDidAppear(true)
+    override func viewWillAppear(_ animated: Bool) {
+        super .viewWillAppear(true)
         
         displayNameLabel.text = user!.displayName
         statusLabel.text = dataSource.getUserStatus(user!.status)

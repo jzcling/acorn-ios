@@ -12,6 +12,7 @@ import Firebase
 
 class FeedCvCellPostNoImage: UICollectionViewCell {
 
+    @IBOutlet weak var newBannerImageView: UIImageView!
     @IBOutlet weak var themeLabel: UILabel!
     @IBOutlet weak var topSeparatorLabel: UILabel!
     @IBOutlet weak var readTimeLabel: UILabel!
@@ -39,6 +40,7 @@ class FeedCvCellPostNoImage: UICollectionViewCell {
     var article: Article?
     var textColor: UIColor?
     var textColorFaint: UIColor?
+    var textColorRead: UIColor?
     
     lazy var user = Auth.auth().currentUser!
     lazy var uid = user.uid
@@ -78,8 +80,6 @@ class FeedCvCellPostNoImage: UICollectionViewCell {
         commentButton.tintColor = buttonDefaultTint
         saveButton.tintColor = buttonDefaultTint
         shareButton.tintColor = buttonDefaultTint
-        
-        dataSource.removeArticleObserver(article!.objectID)
     }
 
     func populateContent(article: Article, selectedFeed: String) {
@@ -88,6 +88,11 @@ class FeedCvCellPostNoImage: UICollectionViewCell {
     }
     
     func populateCell(article: Article) {
+        if let seenBy = article.seenBy?.keys, seenBy.contains(uid) {
+            newBannerImageView.isHidden = true
+        } else {
+            newBannerImageView.isHidden = false
+        }
         themeLabel.text = article.mainTheme
         themeLabel.sizeToFit()
         if article.readTime != nil {
@@ -97,6 +102,11 @@ class FeedCvCellPostNoImage: UICollectionViewCell {
         } else {
             readTimeLabel.text = ""
             topSeparatorLabel.text = ""
+        }
+        if let openedBy = article.openedBy?.keys, openedBy.contains(uid) {
+            titleLabel.textColor = textColorRead
+        } else {
+            titleLabel.textColor = textColor
         }
         titleLabel.text = article.postText
         sourceLabel.text = article.postAuthor
