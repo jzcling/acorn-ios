@@ -10,7 +10,7 @@ import Foundation
 import FirebaseUI
 import Firebase
 
-class Address {
+class Address: Codable {
     var objectID: String
     var article: [String: Double] = [String: Double]()
     var address: String

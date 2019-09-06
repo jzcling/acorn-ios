@@ -29,7 +29,7 @@ class FeedCvCellSaved: UICollectionViewCell {
     
     var delegate: FeedCvCellDelegate?
     
-    let dataSource = DataSource.instance
+    let dataSource = NetworkDataSource.instance
     
     var article: Article?
     var textColor: UIColor?

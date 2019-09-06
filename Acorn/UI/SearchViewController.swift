@@ -9,25 +9,47 @@
 import UIKit
 import InstantSearch
 
-class SearchViewController: HitsTableViewController {
-
-    @IBOutlet weak var tableView: HitsTableWidget!
-    @IBOutlet weak var searchBar: SearchBarWidget!
+class SearchViewController: UIViewController {
+    typealias HitType = Article
+    
+    let searchTriggeringMode: SearchTriggeringMode
+    
+    let stackView = UIStackView()
+    var searcher: SingleIndexSearcher
+    
+    let queryInputInteractor: QueryInputInteractor
+    let searchBarController: SearchBarController
+    
+    let hitsInteractor: HitsInteractor<HitType>
+    let hitsTableViewController: HitsTableViewController<HitType>
     
     var nightModeOn = UserDefaults.standard.bool(forKey: "nightModePref")
-    var cardBackgroundColor: UIColor?
-    var textColor: UIColor?
     
     let mainStoryboard = UIStoryboard(name: "Main", bundle: nil)
     
-    let dataSource = DataSource.instance
+    let dataSource = NetworkDataSource.instance
+    
+    init(algoliaApiKey: String) {
+        self.searchTriggeringMode = .searchAsYouType
+        self.searchBarController = .init(searchBar: .init())
+        self.queryInputInteractor = .init()
+        self.hitsInteractor = .init(infiniteScrolling: .on(withOffset: 10), showItemsOnEmptyQuery: false)
+        self.hitsTableViewController = HitsTableViewController(searchBar: self.searchBarController.searchBar)
+        self.searcher = SingleIndexSearcher(appID: self.dataSource.algoliaAppId, apiKey: algoliaApiKey, indexName: self.dataSource.algoliaIndexName)
+        super.init(nibName: .none, bundle: .none)
+        self.title = "Search"
+        self.view.tintColor = ResourcesDay.COLOR_PRIMARY
+        self.setup()
+    }
+    
+    required init?(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        hitsTableView = tableView
-        
-        searchBar.becomeFirstResponder()
+        configureUI()
         
         if nightModeOn {
             nightModeEnabled()
@@ -36,36 +58,46 @@ class SearchViewController: HitsTableViewController {
         }
         NotificationCenter.default.addObserver(self, selector: #selector(nightModeEnabled), name: .nightModeOn, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(nightModeDisabled), name: .nightModeOff, object: nil)
-        
-        InstantSearch.shared.registerAllWidgets(in: self.view)
     }
     
     @objc func nightModeEnabled() {
         enableNightMode()
-        self.tableView.reloadData()
+        self.hitsTableViewController.reload()
     }
     
     @objc func nightModeDisabled() {
         disableNightMode()
-        self.tableView.reloadData()
+        self.hitsTableViewController.reload()
     }
     
     func enableNightMode() {
         nightModeOn = true
         self.view.backgroundColor = ResourcesNight.COLOR_BG
-        self.tableView.backgroundColor = ResourcesNight.COLOR_BG
-        
-        cardBackgroundColor = ResourcesNight.CARD_BG_COLOR
-        textColor = ResourcesNight.COLOR_DEFAULT_TEXT
+        self.hitsTableViewController.tableView.backgroundColor = ResourcesNight.COLOR_BG
+        self.hitsTableViewController.cardBackgroundColor = ResourcesNight.CARD_BG_COLOR
+        (self.searchBarController.searchBar.value(forKey: "searchField") as? UITextField)?.textColor = ResourcesNight.CARD_TEXT_COLOR
     }
     
     func disableNightMode() {
         nightModeOn = false
         self.view.backgroundColor = ResourcesDay.COLOR_BG
-        self.tableView.backgroundColor = ResourcesDay.COLOR_BG
+        self.hitsTableViewController.tableView.backgroundColor = ResourcesDay.COLOR_BG
+        self.hitsTableViewController.cardBackgroundColor = ResourcesDay.CARD_BG_COLOR
+        (self.searchBarController.searchBar.value(forKey: "searchField") as? UITextField)?.textColor = ResourcesDay.CARD_TEXT_COLOR
+    }
+    
+    private func setup() {
         
-        cardBackgroundColor = ResourcesDay.CARD_BG_COLOR
-        textColor = ResourcesDay.COLOR_DEFAULT_TEXT
+        hitsTableViewController.tableView.register(SearchHitsTvCell.self, forCellReuseIdentifier: hitsTableViewController.cellIdentifier)
+        
+        hitsInteractor.connectSearcher(searcher)
+        hitsInteractor.connectController(hitsTableViewController)
+        
+        queryInputInteractor.connectController(searchBarController)
+        queryInputInteractor.connectSearcher(searcher, searchTriggeringMode: searchTriggeringMode)
+        
+        searcher.search()
+        
     }
 
     override func didReceiveMemoryWarning() {
@@ -73,43 +105,51 @@ class SearchViewController: HitsTableViewController {
         // Dispose of any resources that can be recreated.
     }
     
-    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath, containing hit: [String: Any]) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "hitCell", for: indexPath) as! SearchHitsTvCell
-        
-        cell.hit = hit
-        cell.backgroundColor = cardBackgroundColor
-        cell.cellView.backgroundColor = cardBackgroundColor
-        cell.defaultTextColor = textColor
-        
-        return cell
-    }
-    
-    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath, containing hit: [String : Any]) {
-        let article = Article(json: hit)
-        
-        dataSource.recordOpenArticleDetails(articleId: article.objectID, mainTheme: article.mainTheme ?? "General")
-        if article.link != nil && article.link != "" {
-            openArticle(article: article)
-        } else {
-            openComments(article: article)
-        }
-    }
-    
-    func openArticle(article: Article) {
-        let vc = mainStoryboard.instantiateViewController(withIdentifier: "WebView") as? WebViewViewController
-        vc?.articleId = article.objectID
-        vc?.searchVC = self
-        present(vc!, animated: true, completion: nil)
-    }
-    
-    func openComments(article: Article) {
-        let vc = mainStoryboard.instantiateViewController(withIdentifier: "Comment") as? CommentViewController
-        vc?.articleId = article.objectID
-        present(vc!, animated:true, completion: nil)
-    }
-    
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
-        searchBar.endEditing(true)
+        searchBarController.searchBar.endEditing(true)
     }
 
+}
+
+private extension SearchViewController {
+    
+    func configureUI() {
+        configureSearchBar()
+        configureStackView()
+        configureLayout()
+    }
+    
+    func configureSearchBar() {
+        let searchBar = searchBarController.searchBar
+        searchBar.translatesAutoresizingMaskIntoConstraints = false
+        searchBar.searchBarStyle = .minimal
+    }
+    
+    func configureStackView() {
+        stackView.spacing = 8
+        stackView.axis = .vertical
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+    }
+    
+    func configureLayout() {
+        
+        searchBarController.searchBar.heightAnchor.constraint(equalToConstant: 40).isActive = true
+        
+        addChild(hitsTableViewController)
+        hitsTableViewController.didMove(toParent: self)
+        
+        stackView.addArrangedSubview(searchBarController.searchBar)
+        stackView.addArrangedSubview(hitsTableViewController.view)
+        
+        view.addSubview(stackView)
+        
+        NSLayoutConstraint.activate([
+            stackView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+            stackView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+            stackView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
+            stackView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
+        ])
+        
+    }
+    
 }

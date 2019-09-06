@@ -10,7 +10,7 @@ import Foundation
 import FirebaseUI
 import Firebase
 
-class Article {
+class Article: Codable {
     var entityId: Int?
     var objectID: String
     var type: String

@@ -50,8 +50,8 @@ class CommentImageTextCvCell: UICollectionViewCell {
                 self.setUpLightboxController(image: image)
             }
         }
-        textLabel.highlightedText = comment.commentText ?? ""
-	        textLabel.highlightedBackgroundColor = nightModeOn ? ResourcesNight.SEARCH_HIT_BG_COLOR : ResourcesDay.SEARCH_HIT_BG_COLOR
+        textLabel.text = comment.commentText ?? ""
+//            textLabel.highlightedBackgroundColor = nightModeOn ? ResourcesNight.SEARCH_HIT_BG_COLOR : ResourcesDay.SEARCH_HIT_BG_COLOR
         textLabel.highlightedTextColor = nightModeOn ? ResourcesNight.SEARCH_HIT_TEXT_COLOR : ResourcesDay.SEARCH_HIT_TEXT_COLOR
         if nameLabel != nil { nameLabel.text = comment.userDisplayName }
         dateLabel.text = DateUtils.parseCommentDate(unixTimestamp: -comment.pubDate)
@@ -65,7 +65,7 @@ class CommentImageTextCvCell: UICollectionViewCell {
     
     override func prepareForReuse() {
         textLabel.text = nil
-        textLabel.highlightedText = nil
+        textLabel.text = nil
         if nameLabel != nil { nameLabel.text = nil }
         dateLabel.text = nil
         imageView.sd_cancelCurrentImageLoad()

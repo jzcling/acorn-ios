@@ -26,7 +26,7 @@ target 'Acorn' do
   pod 'ImagePicker'
   pod 'Lightbox'
   pod 'Toast-Swift'
-  pod 'InstantSearch', '~>4'
+  pod 'InstantSearch', '~>5.0'
   pod 'DeviceKit'
   pod 'Fabric'
   pod 'Crashlytics'
@@ -41,6 +41,7 @@ target 'Acorn' do
   pod 'MaterialShowcase'
   pod 'PIPKit'
   pod 'YoutubePlayer-in-WKWebView'
+  pod 'FBAudienceNetwork'
 
   target 'AcornTests' do
     inherit! :search_paths

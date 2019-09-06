@@ -17,7 +17,7 @@ class PreviewImageViewController: UIViewController {
     var image: UIImage?
     @IBOutlet weak var inputBarView: UIView!
     
-    let dataSource = DataSource.instance
+    let dataSource = NetworkDataSource.instance
     
     var articleId: String?
     

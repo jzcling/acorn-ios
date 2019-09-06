@@ -106,7 +106,7 @@ class HtmlUtils {
                             for s in srcset {
                                 let splitSrc = s.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: " ")
                                 if (splitSrc.count > 1) {
-                                    let diff = Int(splitSrc[1].split(separator: "w")[0])! - 500
+                                    let diff = Int(splitSrc[1].split(separator: "w")[0]) ?? 0 - 500
                                     if (diff > 0 && diff < smallestDiff) {
                                         smallestDiff = diff
                                         srcUrl = String(s.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: " ")[0])

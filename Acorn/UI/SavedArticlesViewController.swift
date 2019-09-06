@@ -27,7 +27,7 @@ class SavedArticlesViewController: UIViewController, UITableViewDelegate, UITabl
     let themeArray = ResourcesDay.THEME_LIST
     var selectedThemes = [String]()
     
-    let dataSource = DataSource.instance
+    let dataSource = NetworkDataSource.instance
     
     let mainStoryboard = UIStoryboard(name: "Main", bundle: nil)
     

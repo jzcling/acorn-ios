@@ -64,7 +64,7 @@ class CreatePostViewController: UIViewController {
     
     var nightModeOn = UserDefaults.standard.bool(forKey: "nightModePref")
     
-    let dataSource = DataSource.instance
+    let dataSource = NetworkDataSource.instance
     
     override func viewDidLoad() {
         super.viewDidLoad()

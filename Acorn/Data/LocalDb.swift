@@ -30,6 +30,13 @@ class LocalDb {
     let isSaved = Expression<Int?>("isSaved")
     let htmlContent = Expression<String?>("htmlContent")
     
+    let address_table = Table("address")
+    let addressValue = Expression<String>("address")
+    let formattedAddress = Expression<String?>("formattedAddress")
+    let articleId = Expression<String>("articleId")
+    let latitude = Expression<Double>("latitude")
+    let longitude = Expression<Double>("longitude")
+    
     func openDatabase() {
         print("openDatabase")
         let dbPath = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0]
@@ -50,6 +57,15 @@ class LocalDb {
                 t.column(writeDate)
                 t.column(isSaved)
                 t.column(htmlContent)
+            })
+            
+            try localDb?.run(address_table.create(ifNotExists: true) { t in
+                t.column(objectID, primaryKey: true)
+                t.column(addressValue)
+                t.column(formattedAddress)
+                t.column(articleId)
+                t.column(latitude)
+                t.column(longitude)
             })
         } catch let error {
             print(error)
@@ -102,5 +118,73 @@ class LocalDb {
         } catch let error {
             print(error)
         }
+    }
+    
+    func insertAddress(_ address: dbAddress) {
+        do {
+            try localDb?.run(address_table.insert(or: .replace, objectID <- address.objectID, addressValue <- address.address, formattedAddress <- address.formattedAddress, articleId <- address.articleId, latitude <- address.latitude, longitude <- address.longitude))
+            print("addressInserted for \(address.articleId): \(address.address)")
+        } catch let error {
+            print(error)
+        }
+    }
+    
+    func getAddress(for aid: String) -> [dbAddress]? {
+        var addresses = [dbAddress]()
+        do {
+            for address in try localDb!.prepare(address_table.filter(articleId == aid)) {
+                
+                let localAddress = dbAddress(objectID: address[objectID], articleId: address[articleId], address: address[addressValue], formattedAddress: address[formattedAddress], latitude: address[latitude], longitude: address[longitude])
+                print("addressFetched for \(localAddress.articleId): \(localAddress.address)")
+                
+                addresses.append(localAddress)
+            }
+        } catch let error {
+            print(error)
+        }
+        return addresses
+    }
+    
+    func deleteAddress(for aid: String) {
+        do {
+            try localDb?.run(address_table.filter(articleId == aid).delete())
+            print("addressDeleted for \(aid)")
+        } catch let error {
+            print(error)
+        }
+    }
+    
+    func deleteAllAddresses() {
+        do {
+            try localDb?.run(address_table.delete())
+            print("deleted all addresses")
+        } catch let error {
+            print(error)
+        }
+    }
+    
+    func getFirstAddress() -> dbAddress? {
+        do {
+            if let address = try localDb?.pluck(address_table) {
+                let localAddress = dbAddress(objectID: address[objectID], articleId: address[articleId], address: address[addressValue], formattedAddress: address[formattedAddress], latitude: address[latitude], longitude: address[longitude])
+                return localAddress
+            }
+        } catch let error {
+            print(error)
+        }
+        return nil
+    }
+    
+    func getAllAddresses() -> [dbAddress]? {
+        var addresses = [dbAddress]()
+        do {
+            for address in try localDb!.prepare(address_table) {
+                let localAddress = dbAddress(objectID: address[objectID], articleId: address[articleId], address: address[addressValue], formattedAddress: address[formattedAddress], latitude: address[latitude], longitude: address[longitude])
+                addresses.append(localAddress)
+            }
+        } catch let error {
+            print(error)
+        }
+        return addresses
     }
 }

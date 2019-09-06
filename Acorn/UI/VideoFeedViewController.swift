@@ -25,7 +25,7 @@ class VideoFeedViewController: MDCCollectionViewController {
     lazy var user = Auth.auth().currentUser!
     lazy var uid = user.uid
     
-    let dataSource = DataSource.instance
+    let dataSource = NetworkDataSource.instance
     let loadTrigger: Int = 5
     
     let mainStoryboard = UIStoryboard(name: "Main", bundle: nil)
@@ -200,6 +200,7 @@ class VideoFeedViewController: MDCCollectionViewController {
         cell.textColor = colorCardText
         cell.textColorFaint = colorCardTextFaint
         cell.textColorRead = colorCardTextRead
+        cell.uid = self.uid
         
         cell.backgroundColor = colorCardBackground
         

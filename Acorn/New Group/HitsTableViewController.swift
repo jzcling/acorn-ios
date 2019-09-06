@@ -17,7 +17,15 @@ class HitsTableViewController<HitType: Codable>: UITableViewController, InstantS
     
     var hitsSource: HitsInteractor<HitType>?
     
-    init() {
+    var searchBar: UISearchBar
+    
+    let mainStoryboard = UIStoryboard(name: "Main", bundle: nil)
+    let dataSource = NetworkDataSource.instance
+    
+    var cardBackgroundColor: UIColor?
+    
+    init(searchBar: UISearchBar) {
+        self.searchBar = searchBar
         super.init(nibName: .none, bundle: .none)
     }
     
@@ -33,30 +41,94 @@ class HitsTableViewController<HitType: Codable>: UITableViewController, InstantS
         tableView.scrollToFirstNonEmptySection()
     }
     
-    //MARK: - UITableViewDataSource
+    //MARK: - UITableViewNetworkDataSource
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return hitsSource?.numberOfHits() ?? 0
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: cellIdentifier, for: indexPath)
-        let hit = hitsSource?.hit(atIndex: indexPath.row)
-        switch hit {
-        case let article as Article:
-            (cell as? UIView & ArticleCell).flatMap(MovieCellViewState().configure)?(movie)
-        case let movieHit as Hit<Movie>:
-            MovieHitCellConfigurator.configure(cell)(movieHit)
-        default:
-            break
+        let cell = tableView.dequeueReusableCell(withIdentifier: cellIdentifier, for: indexPath) as! SearchHitsTvCell
+        if let hit = hitsSource?.hit(atIndex: indexPath.row) as? Article {
+            ArticleCellViewState().configure(cell)(hit, searchBar)
         }
+        
+        cell.backgroundColor = cardBackgroundColor
+        
         return cell
     }
     
     //MARK: - UITableViewDelegate
     
     override func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        return 80
+        let hit = hitsSource?.hit(atIndex: indexPath.row)
+        
+        let cellWidth = tableView.bounds.width
+        let baseHeight: CGFloat = 71
+        var titleHeight: CGFloat = 0
+        
+        let tempTitleLabel = UILabel(frame: CGRect(x: 0, y: 0, width: cellWidth - 36 - 90, height: CGFloat.greatestFiniteMagnitude))
+        tempTitleLabel.numberOfLines = 0
+        tempTitleLabel.lineBreakMode = .byWordWrapping
+        tempTitleLabel.font = UIFont.systemFont(ofSize: 17.0)
+        
+        switch hit {
+        case let article as Article:
+            tempTitleLabel.text = article.title
+            tempTitleLabel.sizeToFit()
+            titleHeight = tempTitleLabel.frame.height
+        case let articleHit as Hit<Article>:
+            let article = articleHit.object
+            tempTitleLabel.text = article.title
+            tempTitleLabel.sizeToFit()
+            titleHeight = tempTitleLabel.frame.height
+        default:
+            break
+        }
+        
+        let cellHeight = max(110, baseHeight + titleHeight)
+        
+        return cellHeight
+    }
+    
+    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let hit = hitsSource?.hit(atIndex: indexPath.row)
+        
+        switch hit {
+        case let article as Article:
+            dataSource.recordOpenArticleDetails(articleId: article.objectID, mainTheme: article.mainTheme ?? "General")
+            if article.link != nil && article.link != "" {
+                openArticle(article: article)
+            } else {
+                openComments(article: article)
+            }
+        case let articleHit as Hit<Article>:
+            let article = articleHit.object
+            dataSource.recordOpenArticleDetails(articleId: article.objectID, mainTheme: article.mainTheme ?? "General")
+            if article.link != nil && article.link != "" {
+                openArticle(article: article)
+            } else {
+                openComments(article: article)
+            }
+        default: break
+        }
+        
+    }
+    
+    func openArticle(article: Article) {
+        self.dataSource.getAlgoliaApiKey() { key in
+            let vc = self.mainStoryboard.instantiateViewController(withIdentifier: "WebView") as? WebViewViewController
+            let searchVC = SearchViewController(algoliaApiKey: key)
+            vc?.articleId = article.objectID
+            vc?.searchVC = searchVC
+            self.present(vc!, animated: true, completion: nil)
+        }
+    }
+    
+    func openComments(article: Article) {
+        let vc = mainStoryboard.instantiateViewController(withIdentifier: "Comment") as? CommentViewController
+        vc?.articleId = article.objectID
+        present(vc!, animated:true, completion: nil)
     }
     
 }

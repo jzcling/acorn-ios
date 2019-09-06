@@ -34,7 +34,7 @@ class SettingsViewController: UIViewController {
     let defaults = UserDefaults.standard
     lazy var nightModeOn = defaults.bool(forKey: "nightModePref")
     
-    let dataSource = DataSource.instance
+    let dataSource = NetworkDataSource.instance
     
     let mainStoryboard = UIStoryboard(name: "Main", bundle: nil)
     

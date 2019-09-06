@@ -19,7 +19,7 @@ class ChannelsToRemoveViewController: UIViewController, UITableViewDelegate, UIT
     var textColor: UIColor?
     
     var channelsRemoved: [String]?
-    let dataSource = DataSource.instance
+    let dataSource = NetworkDataSource.instance
     
     override func viewDidLoad() {
         super.viewDidLoad()

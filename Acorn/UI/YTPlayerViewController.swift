@@ -28,7 +28,7 @@ class YTPlayerViewController: UIViewController, PIPUsable {
     lazy var user = Auth.auth().currentUser!
     lazy var uid = user.uid
     
-    let dataSource = DataSource.instance
+    let dataSource = NetworkDataSource.instance
     var video: Video?
     
 //    var player: YTSwiftyPlayer!

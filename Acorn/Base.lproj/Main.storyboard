@@ -2250,8 +2250,8 @@ title</string>
                                     <rect key="frame" x="0.0" y="0.0" width="400" height="370"/>
                                     <autoresizingMask key="autoresizingMask"/>
                                     <subviews>
-                                        <view contentMode="scaleToFill" misplaced="YES" translatesAutoresizingMaskIntoConstraints="NO" id="vPu-Jy-M3s" customClass="GADUnifiedNativeAdView">
-                                            <rect key="frame" x="0.0" y="0.0" width="400" height="383"/>
+                                        <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="vPu-Jy-M3s">
+                                            <rect key="frame" x="0.0" y="0.0" width="400" height="370"/>
                                             <subviews>
                                                 <stackView opaque="NO" contentMode="scaleToFill" spacing="5" translatesAutoresizingMaskIntoConstraints="NO" id="2sR-fs-DBh">
                                                     <rect key="frame" x="12" y="8" width="64" height="17"/>
@@ -2281,6 +2281,18 @@ title</string>
                                                         <constraint firstAttribute="height" constant="17" id="l0C-y1-29c"/>
                                                     </constraints>
                                                 </stackView>
+                                                <stackView opaque="NO" contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="Ema-f0-g1i">
+                                                    <rect key="frame" x="332" y="8" width="60" height="30"/>
+                                                    <subviews>
+                                                        <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="1HE-NR-Cn0" customClass="FBAdChoicesView">
+                                                            <rect key="frame" x="0.0" y="0.0" width="60" height="30"/>
+                                                            <constraints>
+                                                                <constraint firstAttribute="height" constant="30" id="MVc-zC-8BN"/>
+                                                                <constraint firstAttribute="width" constant="60" id="Yxc-rc-7cd"/>
+                                                            </constraints>
+                                                        </view>
+                                                    </subviews>
+                                                </stackView>
                                                 <label opaque="NO" contentMode="left" textAlignment="natural" lineBreakMode="wordWrap" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="GVF-kP-Ccq">
                                                     <rect key="frame" x="12" y="33" width="376" height="66"/>
                                                     <gestureRecognizers/>
@@ -2297,13 +2309,14 @@ body</string>
                                                 <stackView opaque="NO" contentMode="scaleToFill" spacing="5" translatesAutoresizingMaskIntoConstraints="NO" id="mLL-v9-0oW">
                                                     <rect key="frame" x="12" y="107" width="76.5" height="30"/>
                                                     <subviews>
-                                                        <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="SXw-kL-Imv">
+                                                        <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="JtS-R0-jzj" customClass="FBMediaView">
                                                             <rect key="frame" x="0.0" y="0.0" width="30" height="30"/>
+                                                            <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                                             <constraints>
-                                                                <constraint firstAttribute="height" constant="30" id="1ZE-Ie-TOB"/>
-                                                                <constraint firstAttribute="width" constant="30" id="aec-tI-egk"/>
+                                                                <constraint firstAttribute="height" constant="30" id="STA-wU-wIB"/>
+                                                                <constraint firstAttribute="width" constant="30" id="uZx-rg-UMc"/>
                                                             </constraints>
-                                                        </imageView>
+                                                        </view>
                                                         <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="source" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="xBU-H1-Wu5">
                                                             <rect key="frame" x="35" y="0.0" width="41.5" height="30"/>
                                                             <gestureRecognizers/>
@@ -2331,7 +2344,7 @@ body</string>
                                                         </button>
                                                     </subviews>
                                                 </stackView>
-                                                <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="CTt-6G-7A9" customClass="GADMediaView">
+                                                <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="CTt-6G-7A9" customClass="FBMediaView">
                                                     <rect key="frame" x="0.0" y="145" width="400" height="225"/>
                                                     <constraints>
                                                         <constraint firstAttribute="width" secondItem="CTt-6G-7A9" secondAttribute="height" multiplier="16:9" id="dgT-kF-L3u"/>
@@ -2344,9 +2357,11 @@ body</string>
                                                 <constraint firstItem="GVF-kP-Ccq" firstAttribute="top" secondItem="2sR-fs-DBh" secondAttribute="bottom" constant="8" id="LAv-b9-h2i"/>
                                                 <constraint firstItem="3oZ-tF-Fye" firstAttribute="centerY" secondItem="mLL-v9-0oW" secondAttribute="centerY" id="Ltw-7m-KdK"/>
                                                 <constraint firstItem="GVF-kP-Ccq" firstAttribute="leading" secondItem="vPu-Jy-M3s" secondAttribute="leading" constant="12" id="MUd-Mb-uw3"/>
+                                                <constraint firstAttribute="trailing" secondItem="Ema-f0-g1i" secondAttribute="trailing" constant="8" id="Nc4-E3-kFz"/>
                                                 <constraint firstAttribute="trailing" secondItem="GVF-kP-Ccq" secondAttribute="trailing" constant="12" id="Q5W-eH-x4L"/>
                                                 <constraint firstAttribute="trailing" secondItem="3oZ-tF-Fye" secondAttribute="trailing" constant="12" id="awl-fP-Kxe"/>
                                                 <constraint firstAttribute="trailing" secondItem="CTt-6G-7A9" secondAttribute="trailing" id="clA-NQ-A0y"/>
+                                                <constraint firstItem="Ema-f0-g1i" firstAttribute="leading" relation="greaterThanOrEqual" secondItem="2sR-fs-DBh" secondAttribute="trailing" constant="8" id="csp-2q-vdk"/>
                                                 <constraint firstItem="3oZ-tF-Fye" firstAttribute="leading" relation="greaterThanOrEqual" secondItem="mLL-v9-0oW" secondAttribute="trailing" constant="12" id="dX9-n4-vjs"/>
                                                 <constraint firstItem="mLL-v9-0oW" firstAttribute="top" secondItem="GVF-kP-Ccq" secondAttribute="bottom" constant="8" id="eX9-pY-tb8"/>
                                                 <constraint firstItem="CTt-6G-7A9" firstAttribute="top" secondItem="3oZ-tF-Fye" secondAttribute="bottom" constant="8" id="f5e-TA-Zwb"/>
@@ -2354,15 +2369,8 @@ body</string>
                                                 <constraint firstItem="CTt-6G-7A9" firstAttribute="leading" secondItem="vPu-Jy-M3s" secondAttribute="leading" id="qG2-bM-HXx"/>
                                                 <constraint firstItem="2sR-fs-DBh" firstAttribute="leading" secondItem="vPu-Jy-M3s" secondAttribute="leading" constant="12" id="sVM-FV-uDS"/>
                                                 <constraint firstItem="2sR-fs-DBh" firstAttribute="top" secondItem="vPu-Jy-M3s" secondAttribute="top" constant="8" id="wVE-HA-hJd"/>
+                                                <constraint firstItem="Ema-f0-g1i" firstAttribute="top" secondItem="vPu-Jy-M3s" secondAttribute="top" constant="8" id="yuf-jZ-o9S"/>
                                             </constraints>
-                                            <connections>
-                                                <outlet property="advertiserView" destination="xBU-H1-Wu5" id="7gt-Tm-KZi"/>
-                                                <outlet property="bodyView" destination="GVF-kP-Ccq" id="nAl-uh-Ao4"/>
-                                                <outlet property="callToActionView" destination="Fb0-HC-l9n" id="TCV-fB-o39"/>
-                                                <outlet property="headlineView" destination="AyY-g0-oHb" id="tbU-yM-Ycp"/>
-                                                <outlet property="iconView" destination="SXw-kL-Imv" id="JYc-gq-fkb"/>
-                                                <outlet property="mediaView" destination="CTt-6G-7A9" id="NyU-cD-KuZ"/>
-                                            </connections>
                                         </view>
                                     </subviews>
                                 </view>
@@ -2376,12 +2384,14 @@ body</string>
                                 <viewLayoutGuide key="safeArea" id="5nk-nQ-UJ4"/>
                                 <size key="customSize" width="400" height="370"/>
                                 <connections>
+                                    <outlet property="adChoicesView" destination="1HE-NR-Cn0" id="q0M-Mo-IJQ"/>
                                     <outlet property="advertiserView" destination="xBU-H1-Wu5" id="d8G-hs-wZF"/>
                                     <outlet property="bodyView" destination="GVF-kP-Ccq" id="OAg-yw-4LV"/>
                                     <outlet property="callToActionView" destination="Fb0-HC-l9n" id="j24-Ya-bOo"/>
                                     <outlet property="headlineView" destination="AyY-g0-oHb" id="dv7-Ir-c3O"/>
-                                    <outlet property="iconView" destination="SXw-kL-Imv" id="p6q-99-XJb"/>
-                                    <outlet property="mediaView" destination="CTt-6G-7A9" id="d7P-FE-6Ke"/>
+                                    <outlet property="iconView" destination="JtS-R0-jzj" id="Piu-qr-rjW"/>
+                                    <outlet property="mediaView" destination="CTt-6G-7A9" id="94b-Z2-h4n"/>
+                                    <outlet property="nativeAdView" destination="vPu-Jy-M3s" id="6d1-4o-PT9"/>
                                     <outlet property="topSeparatorLabel" destination="jxq-eQ-OFR" id="XhF-OS-yHv"/>
                                 </connections>
                             </collectionViewCell>
@@ -2460,7 +2470,7 @@ body</string>
                 </collectionViewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="OhC-tK-y3v" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="857" y="1463"/>
+            <point key="canvasLocation" x="856.52173913043487" y="1462.5"/>
         </scene>
         <!--WebView-->
         <scene sceneID="yli-Ov-HrQ">
@@ -3560,11 +3570,11 @@ In order to ensure Acorn provides the best experience possible for everyone, we 
                         <rect key="frame" x="0.0" y="0.0" width="414" height="896"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <tableView clipsSubviews="YES" contentMode="scaleToFill" alwaysBounceVertical="YES" dataMode="prototypes" style="plain" separatorStyle="default" rowHeight="-1" estimatedRowHeight="-1" sectionHeaderHeight="28" sectionFooterHeight="28" translatesAutoresizingMaskIntoConstraints="NO" id="eD8-rQ-ZLQ" customClass="HitsTableWidget" customModule="InstantSearch">
+                            <tableView clipsSubviews="YES" contentMode="scaleToFill" alwaysBounceVertical="YES" dataMode="prototypes" style="plain" separatorStyle="default" rowHeight="-1" estimatedRowHeight="-1" sectionHeaderHeight="28" sectionFooterHeight="28" translatesAutoresizingMaskIntoConstraints="NO" id="eD8-rQ-ZLQ">
                                 <rect key="frame" x="0.0" y="144" width="414" height="718"/>
                                 <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 <prototypes>
-                                    <tableViewCell clipsSubviews="YES" contentMode="scaleToFill" insetsLayoutMarginsFromSafeArea="NO" selectionStyle="blue" hidesAccessoryWhenEditing="NO" indentationLevel="1" indentationWidth="0.0" reuseIdentifier="hitCell" rowHeight="144" id="Rkl-Gx-EXZ" customClass="SearchHitsTvCell" customModule="Acorn" customModuleProvider="target">
+                                    <tableViewCell clipsSubviews="YES" contentMode="scaleToFill" insetsLayoutMarginsFromSafeArea="NO" selectionStyle="blue" hidesAccessoryWhenEditing="NO" indentationLevel="1" indentationWidth="0.0" reuseIdentifier="hitCellold" rowHeight="144" id="Rkl-Gx-EXZ" customClass="SearchHitsTvCell" customModule="Acorn" customModuleProvider="target">
                                         <rect key="frame" x="0.0" y="28" width="414" height="144"/>
                                         <autoresizingMask key="autoresizingMask"/>
                                         <tableViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" insetsLayoutMarginsFromSafeArea="NO" tableViewCell="Rkl-Gx-EXZ" id="TZv-Ev-ILo">

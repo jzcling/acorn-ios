@@ -211,7 +211,7 @@ class SubscriptionsViewController: MDCCollectionViewController, SubscriptionsHea
         self.defaults.set(themeFilters, forKey: "themeFilters")
         self.defaults.set(self.themeKey, forKey: "themeKey")
         
-        DataSource.instance.setThemeSubscriptions(themePrefs)
+        NetworkDataSource.instance.setThemeSubscriptions(themePrefs)
         
         let message = MDCSnackbarMessage()
         message.text = "Theme subscriptions saved"

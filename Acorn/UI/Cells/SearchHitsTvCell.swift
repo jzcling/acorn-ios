@@ -7,105 +7,54 @@
 //
 
 import UIKit
-import InstantSearchCore
+import InstantSearch
 import SDWebImage
 import Firebase
 
-class SearchHitsTvCell: UITableViewCell {
+class SearchHitsTvCell: UITableViewCell, ArticleCell {
     
-    @IBOutlet weak var cellView: UIView!
-    @IBOutlet weak var titleLabel: UILabel!
-    @IBOutlet weak var sourceLabel: UILabel!
-    @IBOutlet weak var sourceDateSeparator: UILabel!
-    @IBOutlet weak var dateLabel: UILabel!
-    @IBOutlet weak var voteCntImageView: UIImageView!
-    @IBOutlet weak var voteCntLabel: UILabel!
-    @IBOutlet weak var voteCommSeparator: UILabel!
-    @IBOutlet weak var commCntImageView: UIImageView!
-    @IBOutlet weak var commCntLabel: UILabel!
-    @IBOutlet weak var mainImageView: UIImageView!
+    let cellView: UIView
+    let titleLabel: UILabel
+    let sourceLabel: UILabel
+    let sourceDateSeparator: UILabel
+    let dateLabel: UILabel
+    let voteCntImageView: UIImageView
+    let voteCntLabel: UILabel
+    let voteCommSeparator: UILabel
+    let commCntImageView: UIImageView
+    let commCntLabel: UILabel
+    let mainImageView: UIImageView
     
-    @IBOutlet weak var titleHeightConstraint: NSLayoutConstraint!
+    override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
+        cellView = .init(frame: .zero)
+        titleLabel = .init(frame: .zero)
+        sourceLabel = .init(frame: .zero)
+        sourceDateSeparator = .init(frame: .zero)
+        dateLabel = .init(frame: .zero)
+        voteCntImageView = .init(frame: .zero)
+        voteCntLabel = .init(frame: .zero)
+        voteCommSeparator = .init(frame: .zero)
+        commCntImageView = .init(frame: .zero)
+        commCntLabel = .init(frame: .zero)
+        mainImageView = .init(frame: .zero)
+        super.init(style: style, reuseIdentifier: reuseIdentifier)
+        layout()
+    }
+    
+    required init?(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
     
     let nightModeOn = UserDefaults.standard.bool(forKey: "nightModePref")
     lazy var searchHitTextColor = nightModeOn ? ResourcesNight.SEARCH_HIT_TEXT_COLOR : ResourcesDay.SEARCH_HIT_TEXT_COLOR
-    lazy var searchHitBGColor = nightModeOn ? ResourcesNight.SEARCH_HIT_BG_COLOR : ResourcesDay.SEARCH_HIT_BG_COLOR
     lazy var upvoteTint = nightModeOn ? ResourcesNight.UPVOTE_TINT_COLOR : ResourcesDay.UPVOTE_TINT_COLOR
-    lazy var downvoteTint = nightModeOn ? ResourcesNight.DOWNVOTE_TINT_COLOR : ResourcesDay.DOWNVOTE_TINT_COLOR
     lazy var commentTint = nightModeOn ? ResourcesNight.COMMENT_TINT_COLOR : ResourcesDay.COMMENT_TINT_COLOR
-    var defaultTextColor: UIColor?
-    
-    var hit: [String: Any]? {
-        didSet {
-            guard let hit = self.hit else { return }
-            
-            titleLabel.highlightedText = SearchResults.highlightResult(hit: hit, path: "title")?.value
-            titleLabel.textColor = defaultTextColor
-            titleLabel.highlightedTextColor = searchHitTextColor
-            titleLabel.highlightedBackgroundColor = searchHitBGColor
-            
-            sourceLabel.highlightedText = SearchResults.highlightResult(hit: hit, path: "source")?.value
-            sourceLabel.textColor = defaultTextColor
-            sourceLabel.highlightedTextColor = searchHitTextColor
-            sourceLabel.highlightedBackgroundColor = searchHitBGColor
-            
-            sourceDateSeparator.textColor = defaultTextColor
-            
-            if let hitDate = hit["pubDate"] as? Double {
-                dateLabel.text = DateUtils.parsePrettyDate(unixTimestamp: -hitDate)
-                dateLabel.textColor = defaultTextColor
-            }
-            
-            let voteCnt = hit["voteCount"] as? Int ?? 0
-            voteCntLabel.text = String(voteCnt)
-            voteCntLabel.textColor = defaultTextColor
-            if voteCnt < 0 {
-                voteCntImageView.tintColor = downvoteTint
-                voteCntImageView.image = #imageLiteral(resourceName: "ic_arrow_down_18")
-            } else {
-                voteCntImageView.tintColor = upvoteTint
-            }
-            
-            voteCommSeparator.textColor = defaultTextColor
-            
-            commCntImageView.tintColor = commentTint
-            
-            let commCnt = hit["commentCount"] as? Int ?? 0
-            commCntLabel.text = String(commCnt)
-            commCntLabel.textColor = defaultTextColor
-            
-            var imageUrl: String?
-            var ref: StorageReference?
-            if let url = hit["imageUrl"] as? String {
-                imageUrl = url
-            }
-            if imageUrl == nil || imageUrl == "" {
-                if let url = hit["postImageUrl"] as? String {
-                    if url.starts(with: "gs://") {
-                        ref = Storage.storage().reference(forURL: url)
-                        mainImageView.sd_setImage(with: ref!)
-                    } else {
-                        imageUrl = url
-                    }
-                }
-            }
-            if imageUrl != nil && imageUrl != "" {
-                mainImageView.sd_setImage(with: URL(string: imageUrl!))
-            } else {
-                if ref == nil {
-                    mainImageView.isHidden = true
-                }
-            }
-        }
-    }
     
     override func awakeFromNib() {
         super.awakeFromNib()
         
         self.layer.borderWidth = 0.5
         self.layer.borderColor = UIColor.lightGray.cgColor
-        
-        mainImageView.layer.cornerRadius = 10
     }
 
     override func prepareForReuse() {
@@ -122,4 +71,107 @@ class SearchHitsTvCell: UITableViewCell {
         mainImageView.sd_cancelCurrentImageLoad()
     }
 
+    private func layout() {
+        contentView.backgroundColor = nil
+        
+        cellView.translatesAutoresizingMaskIntoConstraints = false
+        cellView.backgroundColor = nil
+        
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        titleLabel.font = .systemFont(ofSize: 17, weight: .regular)
+        titleLabel.numberOfLines = 0
+        
+        sourceLabel.translatesAutoresizingMaskIntoConstraints = false
+        sourceLabel.font = .systemFont(ofSize: 13, weight: .regular)
+        sourceLabel.numberOfLines = 1
+        
+        sourceDateSeparator.translatesAutoresizingMaskIntoConstraints = false
+        sourceDateSeparator.font = .systemFont(ofSize: 13, weight: .regular)
+        sourceDateSeparator.text = " • "
+        sourceDateSeparator.numberOfLines = 1
+        
+        dateLabel.translatesAutoresizingMaskIntoConstraints = false
+        dateLabel.font = .systemFont(ofSize: 13, weight: .regular)
+        dateLabel.numberOfLines = 1
+        
+        let sourceDateStackView = UIStackView()
+        sourceDateStackView.axis = .horizontal
+        sourceDateStackView.translatesAutoresizingMaskIntoConstraints = false
+        sourceDateStackView.spacing = 5
+        
+        sourceDateStackView.addArrangedSubview(sourceLabel)
+        sourceDateStackView.addArrangedSubview(sourceDateSeparator)
+        sourceDateStackView.addArrangedSubview(dateLabel)
+        
+        voteCntImageView.clipsToBounds = true
+        voteCntImageView.translatesAutoresizingMaskIntoConstraints = false
+        voteCntImageView.contentMode = .scaleAspectFill
+        voteCntImageView.layer.masksToBounds = true
+        voteCntImageView.image = #imageLiteral(resourceName: "ic_arrow_up_18")
+        voteCntImageView.tintColor = upvoteTint
+        
+        voteCntLabel.translatesAutoresizingMaskIntoConstraints = false
+        voteCntLabel.font = .systemFont(ofSize: 13, weight: .regular)
+        voteCntLabel.numberOfLines = 1
+        
+        voteCommSeparator.translatesAutoresizingMaskIntoConstraints = false
+        voteCommSeparator.font = .systemFont(ofSize: 13, weight: .regular)
+        voteCommSeparator.text = " • "
+        voteCommSeparator.numberOfLines = 1
+        
+        commCntImageView.clipsToBounds = true
+        commCntImageView.translatesAutoresizingMaskIntoConstraints = false
+        commCntImageView.contentMode = .scaleAspectFill
+        commCntImageView.layer.masksToBounds = true
+        commCntImageView.image = #imageLiteral(resourceName: "ic_comment_18")
+        commCntImageView.tintColor = commentTint
+        
+        commCntLabel.translatesAutoresizingMaskIntoConstraints = false
+        commCntLabel.font = .systemFont(ofSize: 13, weight: .regular)
+        commCntLabel.numberOfLines = 1
+        
+        let voteCommStackView = UIStackView()
+        voteCommStackView.axis = .horizontal
+        voteCommStackView.translatesAutoresizingMaskIntoConstraints = false
+        voteCommStackView.spacing = 5
+        
+        voteCommStackView.addArrangedSubview(voteCntImageView)
+        voteCommStackView.addArrangedSubview(voteCntLabel)
+        voteCommStackView.addArrangedSubview(voteCommSeparator)
+        voteCommStackView.addArrangedSubview(commCntImageView)
+        voteCommStackView.addArrangedSubview(commCntLabel)
+        
+        cellView.addSubview(titleLabel)
+        cellView.addSubview(sourceDateStackView)
+        cellView.addSubview(voteCommStackView)
+        
+        mainImageView.clipsToBounds = true
+        mainImageView.translatesAutoresizingMaskIntoConstraints = false
+        mainImageView.contentMode = .scaleAspectFill
+        mainImageView.layer.masksToBounds = true
+        mainImageView.layer.cornerRadius = 10
+        
+        contentView.addSubview(cellView)
+        contentView.addSubview(mainImageView)
+        
+        NSLayoutConstraint.activate([
+            titleLabel.topAnchor.constraint(equalTo: cellView.topAnchor, constant: 10),
+            titleLabel.bottomAnchor.constraint(equalTo: sourceDateStackView.topAnchor, constant: -8),
+            titleLabel.leftAnchor.constraint(equalTo: cellView.leftAnchor, constant: 12),
+            titleLabel.rightAnchor.constraint(equalTo: cellView.rightAnchor, constant: -12),
+            sourceDateStackView.bottomAnchor.constraint(equalTo: voteCommStackView.topAnchor, constant: -8),
+            sourceDateStackView.leftAnchor.constraint(equalTo: cellView.leftAnchor, constant: 12),
+            voteCommStackView.bottomAnchor.constraint(equalTo: cellView.bottomAnchor, constant: -10),
+            voteCommStackView.leftAnchor.constraint(equalTo: cellView.leftAnchor, constant: 12),
+            cellView.leftAnchor.constraint(equalTo: contentView.leftAnchor),
+            cellView.rightAnchor.constraint(equalTo: mainImageView.leftAnchor),
+            cellView.topAnchor.constraint(equalTo: contentView.topAnchor),
+            cellView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+            mainImageView.rightAnchor.constraint(equalTo: contentView.rightAnchor, constant: -12),
+            mainImageView.heightAnchor.constraint(equalToConstant: 90),
+            mainImageView.widthAnchor.constraint(equalToConstant: 90),
+            mainImageView.centerYAnchor.constraint(equalTo: contentView.centerYAnchor)
+        ])
+    }
+    
 }

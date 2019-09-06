@@ -49,7 +49,7 @@ class UserViewController: UIViewController {
     @IBOutlet weak var themeTwoLabel: UILabel!
     @IBOutlet weak var themeThreeLabel: UILabel!
     
-    let dataSource = DataSource.instance
+    let dataSource = NetworkDataSource.instance
     
     var user: AcornUser?
     

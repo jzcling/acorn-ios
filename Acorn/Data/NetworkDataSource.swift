@@ -1,5 +1,5 @@
 //
-//  DataSource.swift
+//  NetworkDataSource.swift
 //  Acorn
 //
 //  Created by macOS on 6/8/18.
@@ -11,10 +11,11 @@ import FirebaseUI
 import Firebase
 import AlgoliaSearch
 import S2GeometrySwift
+import CoreLocation
 
-class DataSource {
+class NetworkDataSource {
     
-    static let instance = DataSource()
+    static let instance = NetworkDataSource()
     
     var algoliaApiKey: String?
     var algoliaClient: Client?
@@ -23,6 +24,8 @@ class DataSource {
     let algoliaIndexName = "article"
     
     let limit = 100 as UInt
+    
+    let globals = Globals.instance
     
     let defaults = UserDefaults.standard
     var themeKey: String?
@@ -42,6 +45,7 @@ class DataSource {
     lazy var userRef = self.database.reference(withPath: "user/\(uid)")
     lazy var postRef = self.database.reference(withPath: "article")
     lazy var addressRef = self.database.reference(withPath: "address")
+    lazy var locationRef = self.database.reference(withPath: "location")
     lazy var commentsPreferenceRef = self.database.reference(withPath: "preference/commentsNotificationValue/\(uid)")
     lazy var recArticlesPreferenceRef = self.database.reference(withPath: "preference/recArticlesNotificationValue/\(uid)")
     lazy var recDealsPreferenceRef = self.database.reference(withPath: "preference/recDealsNotificationValue/\(uid)")
@@ -581,7 +585,7 @@ class DataSource {
             addressQuery.observeSingleEvent(of: .value) { (snap) in
                 for case let data as DataSnapshot in snap.children {
                     let address = Address(snapshot: data)
-                    let postcodePattern = try? NSRegularExpression(pattern:".*(Singapore [0-9]{6})", options: .caseInsensitive)
+                    let postcodePattern = try? NSRegularExpression(pattern:".*(Singapore [0-9]{6}|S[0-9]{6})", options: .caseInsensitive)
                     let postcode = postcodePattern?.stringByReplacingMatches(in: address.address, options: [], range: NSMakeRange(0, address.address.count), withTemplate: "$1")
                     for articleId in address.article.keys {
                         if let reminderDate = address.article[articleId] {
@@ -740,6 +744,80 @@ class DataSource {
                 }
             }
             onComplete(mrtStationMap)
+        }
+    }
+    
+    func getNearbyPostcode(for articleId: String, location: CLLocation?, radius: Double, onComplete: @escaping ([String]) -> ()) {
+        var postcodes = [String]()
+        guard let location = location else {
+            onComplete(postcodes)
+            return
+        }
+        
+        self.locationRef.child(articleId).observeSingleEvent(of: .value) { addressSnap in
+            for case let data as DataSnapshot in addressSnap.children {
+                let address = Address(snapshot: data)
+                
+                if let lat = address.location["lat"], let lng = address.location["lng"] {
+                    let addressLoc = CLLocation(latitude: lat, longitude: lng)
+                    let distance = addressLoc.distance(from: location)
+                    if distance < radius { //meters
+                        let postcodePattern = try? NSRegularExpression(pattern:".*(Singapore [0-9]{6}|S[0-9]{6})", options: .caseInsensitive)
+                        if let postcode = postcodePattern?.stringByReplacingMatches(in: address.address, options: [], range: NSMakeRange(0, address.address.count), withTemplate: "$1") {
+                            postcodes.append(postcode)
+                        }
+                    }
+                }
+            }
+            onComplete(postcodes)
+        }
+    }
+    
+    func getSavedItemsAddresses() {
+        var savedList = [String]()
+        var addressList = [dbAddress]()
+        let savedQuery = userRef.child("savedItems")
+        savedQuery.observeSingleEvent(of: .value) { (savedSnap) in
+            if let savedItems = savedSnap.value as? [String: Double] {
+                savedList.append(contentsOf: savedItems.keys)
+                if savedList.count == 0 { return }
+                
+                for articleId in savedList {
+                    self.locationRef.child(articleId).observeSingleEvent(of: .value) { addressSnap in
+                        for case let data as DataSnapshot in addressSnap.children {
+                            let address = Address(snapshot: data)
+                            let localAddress = dbAddress(address: address, articleId: articleId)
+                            addressList.append(localAddress)
+                        }
+                    }
+                }
+                
+                let localDb = LocalDb.instance
+                for address in addressList {
+                    localDb.insertAddress(address)
+                }
+            }
+        }
+    }
+    
+    func removeSavedItemAddress(for articleId: String) {
+        let localDb = LocalDb.instance
+        localDb.deleteAddress(for: articleId)
+    }
+    
+    func addSavedItemAddress(for articleId: String) {
+        var addressList = [dbAddress]()
+        self.locationRef.child(articleId).observeSingleEvent(of: .value) { addressSnap in
+            for case let data as DataSnapshot in addressSnap.children {
+                let address = Address(snapshot: data)
+                let localAddress = dbAddress(address: address, articleId: articleId)
+                addressList.append(localAddress)
+            }
+            
+            let localDb = LocalDb.instance
+            for address in addressList {
+                localDb.insertAddress(address)
+            }
         }
     }
     
@@ -1157,8 +1235,10 @@ class DataSource {
                 
                 if let _ = savedItems[article.objectID] {
                     savedItems.removeValue(forKey: article.objectID)
+                    self.removeSavedItemAddress(for: article.objectID)
                 } else {
                     savedItems[article.objectID] = now
+                    self.addSavedItemAddress(for: article.objectID)
                 }
                 savedItemsCount = savedItems.count
                 

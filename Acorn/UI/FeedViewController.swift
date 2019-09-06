@@ -21,6 +21,7 @@ import Reachability
 import MaterialShowcase
 import CoreLocation
 import PIPKit
+import FBAudienceNetwork
 
 class FeedViewController: MDCCollectionViewController {
     
@@ -31,6 +32,7 @@ class FeedViewController: MDCCollectionViewController {
     
     let appDelegate = UIApplication.shared.delegate as! AppDelegate
     let globals = Globals.instance
+    let localDb = LocalDb.instance
     
     var user: User?
     var uid: String?
@@ -44,7 +46,7 @@ class FeedViewController: MDCCollectionViewController {
     
     let mainStoryboard = UIStoryboard(name: "Main", bundle: nil)
     
-    let dataSource = DataSource.instance
+    let dataSource = NetworkDataSource.instance
     let loadTrigger: Int = 5
     
     var selectedFeed: String?
@@ -84,10 +86,9 @@ class FeedViewController: MDCCollectionViewController {
     var seenList = [String: String]()
     
     // Ads
-    let nativeAdUnitId = "ca-app-pub-9396779536944241/7190035242"
-    var adLoader: GADAdLoader!
-    var adList = [GADUnifiedNativeAd]()
-    var areAdsLoaded = false
+    let nativeAdPlacementId = "353679552175190_353679795508499"
+    var adLoader: FBNativeAdsManager?
+    var adList = [FBNativeAd]()
     
     lazy var bottomBarView = MDCBottomNavigationBar()
     lazy var toastPosition = CGPoint(x: self.view.bounds.size.width / 2.0, y: (self.view.bounds.size.height - 30) - 10 - bottomBarView.frame.height)
@@ -172,22 +173,29 @@ class FeedViewController: MDCCollectionViewController {
     }()
     
     // Ad
-    let bannerView = { () -> GADBannerView in
-        let bannerView = GADBannerView(adSize: kGADAdSizeSmartBannerPortrait)
-        bannerView.translatesAutoresizingMaskIntoConstraints = false
-        bannerView.adUnitID = "ca-app-pub-9396779536944241/6978282252"
-        return bannerView
-    }()
+    var bannerView: FBAdView?
     
     override func awakeFromNib() {
+        print("awakefromnib")
 //        bottomBarView.autoresizingMask = [ .flexibleWidth, .flexibleTopMargin ]
         view.addSubview(bottomBarView)
         view.addSubview(floatingButton)
         view.addSubview(newContentPrompt)
-        view.addSubview(bannerView)
+        
+        bannerView = FBAdView(placementID: "353679552175190_355424738667338", adSize: kFBAdSizeHeight50Banner, rootViewController: self)
+        if let bannerView = bannerView {
+            bannerView.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([
+                bannerView.widthAnchor.constraint(equalToConstant: view.bounds.size.width),
+                bannerView.heightAnchor.constraint(equalToConstant: 50)
+            ])
+            bannerView.delegate = self
+            view.addSubview(bannerView)
+            bannerView.loadAd()
+        }
         
         newContentPrompt.centerXAnchor.constraint(equalTo: view.centerXAnchor).isActive = true
-        newContentPrompt.centerYAnchor.constraint(equalTo: view.topAnchor, constant: 115.0).isActive = true
+        newContentPrompt.centerYAnchor.constraint(equalTo: view.topAnchor, constant: 100.0).isActive = true
         newContentPrompt.isHidden = true
         
         // Enable inclusion of safe area in size calcs
@@ -227,8 +235,13 @@ class FeedViewController: MDCCollectionViewController {
         // Done here as safeareainsets are 0 until this callback is triggered
         let height = CGFloat(48), width = CGFloat(48)
         let x = view.bounds.width - CGFloat(15) - width - view.safeAreaInsets.right
-        let y = view.bounds.height - bottomBarView.frame.height - bannerView.frame.height - CGFloat(15) - height - view.safeAreaInsets.bottom
-        floatingButton.frame = CGRect(x: x, y: y, width: width, height: height)
+        if let bannerView = bannerView {
+            let y = view.bounds.height - bottomBarView.frame.height - bannerView.frame.height - CGFloat(15) - height - view.safeAreaInsets.bottom
+            floatingButton.frame = CGRect(x: x, y: y, width: width, height: height)
+        } else {
+            let y = view.bounds.height - bottomBarView.frame.height - CGFloat(15) - height - view.safeAreaInsets.bottom
+            floatingButton.frame = CGRect(x: x, y: y, width: width, height: height)
+        }
     }
     
     override func viewDidLoad() {
@@ -238,6 +251,8 @@ class FeedViewController: MDCCollectionViewController {
         guard let collectionView = collectionView else {
             return
         }
+        
+        localDb.openDatabase()
         
         bottomBarView.delegate = self
         
@@ -254,9 +269,6 @@ class FeedViewController: MDCCollectionViewController {
                                          layout: collectionViewLayout,
                                          insetForSectionAt: 0)
         self.cellWidth = collectionView.bounds.width - (insets?.left)! - (insets?.right)!
-        
-        bannerView.rootViewController = self
-        bannerView.load(GADRequest())
         
 //        let collectionViewBottomConstraint = NSLayoutConstraint(item: collectionView, attribute: .bottom, relatedBy: .equal, toItem: bannerView, attribute: .top, multiplier: 1, constant: 0)
 //        let bannerViewBottomConstraint = NSLayoutConstraint(item: bannerView, attribute: .bottom, relatedBy: .equal, toItem: self.bottomBarView, attribute: .top, multiplier: 1, constant: 0)
@@ -430,7 +442,11 @@ class FeedViewController: MDCCollectionViewController {
                             self.highlightNearbyButton(onComplete: {})
                         }
                     
-                        self.loadData()
+                        if let _ = self.user {
+                            self.loadData()
+                        } else {
+                            self.logout()
+                        }
                         
                         if retrievedUser.openedArticles.keys.count > 50 {
                             if !self.defaults.bool(forKey: "seenSurveyRequest") {
@@ -438,6 +454,14 @@ class FeedViewController: MDCCollectionViewController {
                                 self.defaults.set(true, forKey: "seenSurveyRequest")
                             }
                         }
+                        
+                        // store saved items addresses on device
+                        if let address = self.localDb.getFirstAddress() {
+                            print("addressList: \(address)")
+                        } else {
+                            self.dataSource.getSavedItemsAddresses()
+                        }
+                        
                     }
                 } else if retrievedUser == nil {
                     print("new user")
@@ -486,11 +510,9 @@ class FeedViewController: MDCCollectionViewController {
     //                    let lastDownloadArticlesTime: Double = 0
                         print("lastDownloadArticlesTime: \(lastDownloadArticlesTime)")
                         if now > lastDownloadArticlesTime + 60 * 60 * 1000 { // 1 hour
-                            let localDb = LocalDb.instance
-                            localDb.openDatabase()
                             let cutOffDate = now - 2 * 24 * 60 * 60 * 1000 // 2 days ago
                             self.dataSource.downloadSubscribedArticles() {
-                                localDb.deleteOldArticles(cutOffDate: cutOffDate)
+                                self.localDb.deleteOldArticles(cutOffDate: cutOffDate)
                                 self.defaults.set(now, forKey: "lastDownloadArticlesTime")
                             }
                         }
@@ -578,14 +600,11 @@ class FeedViewController: MDCCollectionViewController {
         bottomBarView.frame = bottomBarViewFrame
         MDCSnackbarManager.setBottomOffset(bottomBarView.frame.height)
         
-        let guide = view.safeAreaLayoutGuide
-        NSLayoutConstraint.activate([
-            guide.leftAnchor.constraint(equalTo: bannerView.leftAnchor),
-            guide.rightAnchor.constraint(equalTo: bannerView.rightAnchor)
-        ])
-        bannerView.frame.origin.y = view.bounds.size.height - size.height - bannerView.frame.height
-        
-        collectionView.contentInset.bottom = bottomBarView.frame.height - bannerView.frame.height
+        if let bannerView = bannerView {
+            bannerView.frame.origin.y = view.bounds.size.height - bottomBarView.frame.height - bannerView.frame.height
+            
+            collectionView.contentInset.bottom = bottomBarView.frame.height + bannerView.frame.height
+        }
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -623,8 +642,19 @@ class FeedViewController: MDCCollectionViewController {
             if selectedFeed == "Subscriptions" {
                 bottomBarView.selectedItem = bottomBarView.items[0]
                 dataSource.getSubscriptionsFeed() { (articles) in
-                    if let firstArticle = self.articleList.first as? Article, let lastArticle = self.articleList.last as? Article {
-                        if (firstArticle.objectID != articles.first?.objectID ?? "" || lastArticle.objectID != articles.last?.objectID ?? "") {
+                    if let currentFirstTenArticles = Array(self.articleList[0..<10]) as? [Article] {
+                        var newFirstTenArticleIds = [String]()
+                        for i in 0..<10 {
+                            newFirstTenArticleIds.append(articles[i].objectID)
+                        }
+                        var diffCount = 0
+                        for article in currentFirstTenArticles {
+                            if !newFirstTenArticleIds.contains(article.objectID) {
+                                diffCount += 1
+                            }
+                        }
+                        
+                        if diffCount > 5 {
                             self.hitsArticles = articles
                             let gesture = UITapGestureRecognizer(target: self, action: #selector(self.didTapNewContentPrompt(_:)))
                             self.newContentPrompt.addGestureRecognizer(gesture)
@@ -635,8 +665,19 @@ class FeedViewController: MDCCollectionViewController {
             } else if selectedFeed == "Trending" {
                 bottomBarView.selectedItem = bottomBarView.items[1]
                 dataSource.getTrendingFeed() { (articles) in
-                    if let firstArticle = self.articleList.first as? Article, let lastArticle = self.articleList.last as? Article {
-                        if (firstArticle.objectID != articles.first?.objectID ?? "" || lastArticle.objectID != articles.last?.objectID ?? "") {
+                    if let currentFirstTenArticles = Array(self.articleList[0..<10]) as? [Article] {
+                        var newFirstTenArticleIds = [String]()
+                        for i in 0..<10 {
+                            newFirstTenArticleIds.append(articles[i].objectID)
+                        }
+                        var diffCount = 0
+                        for article in currentFirstTenArticles {
+                            if !newFirstTenArticleIds.contains(article.objectID) {
+                                diffCount += 1
+                            }
+                        }
+                        
+                        if diffCount > 5 {
                             self.hitsArticles = articles
                             let gesture = UITapGestureRecognizer(target: self, action: #selector(self.didTapNewContentPrompt(_:)))
                             self.newContentPrompt.addGestureRecognizer(gesture)
@@ -647,8 +688,19 @@ class FeedViewController: MDCCollectionViewController {
             } else if selectedFeed == "Deals" {
                 bottomBarView.selectedItem = bottomBarView.items[2]
                 dataSource.getDealsFeed() { (articles) in
-                    if let firstArticle = self.articleList.first as? Article, let lastArticle = self.articleList.last as? Article {
-                        if (firstArticle.objectID != articles.first?.objectID ?? "" || lastArticle.objectID != articles.last?.objectID ?? "") {
+                    if let currentFirstTenArticles = Array(self.articleList[0..<10]) as? [Article] {
+                        var newFirstTenArticleIds = [String]()
+                        for i in 0..<10 {
+                            newFirstTenArticleIds.append(articles[i].objectID)
+                        }
+                        var diffCount = 0
+                        for article in currentFirstTenArticles {
+                            if !newFirstTenArticleIds.contains(article.objectID) {
+                                diffCount += 1
+                            }
+                        }
+                        
+                        if diffCount > 5 {
                             self.hitsArticles = articles
                             let gesture = UITapGestureRecognizer(target: self, action: #selector(self.didTapNewContentPrompt(_:)))
                             self.newContentPrompt.addGestureRecognizer(gesture)
@@ -666,8 +718,19 @@ class FeedViewController: MDCCollectionViewController {
                 let themeKey = theme
                 let themeFilter = "mainTheme: \"\(theme)\""
                 dataSource.getFilteredThemeFeed(key: themeKey, filters: themeFilter) { (articles) in
-                    if let firstArticle = self.articleList.first as? Article, let lastArticle = self.articleList.last as? Article {
-                        if (firstArticle.objectID != articles.first?.objectID ?? "" || lastArticle.objectID != articles.last?.objectID ?? "") {
+                    if let currentFirstTenArticles = Array(self.articleList[0..<10]) as? [Article] {
+                        var newFirstTenArticleIds = [String]()
+                        for i in 0..<10 {
+                            newFirstTenArticleIds.append(articles[i].objectID)
+                        }
+                        var diffCount = 0
+                        for article in currentFirstTenArticles {
+                            if !newFirstTenArticleIds.contains(article.objectID) {
+                                diffCount += 1
+                            }
+                        }
+                        
+                        if diffCount > 5 {
                             self.hitsArticles = articles
                             let gesture = UITapGestureRecognizer(target: self, action: #selector(self.didTapNewContentPrompt(_:)))
                             self.newContentPrompt.addGestureRecognizer(gesture)
@@ -866,8 +929,9 @@ class FeedViewController: MDCCollectionViewController {
     func getFeed(for articles: [Article]) {
         print("articlesCount: \(articles.count)")
         removeArticleObservers()
-        self.articleList = articles
+        self.articleList.removeAll()
         self.articleListIds.removeAll()
+        self.articleList.append(contentsOf: articles)
         
         let showVideos = self.defaults.bool(forKey: "videosInFeedPref")
         print("showVideos: \(showVideos)")
@@ -919,18 +983,22 @@ class FeedViewController: MDCCollectionViewController {
                         if article.type == "article" || article.type == "post" {
                             self.dataSource.observeSingleArticle(articleId: article.objectID) { (item) in
                                 if let index = self.articleListIds.firstIndex(of: item.objectID) {
-                                    print("article returned for index \(index): \(item.objectID)")
-                                    self.articleList[index] = item
-                                    self.collectionView?.reloadData()
+                                    if index < self.articleList.count {
+                                        print("article returned for index \(index): \(item.objectID)")
+                                        self.articleList[index] = item
+                                        self.collectionView?.reloadData()
+                                    }
                                 }
                             }
                         } else if article.type == "video" {
                             self.dataSource.observeSingleVideo(id: article.objectID) { video in
                                 let convertedVideo = Article(video: video)
                                 if let index = self.articleListIds.firstIndex(of: convertedVideo.objectID) {
-                                    print("video returned for index \(index): \(convertedVideo.objectID)")
-                                    self.articleList[index] = convertedVideo
-                                    self.collectionView?.reloadData()
+                                    if index < self.articleList.count {
+                                        print("video returned for index \(index): \(convertedVideo.objectID)")
+                                        self.articleList[index] = convertedVideo
+                                        self.collectionView?.reloadData()
+                                    }
                                 }
                             }
                         }
@@ -956,8 +1024,10 @@ class FeedViewController: MDCCollectionViewController {
                     self.articleListIds.append(article.objectID)
                     self.dataSource.observeSingleArticle(articleId: article.objectID) { (item) in
                         if let index = self.articleListIds.firstIndex(of: item.objectID) {
-                            self.articleList[index] = item
-                            self.collectionView?.reloadData()
+                            if index < self.articleList.count {
+                                self.articleList[index] = item
+                                self.collectionView?.reloadData()
+                            }
                         }
                     }
                 }
@@ -1090,7 +1160,11 @@ class FeedViewController: MDCCollectionViewController {
     }
     
     @IBAction func didTapSearch(_ sender: Any) {
-        performSegue(withIdentifier: "Search", sender: self)
+//        performSegue(withIdentifier: "Search", sender: self)
+        self.dataSource.getAlgoliaApiKey() { key in
+            let vc = SearchViewController(algoliaApiKey: key)
+            self.navigationController?.pushViewController(vc, animated: true)
+        }
     }
     
     @IBAction func didTapNavBarTitle(_ sender: Any) {
@@ -1147,18 +1221,7 @@ class FeedViewController: MDCCollectionViewController {
                 let ac = UIAlertController(title: nil, message: "Would you like to log out?", preferredStyle: .alert)
                 ac.addAction(UIAlertAction(title: "No", style: .cancel, handler: nil))
                 ac.addAction(UIAlertAction(title: "Yes", style: .destructive, handler: { _ in
-                    self.dataSource.removePremiumStatusObserver()
-                    do {
-                        try Auth.auth().signOut()
-                    } catch {
-                        print("error logging out")
-                    }
-                    self.resetView()
-                    self.removeArticleObservers()
-                    self.selectedFeed = nil
-                    self.userButton.tintColor = .white
-                    self.isUserPremium = false
-                    self.launchLogin()
+                    self.logout()
                 }))
                 self.present(ac, animated: true, completion: nil)
             } else if item == "Share App Invite" {
@@ -1240,6 +1303,21 @@ class FeedViewController: MDCCollectionViewController {
         // Dispose of any resources that can be recreated.
     }
     
+    func logout() {
+        self.dataSource.removePremiumStatusObserver()
+        do {
+            try Auth.auth().signOut()
+        } catch {
+            print("error logging out")
+        }
+        self.resetView()
+        self.removeArticleObservers()
+        self.selectedFeed = nil
+        self.userButton.tintColor = .white
+        self.isUserPremium = false
+        self.launchLogin()
+    }
+    
     override func viewDidDisappear(_ animated: Bool) {
         print("viewDidDisappear")
         if let _ = Auth.auth().currentUser {
@@ -1286,6 +1364,11 @@ class FeedViewController: MDCCollectionViewController {
                 cell.textColor = colorCardText
                 cell.textColorFaint = colorCardTextFaint
                 cell.textColorRead = colorCardTextRead
+                if let uid = self.uid {
+                    cell.uid = uid
+                } else {
+                    cell.uid = "unknown"
+                }
                 
                 cell.backgroundColor = colorCardBackground
                 
@@ -1305,6 +1388,11 @@ class FeedViewController: MDCCollectionViewController {
                     cell.article = article
                     cell.textColor = colorCardText
                     cell.textColorFaint = colorCardTextFaint
+                    if let uid = self.uid {
+                        cell.uid = uid
+                    } else {
+                        cell.uid = "unknown"
+                    }
                     
                     cell.backgroundColor = colorCardBackground
                     
@@ -1326,6 +1414,11 @@ class FeedViewController: MDCCollectionViewController {
                             cell.textColor = colorCardText
                             cell.textColorFaint = colorCardTextFaint
                             cell.textColorRead = colorCardTextRead
+                            if let uid = self.uid {
+                                cell.uid = uid
+                            } else {
+                                cell.uid = "unknown"
+                            }
                             
                             cell.backgroundColor = colorCardBackground
                             
@@ -1345,6 +1438,11 @@ class FeedViewController: MDCCollectionViewController {
                             cell.textColor = colorCardText
                             cell.textColorFaint = colorCardTextFaint
                             cell.textColorRead = colorCardTextRead
+                            if let uid = self.uid {
+                                cell.uid = uid
+                            } else {
+                                cell.uid = "unknown"
+                            }
                             
                             cell.backgroundColor = colorCardBackground
                             
@@ -1365,6 +1463,11 @@ class FeedViewController: MDCCollectionViewController {
                         cell.textColor = colorCardText
                         cell.textColorFaint = colorCardTextFaint
                         cell.textColorRead = colorCardTextRead
+                        if let uid = self.uid {
+                            cell.uid = uid
+                        } else {
+                            cell.uid = "unknown"
+                        }
                         
                         cell.backgroundColor = colorCardBackground
                         
@@ -1388,6 +1491,11 @@ class FeedViewController: MDCCollectionViewController {
                         cell.textColor = colorCardText
                         cell.textColorFaint = colorCardTextFaint
                         cell.textColorRead = colorCardTextRead
+                        if let uid = self.uid {
+                            cell.uid = uid
+                        } else {
+                            cell.uid = "unknown"
+                        }
                         
                         cell.backgroundColor = colorCardBackground
                         
@@ -1407,6 +1515,11 @@ class FeedViewController: MDCCollectionViewController {
                         cell.textColor = colorCardText
                         cell.textColorFaint = colorCardTextFaint
                         cell.textColorRead = colorCardTextRead
+                        if let uid = self.uid {
+                            cell.uid = uid
+                        } else {
+                            cell.uid = "unknown"
+                        }
                         
                         cell.backgroundColor = colorCardBackground
                         
@@ -1428,6 +1541,11 @@ class FeedViewController: MDCCollectionViewController {
                         cell.textColor = colorCardText
                         cell.textColorFaint = colorCardTextFaint
                         cell.textColorRead = colorCardTextRead
+                        if let uid = self.uid {
+                            cell.uid = uid
+                        } else {
+                            cell.uid = "unknown"
+                        }
                         
                         cell.backgroundColor = colorCardBackground
                         
@@ -1447,6 +1565,11 @@ class FeedViewController: MDCCollectionViewController {
                         cell.textColor = colorCardText
                         cell.textColorFaint = colorCardTextFaint
                         cell.textColorRead = colorCardTextRead
+                        if let uid = self.uid {
+                            cell.uid = uid
+                        } else {
+                            cell.uid = "unknown"
+                        }
                         
                         cell.backgroundColor = colorCardBackground
                         
@@ -1463,13 +1586,13 @@ class FeedViewController: MDCCollectionViewController {
                 }
             }
         } else {
-            let nativeAd = articleList[indexPath.item] as! GADUnifiedNativeAd
-            nativeAd.rootViewController = self
+            let nativeAd = articleList[indexPath.item] as! FBNativeAd
             
             let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "NativeAdCvCell", for: indexPath) as! NativeAdCvCell
             cell.textColor = colorCardText
             cell.textColorFaint = colorCardTextFaint
             cell.backgroundColor = colorCardBackground
+            cell.vc = self
             cell.populateContent(ad: nativeAd)
             return cell
         }
@@ -1545,9 +1668,9 @@ class FeedViewController: MDCCollectionViewController {
             let cellDefaultHeight: CGFloat = 79
             let imageHeight = self.cellWidth! / 16.0 * 9.0
             
-            let nativeAd = articleList[indexPath.item] as! GADUnifiedNativeAd
+            let nativeAd = articleList[indexPath.item] as! FBNativeAd
             let headline = nativeAd.headline ?? ""
-            let body = nativeAd.body ?? ""
+            let body = nativeAd.bodyText ?? ""
             var bodyText = headline
             if body.count > headline.count { bodyText = body }
             
@@ -1642,21 +1765,41 @@ class FeedViewController: MDCCollectionViewController {
     
     func getNearestLocales(from: CLLocation, limit: Int, onComplete: @escaping ([(key: String, value: [String: Any])]) -> ()) {
         getMrtStationMap { (mrtStationMap) in
-            let fromLat = from.coordinate.latitude
-            let fromLng = from.coordinate.longitude
-            let fromLoc = CLLocation(latitude: fromLat, longitude: fromLng)
             var distanceFrom = [String: [String: Any]]()
             for station in mrtStationMap {
                 let lat = station.value["latitude"] as? Double
                 let lng = station.value["longitude"] as? Double
                 if let lat = lat, let lng = lng {
                     let loc = CLLocation(latitude: lat, longitude: lng)
-                    let distance = loc.distance(from: fromLoc)
+                    let distance = loc.distance(from: from)
                     distanceFrom[station.key] = ["location": loc, "distance": distance]
                 }
             }
             let sortedDistanceFrom = distanceFrom.sorted(by: { ($0.value["distance"]! as! Double) < ($1.value["distance"]! as! Double) })
-            let result = Array(sortedDistanceFrom[..<limit])
+            let cutoff = min(sortedDistanceFrom.count, limit)
+            let result = Array(sortedDistanceFrom[..<cutoff])
+            onComplete(result)
+        }
+    }
+    
+    func getNearestSavedAddresses(from: CLLocation, limit: Int, onComplete: @escaping ([(key: String, value: [String: Any])]) -> ()) {
+        if let addresses = localDb.getAllAddresses() {
+            var distanceFrom = [String: [String: Any]]()
+            for address in addresses {
+                let addressLoc = CLLocation(latitude: address.latitude, longitude: address.longitude)
+                let distance = addressLoc.distance(from: from)
+                if let loc = distanceFrom[address.articleId], let currentDistance = loc["distance"] as? Double {
+                    if currentDistance > distance {
+                        distanceFrom[address.articleId] = ["location": addressLoc, "distance": distance]
+                    }
+                } else {
+                    distanceFrom[address.articleId] = ["location": addressLoc, "distance": distance]
+                }
+            }
+            let sortedDistanceFrom = distanceFrom.sorted(by: { ($0.value["distance"]! as! Double) < ($1.value["distance"]! as! Double) })
+            let cutoff = min(sortedDistanceFrom.count, limit)
+            let result = Array(sortedDistanceFrom[..<cutoff])
+            print("distance: \(result)")
             onComplete(result)
         }
     }
@@ -1829,8 +1972,8 @@ extension FeedViewController: FeedCvCellDelegate {
         
         dispatchGroup.enter()
         dataSource.updateUserSave(article: article) { dispatchGroup.leave() }
+        
         dispatchGroup.notify(queue: .main) {
-            
             saveButton.isEnabled = true
         }
     }
@@ -2115,47 +2258,54 @@ extension FeedViewController: CLLocationManagerDelegate {
             }
         }
         
+        self.getNearestSavedAddresses(from: location, limit: 6) { addresses in
+            for address in addresses {
+                if let addressLoc = address.value["location"] as? CLLocation {
+                    let region = CLCircularRegion(center: addressLoc.coordinate, radius: 1000, identifier: "article_\(address.key)")
+                    region.notifyOnEntry = true
+                    region.notifyOnExit = true
+                    self.locationManager.startMonitoring(for: region)
+                    print("monitoring \(address.key)")
+                }
+            }
+        }
+        
         locationManager.stopUpdatingLocation()
     }
 }
 
-extension FeedViewController: GADUnifiedNativeAdLoaderDelegate {
-    func adLoader(_ adLoader: GADAdLoader, didFailToReceiveAdWithError error: GADRequestError) {
-        print("\(adLoader) failed with error: \(error.localizedDescription)")
+extension FeedViewController: FBNativeAdDelegate, FBNativeAdsManagerDelegate, FBAdViewDelegate {
+    func nativeAdsFailedToLoadWithError(_ error: Error) {
+        print("adLoader failed with error: \(error.localizedDescription)")
     }
     
-    func adLoader(_ adLoader: GADAdLoader, didReceive nativeAd: GADUnifiedNativeAd) {
-        print("Received native ad: \(nativeAd)")
-        adList.append(nativeAd)
-    }
-    
-    func adLoaderDidFinishLoading(_ adLoader: GADAdLoader) {
+    func nativeAdsLoaded() {
+        print("nativeAdsLoaded")
         addNativeAdsToFeed()
         self.collectionView?.reloadData()
     }
     
     func loadAds() {
-        let options = GADMultipleAdsAdLoaderOptions()
-        options.numberOfAds = 5
-        adLoader = GADAdLoader(adUnitID: self.nativeAdUnitId, rootViewController: self, adTypes: [.unifiedNative], options: [options])
-        adLoader.delegate = self
-        adLoader.load(GADRequest())
+        adLoader = FBNativeAdsManager(placementID: self.nativeAdPlacementId, forNumAdsRequested: 10)
+        if let adLoader = adLoader {
+            print("loadAds")
+            adLoader.delegate = self
+            adLoader.loadAds()
+        }
     }
     
     func addNativeAdsToFeed() {
-        if adList.count <= 0 {
-            return
-        }
-        
         var index = 3
         let interval = 10
-        for ad in adList {
-            if index < articleList.count {
-                articleList.insert(ad, at: index)
-                articleListIds.insert("0", at: index)
-                index += interval
-            } else {
-                break
+        if let adLoader = adLoader {
+            for _ in 0..<adLoader.uniqueNativeAdCount {
+                if index < articleList.count {
+                    articleList.insert(adLoader.nextNativeAd!, at: index)
+                    articleListIds.insert("ad", at: index)
+                    index += interval
+                } else {
+                    break
+                }
             }
         }
     }

@@ -13,4 +13,6 @@ class Globals {
     var token: String?
     var isUserEmailVerified: Bool = false
     var hasOpenedArticle: Bool = false
+    
+    let savedItemsAddressesKey = "savedItemsAddresses"
 }

@@ -34,7 +34,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     
     let locationManager = CLLocationManager()
     
-    let dataSource = DataSource.instance
+    let dataSource = NetworkDataSource.instance
+    let localDb = LocalDb.instance
     
     let defaults = UserDefaults.standard
     
@@ -74,11 +75,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         
         Database.database().isPersistenceEnabled = true
         
-        dataSource.setupAlgoliaClient {
-            if let apiKey = self.dataSource.algoliaApiKey {
-                InstantSearch.shared.configure(appID: "O96PPLSF19", apiKey: apiKey, index: "article")
-            }
-        }
+//        dataSource.setupAlgoliaClient {
+//            if let apiKey = self.dataSource.algoliaApiKey {
+//                InstantSearch.shared.configure(appID: "O96PPLSF19", apiKey: apiKey, index: "article")
+//            }
+//        }
         
 //        dataSource.getYouTubeApi() { (apiKey) in
 //            YoutubeKit.shared.setAPIKey(apiKey)
@@ -215,6 +216,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
                     }
                 }
             }
+        } else if userInfo["type"] as? String == "savedAddress" {
+            completionHandler([.alert, .sound])
         } else if userInfo["type"] as? String == "location" {
             completionHandler([.alert, .sound])
         } else if userInfo["type"] as? String == "promotional" {
@@ -259,6 +262,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
             dataSource.recordOpenArticleDetails(articleId: articleId, mainTheme: userInfo["mainTheme"] as? String ?? "General")
             dataSource.logNotificationClicked(uid: user?.uid, itemId: articleId, type: "Saved Article Reminder")
             openArticle(articleId)
+        } else if userInfo["type"] as? String == "savedAddress" {
+            guard let articleId = userInfo["articleId"] as? String else { return }
+            let postcode = userInfo["postcode"] as? [String] ?? [String]()
+            dataSource.logNotificationClicked(uid: user?.uid, itemId: articleId, type: "Saved Address Reminder")
+            openArticle(articleId, postcode)
         } else if userInfo["type"] as? String == "location" {
             guard let locale = userInfo["locale"] as? String else { return }
             dataSource.logNotificationClicked(uid: user?.uid, type: "Nearby")
@@ -316,6 +324,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     func openArticle(_ articleId: String) {
         let vc = mainStoryboard.instantiateViewController(withIdentifier: "WebView") as? WebViewViewController
         vc?.articleId = articleId
+        vc?.feedVC = feedVC
+        self.window?.rootViewController = rootVC
+        rootVC.present(vc!, animated: false)
+    }
+    
+    func openArticle(_ articleId: String, _ postcode: [String]) {
+        let vc = mainStoryboard.instantiateViewController(withIdentifier: "WebView") as? WebViewViewController
+        vc?.articleId = articleId
+        vc?.postcode = postcode
         vc?.feedVC = feedVC
         self.window?.rootViewController = rootVC
         rootVC.present(vc!, animated: false)
@@ -775,8 +792,8 @@ extension AppDelegate: FUIAuthDelegate {
                 notificationsDict[key] = valueBuilder.toString()
                 
                 let notification = UNMutableNotificationContent()
-                notification.title = title ?? ""
-                notification.body = (source != nil && source != "") ? "\(source ?? "") • \(article.mainTheme ?? "")" : article.mainTheme ?? ""
+                notification.title = "This item you saved is happening soon!"
+                notification.body = title ?? ""
                 notification.sound = UNNotificationSound.default
                 notification.userInfo["type"] = "savedArticlesReminderLocal"
                 notification.userInfo["articleId"] = article.objectID
@@ -802,35 +819,65 @@ extension Notification.Name {
 }
 
 extension AppDelegate: CLLocationManagerDelegate {
-    func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
-        print("Entered \(region)")
-        if region is CLCircularRegion {
-            handleEnterEvent(locale: region.identifier)
-        }
-    }
+//    func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
+//        print("Entered \(region)")
+//        if region is CLCircularRegion {
+//            if region.identifier.prefix(7) != "article" {
+//                handleEnterEvent(locale: region.identifier)
+//            } else {
+//                handleEnterEventForSavedAddress(articleId: String(region.identifier.suffix(8)))
+//            }
+//        }
+//    }
     
     func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
         print("Exited \(region)")
         if region is CLCircularRegion {
-            handleExitEvent(locale: region.identifier)
+            if region.identifier.prefix(7) != "article" {
+                handleExitEvent(locale: region.identifier)
+            } else {
+                if let loc = manager.location {
+                    handleExitEventForSavedAddress(articleId: String(region.identifier.suffix(8)), location: loc)
+                }
+            }
         }
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didDetermineState state: CLRegionState, for region: CLRegion) {
+        print("didDetermineState")
+        if state == .inside {
+            print("Entered \(region)")
+            if region is CLCircularRegion {
+                if region.identifier.prefix(7) != "article" {
+                    handleEnterEvent(locale: region.identifier)
+                } else {
+                    handleEnterEventForSavedAddress(articleId: String(region.identifier.suffix(8)))
+                }
+            }
+        }
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didStartMonitoringFor region: CLRegion) {
+        manager.requestState(for: region)
     }
     
     func handleEnterEvent(locale: String) {
         // create and schedule notification push
         let notification = createLocationNotification(for: locale)
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 10 * 60, repeats: false) // 10 min
-        let request = UNNotificationRequest(identifier: notification.userInfo["type"] as! String, content: notification, trigger: trigger)
+        let request = UNNotificationRequest(identifier: "location", content: notification, trigger: trigger)
         UNUserNotificationCenter.current().add(request)
     }
     
     func handleExitEvent(locale: String) {
         // cancel notification push if scheduled
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [locale])
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["location"])
         
         // remove all geofences and add closest 5
         for region in locationManager.monitoredRegions {
-            locationManager.stopMonitoring(for: region)
+            if region.identifier.prefix(7) != "article" {
+                locationManager.stopMonitoring(for: region)
+            }
         }
         self.getNearestLocales(from: locale, limit: 6) { (locales) in
             for station in locales {
@@ -873,10 +920,9 @@ extension AppDelegate: CLLocationManagerDelegate {
                         }
                     }
                 }
-                print(distanceFrom)
                 let sortedDistanceFrom = distanceFrom.sorted(by: { ($0.value["distance"]! as! Double) < ($1.value["distance"]! as! Double) })
-                let result = Array(sortedDistanceFrom[..<limit])
-                print(result)
+                let cutoff = min(sortedDistanceFrom.count, limit)
+                let result = Array(sortedDistanceFrom[..<cutoff])
                 onComplete(result)
             }
         }
@@ -890,6 +936,137 @@ extension AppDelegate: CLLocationManagerDelegate {
                 self.defaults.set(mrtStationMap, forKey: "mrtStations")
                 onComplete(mrtStationMap)
             }
+        }
+    }
+    
+    func handleEnterEventForSavedAddress(articleId: String) {
+        let savedArticlesReminderPref = self.defaults.bool(forKey: "savedArticlesReminderNotifPref")
+        if savedArticlesReminderPref {
+            // create and schedule notification push
+            createSavedAddressNotification(for: articleId) { (notification) in
+                let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 10 * 60, repeats: false) // 10 min
+                let request = UNNotificationRequest(identifier: notification.userInfo["articleId"] as! String, content: notification, trigger: trigger)
+                UNUserNotificationCenter.current().add(request)
+            }
+        }
+    }
+    
+    func handleExitEventForSavedAddress(articleId: String, location: CLLocation) {
+        // cancel notification push if scheduled
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [articleId])
+        
+        // remove all geofences and add closest 5
+        for region in locationManager.monitoredRegions {
+            if region.identifier.prefix(7) == "article" {
+                locationManager.stopMonitoring(for: region)
+            }
+        }
+        
+        let savedArticlesReminderPref = self.defaults.bool(forKey: "savedArticlesReminderNotifPref")
+        if savedArticlesReminderPref {
+            self.getNearestSavedAddresses(from: location, limit: 6) { addresses in
+                for address in addresses {
+                    if let addressLoc = address.value["location"] as? CLLocation {
+                        let region = CLCircularRegion(center: addressLoc.coordinate, radius: 1000, identifier: "article_\(articleId)")
+                        region.notifyOnEntry = true
+                        region.notifyOnExit = true
+                        self.locationManager.startMonitoring(for: region)
+                        print("monitoring \(articleId)")
+                    }
+                }
+            }
+        }
+    }
+    
+    func createSavedAddressNotification(for articleId: String, onComplete: @escaping (UNMutableNotificationContent) -> ()) {
+        let notification = UNMutableNotificationContent()
+        
+        let dispatchGroup = DispatchGroup()
+        dispatchGroup.enter()
+        self.dataSource.observeSingleArticle(articleId: articleId) { article in
+            notification.title = "An item you saved is nearby!"
+            notification.body = article.title ?? ""
+            notification.sound = UNNotificationSound.default
+            notification.userInfo["type"] = "savedAddress"
+            notification.userInfo["articleId"] = articleId
+            
+            // in-app notification
+            var notificationsDict = self.defaults.dictionary(forKey: "notifications") ?? [String: String]()
+            var source: String?
+            var title: String?
+            var link: String?
+            if article.source != nil && article.source != "" {
+                source = article.source ?? ""
+                title = article.title ?? ""
+            } else if article.postAuthor != nil && article.postAuthor != "" {
+                source = article.postAuthor ?? ""
+                title = article.postText ?? ""
+            }
+            
+            link = article.link ?? ""
+            
+            var imageUrl: String?
+            if article.imageUrl != nil && article.imageUrl != "" {
+                imageUrl = article.imageUrl
+            } else if article.postImageUrl != nil && article.postImageUrl != "" {
+                imageUrl = article.postImageUrl
+            }
+            
+            let pubDate = String(article.pubDate)
+            let now = String(floor(Double(Date().timeIntervalSince1970 * 1000)))
+            
+            let key = "s_\(article.objectID)"
+            
+            //type, articleId, text, title, source, imageUrl, theme, extra, timestamp
+            let valueBuilder: StringBuilder = StringBuilder(string: "savedAddressReminder|•|") //type
+            valueBuilder.append("\(article.objectID)|•|") //articleId
+            valueBuilder.append("You were near this saved item today!|•|") //text
+            valueBuilder.append("\(title ?? "")|•|") //title
+            valueBuilder.append("\(source ?? "")|•|") //source
+            valueBuilder.append("\(imageUrl ?? "")|•|") //imageUrl
+            valueBuilder.append("\(article.mainTheme ?? "")|•|") //theme
+            valueBuilder.append("\(pubDate)|•|") //extra
+            valueBuilder.append("\(now)|•|") //timestamp
+            valueBuilder.append(link ?? "") //link
+            
+            notificationsDict[key] = valueBuilder.toString()
+            self.defaults.set(notificationsDict, forKey: "notifications")
+            UIApplication.shared.applicationIconBadgeNumber = notificationsDict.count
+            dispatchGroup.leave()
+        }
+        
+        if let location = locationManager.location {
+            dispatchGroup.enter()
+            self.dataSource.getNearbyPostcode(for: articleId, location: location, radius: 1000) { postcodes in
+                notification.userInfo["postcode"] = postcodes
+                dispatchGroup.leave()
+            }
+        }
+        
+        dispatchGroup.notify(queue: .main) {
+            onComplete(notification)
+        }
+    }
+    
+    func getNearestSavedAddresses(from: CLLocation, limit: Int, onComplete: @escaping ([(key: String, value: [String: Any])]) -> ()) {
+        if let addresses = localDb.getAllAddresses() {
+            var distanceFrom = [String: [String: Any]]()
+            for address in addresses {
+                let addressLoc = CLLocation(latitude: address.latitude, longitude: address.longitude)
+                let distance = addressLoc.distance(from: from)
+                if let loc = distanceFrom[address.articleId], let currentDistance = loc["distance"] as? Double {
+                    if currentDistance > distance {
+                        distanceFrom[address.articleId] = ["location": addressLoc, "distance": distance]
+                    }
+                } else {
+                    distanceFrom[address.articleId] = ["location": addressLoc, "distance": distance]
+                }
+            }
+            let sortedDistanceFrom = distanceFrom.sorted(by: { ($0.value["distance"]! as! Double) < ($1.value["distance"]! as! Double) })
+            let cutoff = min(sortedDistanceFrom.count, limit)
+            let result = Array(sortedDistanceFrom[..<cutoff])
+            print("distance: \(result)")
+            onComplete(result)
         }
     }
 }

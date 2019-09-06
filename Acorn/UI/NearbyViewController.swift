@@ -54,7 +54,7 @@ class NearbyViewController: UIViewController, UITableViewDelegate, UITableViewDa
     var longitude: Double?
     var radius: Double = 1500
     
-    let dataSource = DataSource.instance
+    let dataSource = NetworkDataSource.instance
     
     let mainStoryboard = UIStoryboard(name: "Main", bundle: nil)
     

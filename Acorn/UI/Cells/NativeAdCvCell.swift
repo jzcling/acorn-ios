@@ -10,24 +10,26 @@ import MaterialComponents
 import SDWebImage
 import FirebaseUI
 import Firebase
+import FBAudienceNetwork
 
-class NativeAdCvCell: UICollectionViewCell {
+class NativeAdCvCell: UICollectionViewCell, FBNativeAdDelegate {
     
+    @IBOutlet weak var nativeAdView: UIView!
     @IBOutlet weak var topSeparatorLabel: UILabel!
     @IBOutlet weak var headlineView: UILabel!
     @IBOutlet weak var bodyView: UILabel!
-    @IBOutlet weak var iconView: UIImageView!
+    @IBOutlet weak var iconView: FBMediaView!
     @IBOutlet weak var callToActionView: UIButton!
     @IBOutlet weak var advertiserView: UILabel!
-    @IBOutlet weak var mediaView: GADMediaView!
+    @IBOutlet weak var mediaView: FBMediaView!
+    @IBOutlet weak var adChoicesView: FBAdChoicesView!
+    
+    var vc: FeedViewController?
     
     var textColor: UIColor?
     var textColorFaint: UIColor?
     
-    lazy var user = Auth.auth().currentUser!
-    lazy var uid = user.uid
-    
-    let dataSource = DataSource.instance
+    let dataSource = NetworkDataSource.instance
     
     let nightModeOn = UserDefaults.standard.bool(forKey: "nightModePref")
     lazy var ctaDefaultTint = nightModeOn ? ResourcesNight.CTA_DEFAULT_TINT_COLOR : ResourcesDay.CTA_DEFAULT_TINT_COLOR
@@ -59,28 +61,26 @@ class NativeAdCvCell: UICollectionViewCell {
         return layoutAttributes
     }
     
-    func populateContent(ad: GADUnifiedNativeAd) {
+    func populateContent(ad: FBNativeAd) {
+        ad.unregisterView()
+        ad.registerView(forInteraction: nativeAdView, mediaView: mediaView, iconView: iconView, viewController: vc)
         
-        let adView = contentView.subviews.first as! GADUnifiedNativeAdView
-        adView.nativeAd = ad
-        
-        if let title = ad.headline, let body = ad.body {
+        if let title = ad.headline, let body = ad.bodyText {
             if title.count > body.count {
-                (adView.headlineView as! UILabel).text = body
-                (adView.bodyView as! UILabel).text = title
+                headlineView.text = body
+                bodyView.text = title
             } else {
-                (adView.headlineView as! UILabel).text = title
-                (adView.bodyView as! UILabel).text = body
+                headlineView.text = title
+                bodyView.text = body
             }
         }
-        if let iconUrl = ad.icon?.imageURL {
-            (adView.iconView as! UIImageView).sd_setImage(with: iconUrl)
+        advertiserView.text = ad.advertiserName
+        if let cta = ad.callToAction { callToActionView.setTitle(cta, for: UIControl.State.normal)
+            callToActionView.isHidden = false
         } else {
-            (adView.iconView as! UIImageView).isHidden = true
+            callToActionView.isHidden = true
         }
-        (adView.advertiserView as! UILabel).text = ad.advertiser
-        (adView.callToActionView as! UIButton).setTitle(ad.callToAction, for: UIControl.State.normal)
-        adView.mediaView?.mediaContent = ad.mediaContent
+        adChoicesView.nativeAd = ad
         
         topSeparatorLabel.textColor = textColorFaint
         headlineView.textColor = textColorFaint

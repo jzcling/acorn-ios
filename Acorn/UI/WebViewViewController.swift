@@ -12,8 +12,10 @@ import FirebaseUI
 import Firebase
 import DropDown
 import Toast_Swift
+import FBAudienceNetwork
+import AdSupport
 
-class WebViewViewController: UIViewController, WKUIDelegate, UIGestureRecognizerDelegate {
+class WebViewViewController: UIViewController, WKUIDelegate, UIGestureRecognizerDelegate, FBAdViewDelegate {
 
     @IBOutlet weak var mainView: UIView!
     @IBOutlet weak var stackView: UIStackView!
@@ -48,10 +50,10 @@ class WebViewViewController: UIViewController, WKUIDelegate, UIGestureRecognizer
     var feedVC: FeedViewController?
     var searchVC: SearchViewController?
     
-    lazy var user = Auth.auth().currentUser!
-    lazy var uid = user.uid
+    lazy var user = Auth.auth().currentUser
+    lazy var uid = user?.uid ?? "unknown"
     
-    let dataSource = DataSource.instance
+    let dataSource = NetworkDataSource.instance
     
     let mainStoryboard = UIStoryboard(name: "Main", bundle: nil)
     
@@ -72,25 +74,24 @@ class WebViewViewController: UIViewController, WKUIDelegate, UIGestureRecognizer
     var activeTime: Double = 0
     var readTime: Int = 0
     
-    lazy var toastPosition = CGPoint(x: self.view.bounds.size.width / 2.0, y: (self.view.bounds.size.height - 30) - 20 - actionButtonStackView.frame.height)
+    var bannerView: FBAdView?
     
-    // Ad
-    let bannerView = { () -> GADBannerView in
-        let bannerView = GADBannerView(adSize: kGADAdSizeSmartBannerPortrait)
-        bannerView.translatesAutoresizingMaskIntoConstraints = false
-        bannerView.adUnitID = "ca-app-pub-9396779536944241/8919524667"
-        return bannerView
-    }()
+    lazy var toastPosition = CGPoint(x: self.view.bounds.size.width / 2.0, y: (self.view.bounds.size.height - 30) - 20 - actionButtonStackView.frame.height)
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        stackView.insertArrangedSubview(bannerView, at: 4)
-        NSLayoutConstraint.activate([
-            stackView.leftAnchor.constraint(equalTo: bannerView.leftAnchor),
-            stackView.rightAnchor.constraint(equalTo: bannerView.rightAnchor)
-        ])
-        bannerView.rootViewController = self
-        bannerView.load(GADRequest())
+        
+        bannerView = FBAdView(placementID: "353679552175190_355426018667210", adSize: kFBAdSizeHeight50Banner, rootViewController: self)
+        if let bannerView = bannerView {
+            bannerView.translatesAutoresizingMaskIntoConstraints = false
+            bannerView.delegate = self
+            NSLayoutConstraint.activate([
+                bannerView.widthAnchor.constraint(equalToConstant: view.bounds.size.width),
+                bannerView.heightAnchor.constraint(equalToConstant: 50)
+            ])
+            stackView.insertArrangedSubview(bannerView, at: 4)
+            bannerView.loadAd()
+        }
         
         if hasOpenedArticle() {
             messageOverlayView.isHidden = true
@@ -298,58 +299,66 @@ class WebViewViewController: UIViewController, WKUIDelegate, UIGestureRecognizer
             self.article = retrievedArticle
             print("loaded from firebaseDb")
             
-            if (self.article?.type)! == "article" {
-                self.genHtml(for: self.article!)
+            if let article = self.article {
+                if article.type == "article" {
+                    self.genHtml(for: article)
+                } else {
+                    if let articleLink = article.link, let link = URL(string: articleLink) {
+                        let request = URLRequest(url: link)
+                        self.webView.load(request)
+                    } else {
+                        self.view.makeToast("Failed to load article", point: self.toastPosition, title: nil, image: nil, completion: nil)
+                        return
+                    }
+                }
+                
+                self.webView.addObserver(self, forKeyPath: "estimatedProgress", options: .new, context: nil)
+                
+                if let tokens = self.article?.notificationTokens {
+                    self.isFollowedByUser = tokens.keys.contains(self.uid)
+                } else {
+                    self.isFollowedByUser = false
+                }
+                
+                if let upvoters = self.article?.upvoters {
+                    if upvoters.keys.contains(self.uid) {
+                        self.upvoteButton.tintColor = self.upvoteTint
+                    }
+                }
+                
+                if let downvoters = self.article?.downvoters {
+                    if downvoters.keys.contains(self.uid) {
+                        self.downvoteButton.tintColor = self.downvoteTint
+                    }
+                }
+                
+                if let commenters = self.article?.commenters {
+                    if commenters.keys.contains(self.uid) {
+                        self.commentButton.tintColor = self.commentTint
+                    }
+                }
+                
+                if let savers = self.article?.savers {
+                    if savers.keys.contains(self.uid) {
+                        self.saveButton.tintColor = self.saveTint
+                    }
+                }
+                
+                if let sharers = self.article?.sharers {
+                    if sharers.keys.contains(self.uid) {
+                        self.shareButton.tintColor = self.shareTint
+                    }
+                }
+                
+                Analytics.logEvent(AnalyticsEventSelectContent, parameters: [
+                    AnalyticsParameterItemID: self.article?.objectID ?? "",
+                    AnalyticsParameterItemCategory: self.article?.mainTheme ?? "",
+                    "item_source": self.article?.source ?? "",
+                    AnalyticsParameterContentType: self.article?.type ?? ""
+                    ])
             } else {
-                let link = URL(string: (self.article?.link)!)
-                let request = URLRequest(url: link!)
-                self.webView.load(request)
+                self.view.makeToast("Failed to load article", point: self.toastPosition, title: nil, image: nil, completion: nil)
             }
-            
-            self.webView.addObserver(self, forKeyPath: "estimatedProgress", options: .new, context: nil)
-            
-            if let tokens = self.article?.notificationTokens {
-                self.isFollowedByUser = tokens.keys.contains(self.uid)
-            } else {
-                self.isFollowedByUser = false
-            }
-            
-            if let upvoters = self.article?.upvoters {
-                if upvoters.keys.contains(self.uid) {
-                    self.upvoteButton.tintColor = self.upvoteTint
-                }
-            }
-            
-            if let downvoters = self.article?.downvoters {
-                if downvoters.keys.contains(self.uid) {
-                    self.downvoteButton.tintColor = self.downvoteTint
-                }
-            }
-            
-            if let commenters = self.article?.commenters {
-                if commenters.keys.contains(self.uid) {
-                    self.commentButton.tintColor = self.commentTint
-                }
-            }
-            
-            if let savers = self.article?.savers {
-                if savers.keys.contains(self.uid) {
-                    self.saveButton.tintColor = self.saveTint
-                }
-            }
-            
-            if let sharers = self.article?.sharers {
-                if sharers.keys.contains(self.uid) {
-                    self.shareButton.tintColor = self.shareTint
-                }
-            }
-            
-            Analytics.logEvent(AnalyticsEventSelectContent, parameters: [
-                AnalyticsParameterItemID: self.article?.objectID ?? "",
-                AnalyticsParameterItemCategory: self.article?.mainTheme ?? "",
-                "item_source": self.article?.source ?? "",
-                AnalyticsParameterContentType: self.article?.type ?? ""
-                ])
         }
     }
     
@@ -503,8 +512,13 @@ class WebViewViewController: UIViewController, WKUIDelegate, UIGestureRecognizer
     }
     
     @IBAction func didTapUpvoteButton(_ sender: Any) {
-        if !isUserEmailVerified() {
-            showEmailVerificationAlert(user: user)
+        if let user = user {
+            if !isUserEmailVerified() {
+                showEmailVerificationAlert(user: user)
+                return
+            }
+        } else {
+            self.view.makeToast("Authentication error! Please log in again.", point: self.toastPosition, title: nil, image: nil, completion: nil)
             return
         }
         
@@ -537,8 +551,13 @@ class WebViewViewController: UIViewController, WKUIDelegate, UIGestureRecognizer
     }
     
     @IBAction func didTapDownvoteButton(_ sender: Any) {
-        if !isUserEmailVerified() {
-            showEmailVerificationAlert(user: user)
+        if let user = user {
+            if !isUserEmailVerified() {
+                showEmailVerificationAlert(user: user)
+                return
+            }
+        } else {
+            self.view.makeToast("Authentication error! Please log in again.", point: self.toastPosition, title: nil, image: nil, completion: nil)
             return
         }
         
@@ -653,12 +672,16 @@ extension WebViewViewController: WKNavigationDelegate {
             }
         }
         
-        if self.didFinishInitialLoad, let postcode = postcode {
+        if self.didFinishInitialLoad, let postcode = postcode, postcode.count > 0 {
             nextButton.setTitle("Find", for: .normal)
             searchStackView.isHidden = false
             nextButton.isHidden = false
-            let searchText = postcode[postcodeIndex]
-            searchBar.text = searchText
+            if postcodeIndex < postcode.count {
+                let searchText = postcode[postcodeIndex]
+                searchBar.text = searchText
+            } else {
+                postcodeIndex = 0
+            }
         }
     }
 }

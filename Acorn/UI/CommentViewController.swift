@@ -55,7 +55,7 @@ class CommentViewController: UIViewController, UICollectionViewDataSource, UICol
     @IBOutlet weak var cardViewHeightConstraint: NSLayoutConstraint!
     @IBOutlet weak var cardViewBottomConstraint: NSLayoutConstraint!
     
-    let dataSource = DataSource.instance
+    let dataSource = NetworkDataSource.instance
     var articleId: String?
     var article: Article?
     var comments = [Comment]() {

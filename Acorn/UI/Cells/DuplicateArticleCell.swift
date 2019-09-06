@@ -22,7 +22,7 @@ class DuplicateArticleCell: UICollectionViewCell {
     @IBOutlet weak var titleWidthConstraint: NSLayoutConstraint!
     
     var articleId: String?
-    let dataSource = DataSource.instance
+    let dataSource = NetworkDataSource.instance
     
     var textColor: UIColor?
     var textColorFaint: UIColor?

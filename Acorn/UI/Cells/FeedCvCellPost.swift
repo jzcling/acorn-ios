@@ -44,10 +44,9 @@ class FeedCvCellPost: UICollectionViewCell {
     var textColorFaint: UIColor?
     var textColorRead: UIColor?
     
-    lazy var user = Auth.auth().currentUser!
-    lazy var uid = user.uid
+    var uid: String?
     
-    let dataSource = DataSource.instance
+    let dataSource = NetworkDataSource.instance
     
     let nightModeOn = UserDefaults.standard.bool(forKey: "nightModePref")
     lazy var upvoteTint = nightModeOn ? ResourcesNight.UPVOTE_TINT_COLOR : ResourcesDay.UPVOTE_TINT_COLOR
@@ -94,7 +93,7 @@ class FeedCvCellPost: UICollectionViewCell {
     }
     
     func populateCell(article: Article) {
-        if let seenBy = article.seenBy?.keys, seenBy.contains(uid) {
+        if let seenBy = article.seenBy?.keys, seenBy.contains(uid!) {
             newBannerImageView.isHidden = true
         } else {
             newBannerImageView.isHidden = false
@@ -109,7 +108,7 @@ class FeedCvCellPost: UICollectionViewCell {
             readTimeLabel.text = ""
             topSeparatorLabel.text = ""
         }
-        if let openedBy = article.openedBy?.keys, openedBy.contains(uid) {
+        if let openedBy = article.openedBy?.keys, openedBy.contains(uid!) {
             titleLabel.textColor = textColorRead
         } else {
             titleLabel.textColor = textColor
@@ -145,7 +144,7 @@ class FeedCvCellPost: UICollectionViewCell {
         voteCommSeparator.textColor = textColor
         
         if let upvoters = article.upvoters {
-            if upvoters.keys.contains(uid) {
+            if upvoters.keys.contains(uid!) {
                 upvoteButton.tintColor = upvoteTint
             } else {
                 upvoteButton.tintColor = buttonDefaultTint
@@ -153,7 +152,7 @@ class FeedCvCellPost: UICollectionViewCell {
         }
         
         if let downvoters = article.downvoters {
-            if downvoters.keys.contains(uid) {
+            if downvoters.keys.contains(uid!) {
                 downvoteButton.tintColor = downvoteTint
             } else {
                 downvoteButton.tintColor = buttonDefaultTint
@@ -161,7 +160,7 @@ class FeedCvCellPost: UICollectionViewCell {
         }
         
         if let commenters = article.commenters {
-            if commenters.keys.contains(uid) {
+            if commenters.keys.contains(uid!) {
                 commentButton.tintColor = commentTint
             } else {
                 commentButton.tintColor = buttonDefaultTint
@@ -169,7 +168,7 @@ class FeedCvCellPost: UICollectionViewCell {
         }
         
         if let savers = article.savers {
-            if savers.keys.contains(uid) {
+            if savers.keys.contains(uid!) {
                 saveButton.tintColor = saveTint
             } else {
                 saveButton.tintColor = buttonDefaultTint
@@ -177,7 +176,7 @@ class FeedCvCellPost: UICollectionViewCell {
         }
         
         if let sharers = article.sharers {
-            if sharers.keys.contains(uid) {
+            if sharers.keys.contains(uid!) {
                 shareButton.tintColor = shareTint
             } else {
                 shareButton.tintColor = buttonDefaultTint

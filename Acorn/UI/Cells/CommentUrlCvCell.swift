@@ -35,13 +35,13 @@ class CommentUrlCvCell: UICollectionViewCell {
     func populateCell(_ comment: Comment) {
         imageView.sd_setImage(with: URL(string: comment.imageUrl!), completed: nil)
         titleLabel.text = ""
-        titleLabel.highlightedText = comment.commentText ?? ""
-        titleLabel.highlightedBackgroundColor = nightModeOn ? ResourcesNight.SEARCH_HIT_BG_COLOR : ResourcesDay.SEARCH_HIT_BG_COLOR
+        titleLabel.text = comment.commentText ?? ""
+//        titleLabel.highlightedBackgroundColor = nightModeOn ? ResourcesNight.SEARCH_HIT_BG_COLOR : ResourcesDay.SEARCH_HIT_BG_COLOR
         titleLabel.highlightedTextColor = nightModeOn ? ResourcesNight.SEARCH_HIT_TEXT_COLOR : ResourcesDay.SEARCH_HIT_TEXT_COLOR
         
         sourceLabel.text = ""
-        sourceLabel.highlightedText = comment.urlSource ?? ""
-        sourceLabel.highlightedBackgroundColor = nightModeOn ? ResourcesNight.SEARCH_HIT_BG_COLOR : ResourcesDay.SEARCH_HIT_BG_COLOR
+        sourceLabel.text = comment.urlSource ?? ""
+//        sourceLabel.highlightedBackgroundColor = nightModeOn ? ResourcesNight.SEARCH_HIT_BG_COLOR : ResourcesDay.SEARCH_HIT_BG_COLOR
         sourceLabel.highlightedTextColor = nightModeOn ? ResourcesNight.SEARCH_HIT_TEXT_COLOR : ResourcesDay.SEARCH_HIT_TEXT_COLOR
         
         self.view.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(openExternalArticle)))
@@ -52,9 +52,9 @@ class CommentUrlCvCell: UICollectionViewCell {
     override func prepareForReuse() {
         imageView.sd_cancelCurrentImageLoad()
         titleLabel.text = nil
-        titleLabel.highlightedText = nil
+        titleLabel.text = nil
         sourceLabel.text = nil
-        sourceLabel.highlightedText = nil
+        sourceLabel.text = nil
         
         super.prepareForReuse()
     }

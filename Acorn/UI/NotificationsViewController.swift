@@ -21,7 +21,7 @@ class NotificationsViewController: UIViewController, UITableViewDelegate, UITabl
     
     let mainStoryboard = UIStoryboard(name: "Main", bundle: nil)
     
-    let dataSource = DataSource.instance
+    let dataSource = NetworkDataSource.instance
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -113,9 +113,9 @@ class NotificationsViewController: UIViewController, UITableViewDelegate, UITabl
         let articleId = notificationsArray[indexPath.row].components(separatedBy: "|•|")[1]
         let mainTheme = notificationsArray[indexPath.row].components(separatedBy: "|•|")[6]
         let link = notificationsArray[indexPath.row].components(separatedBy: "|•|")[9]
-        if (type == "article" || type == "deal" || type == "savedArticleReminder") {
+        if (type == "article" || type == "deal" || type == "savedArticleReminder" || type == "savedAddressReminder") {
             dataSource.recordOpenArticleDetails(articleId: articleId, mainTheme: mainTheme)
-            if link != nil && link != "" {
+            if link != "" {
                 openArticle(articleId)
             } else {
                 openComments(articleId)
@@ -138,6 +138,8 @@ class NotificationsViewController: UIViewController, UITableViewDelegate, UITabl
             } else if type == "deal" {
                 key = "d_\(articleId)"
             } else if type == "savedArticleReminder" {
+                key = "s_\(articleId)"
+            } else if type == "savedAddressReminder" {
                 key = "s_\(articleId)"
             }
             
