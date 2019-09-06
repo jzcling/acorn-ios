@@ -19,6 +19,8 @@ class DataSource {
     var algoliaApiKey: String?
     var algoliaClient: Client?
     var algoliaIndex: Index?
+    let algoliaAppId = "O96PPLSF19"
+    let algoliaIndexName = "article"
     
     let limit = 100 as UInt
     
@@ -68,16 +70,24 @@ class DataSource {
     var userStatus: String?
     
     
+    
     // Setup
     func setupAlgoliaClient(onComplete: @escaping () -> ()) {
         algoliaRef.observeSingleEvent(of: .value) { (snap) in
             guard let apiKey = snap.value as? String else { return }
             
             self.algoliaApiKey = apiKey
-            self.algoliaClient = Client(appID: "O96PPLSF19", apiKey: apiKey)
-            self.algoliaIndex = self.algoliaClient?.index(withName: "article")
+            self.algoliaClient = Client(appID: self.algoliaAppId, apiKey: apiKey)
+            self.algoliaIndex = self.algoliaClient?.index(withName: self.algoliaIndexName)
             
             onComplete()
+        }
+    }
+    
+    func getAlgoliaApiKey(onComplete: @escaping (String) -> ()) {
+        algoliaRef.observeSingleEvent(of: .value) { (snap) in
+            guard let apiKey = snap.value as? String else { return }
+            onComplete(apiKey)
         }
     }
     
