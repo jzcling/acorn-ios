@@ -1,6 +1,0 @@
-framework module Pods_AcornTests {
-  umbrella header "Pods-AcornTests-umbrella.h"
-
-  export *
-  module * { export * }
-}
